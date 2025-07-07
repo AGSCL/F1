@@ -1,0 +1,914 @@
+---
+title: "Fast followers?/Speed contagion: assessing the impact of Montreal F1 Grand Prix on high-speed ticketing rates (2000-2022)"
+description: |
+  Step 1. Weather variables. We defined the dates by year and availability (whether the event took place or not), days of the week, time windows, and pre and post-event spans, which we then linked to nearby meteorological stations. Also we linked with Collisions data.
+lang: en
+date: last-modified #date-format: "D [d]e MMM, YYYY"
+bibliography: [_lit/refs.bib]
+csl: "_lit/american-medical-association.csl" # (Opcional: estilo de citas, p.ej., APA)
+author: "Andrés González Santa Cruz"
+format: 
+  html:
+    css: [_lib/styles.scss]
+    code-fold: true
+    embed-resources: true
+    fig-cap-location: top
+lightbox: auto
+toc: true
+toc-depth: 5
+toc-location: left
+toc-float: true
+editor: source
+---
+
+<style>
+.scrollable-content {
+  max-height: 350px;
+  overflow-y: auto;
+}
+</style>
+<style>
+pre.scrollable-code {
+  max-height: 350px;
+  overflow-y: auto;
+}
+</style>
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: true
+
+# remove objects and memory
+rm(list=ls());gc()
+
+#remove images
+while(!dev.cur())dev.off()
+cat("\014")
+load(paste0(getwd(),"/_data/step1.RData"))
+```
+
+# Load libraries and data
+
+Particularly, the `weathercan` library, which contains information on climate change and environmental variables from stations across Canada [@LaZerte2018weathercan].
+
+
+<div class="scrollable-content">
+```{r}
+#| label: setup
+#| message: true
+#| warning: true
+#| class-output: center-table
+#| include: true
+#| results: "hold"
+
+#borrar caché
+#system("fc-cache -f -v")
+
+#check R version
+if(Sys.info()["sysname"]=="Windows"){
+if (getRversion() != "4.4.1") { stop("Requiere versión de R 4.4.1. Actual: ", getRversion()) }
+}
+if(Sys.info()["sysname"]=="Linux"){
+if (getRversion() != "4.4.1") { stop("Requiere versión de R 4.4.1. Actual: ", getRversion()) }
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+# install.packages(c("dplyr", #for data
+#                    "tidyr", #for data
+#                    "lubridate",  #for dates
+#                    "openxlsx", #for excel files
+#                    "rio", #for importing and exporting data
+#                    "purrr", #for iterating in databases
+#                    "devtools", #for external packages
+#                    "DiagrammeR", #para visualizar DAG
+#                    "dagitty",
+#                    "ggdag",
+#                    "ggplot2" #for graphics
+#                    "kableExtra", #pretty tables
+#                    "quarto", #for documents
+#                    "geosphere" #for coordinates and classifying
+#                    "geepack", #for regression
+#                    "glmmTMB", #For GLMMs
+#                    "DHARMa", #For residual diagnostics
+#                    "car", #For hypothesis testing
+#                    "brms", #Bayesian model
+#                    "bayesplot",
+#                    "loo",
+#                    "Synth", #for synthetic control method
+#                    "weathercan",#for weather data
+#                    "sandwich", #cluster robust intervals
+#                    "emmeans", #for predictions
+#                    "gnm", #Conditional Poisson models
+#                    "splines", #nonlinearity 
+#                    "geeM", #negative binomial and more flexible GEE models
+#                    "PanelMatch", #Matching technique with panel data
+#                    "scpi" #control sintético
+#                    "nixtlar", #for time series analysis and prediction
+#                    "CausalImpact" #for time series causal impact
+#                    "forecast" #for time series analysis prediction and decomposition
+#                    ))
+library(dplyr); library(lubridate); library(tidyverse); library(openxlsx); library(rio); library(purrr); library(dagitty); library(ggdag); library(kableExtra); library(geosphere); library(geepack); library(lme4); library(glmmTMB); library(DHARMa); library(car); library(brms); library(bayesplot); library(loo); library(Synth);  library(weathercan); library(sandwich); library(emmeans); library(gnm); library(splines); library(geeM); library(plm); library(PanelMatch); library(scpi); library(fect); library(nixtlar); library(CausalImpact); library(forecast); library(webshot)
+
+#special repository indicated or the package
+if(!require(weathercan)){
+   install.packages("weathercan", 
+                  repos = c("https://ropensci.r-universe.dev", "https://cloud.r-project.org")); library(weathercan)
+  }
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+if(!require(bpmn)){devtools::install_github("bergant/bpmn")}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+sum_dates <- function(x){
+ 
+  cbind.data.frame(
+	min= as.Date(min(unclass(as.Date(x)), na.rm=T), origin = "1970-01-01"),
+	p001= as.Date(quantile(unclass(as.Date(x)), .001, na.rm=T), origin = "1970-01-01"),
+	p005= as.Date(quantile(unclass(as.Date(x)), .005, na.rm=T), origin = "1970-01-01"),
+	p025= as.Date(quantile(unclass(as.Date(x)), .025, na.rm=T), origin = "1970-01-01"),
+	p25= as.Date(quantile(unclass(as.Date(x)), .25, na.rm=T), origin = "1970-01-01"),
+	p50= as.Date(quantile(unclass(as.Date(x)), .5, na.rm=T), origin = "1970-01-01"),
+	p75= as.Date(quantile(unclass(as.Date(x)), .75, na.rm=T), origin = "1970-01-01"),
+	p975= as.Date(quantile(unclass(as.Date(x)), .975, na.rm=T), origin = "1970-01-01"),
+	p995= as.Date(quantile(unclass(as.Date(x)), .995, na.rm=T), origin = "1970-01-01"),
+	p999= as.Date(quantile(unclass(as.Date(x)), .999, na.rm=T), origin = "1970-01-01"),
+	max= as.Date(max(unclass(as.Date(x)), na.rm=T), origin = "1970-01-01")
+  )
+}
+smd_bin <- function(x,y){
+  z <- x*(1-x)
+  t <- y*(1-y)
+  k <- sum(z,t)
+  l <- k/2
+  
+  return((x-y)/sqrt(l))
+  
+}
+
+theme_custom_sjplot2 <- function(base_size = 12, base_family = "") {
+  theme_minimal(base_size = base_size, base_family = base_family) +
+    theme(
+      # Text elements
+      text = element_text(size = base_size, family = base_family),
+      plot.title = element_text(face = "bold", hjust = 0.5, size = base_size * 1.2),
+      plot.subtitle = element_text(hjust = 0.5, margin = margin(b = 10)),
+      axis.title = element_text(size = base_size, face = "bold"),
+      axis.text = element_text(size = base_size * 0.8),
+      axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5),
+      axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5),
+      axis.title.x = element_text(margin = margin(t = 10)),
+      axis.title.y = element_text(margin = margin(r = 10)),
+      
+      # Plot layout
+      plot.margin = margin(t = 20, r = 20, b = 20, l = 20),
+      panel.grid.major = element_line(color = "grey80"),
+      panel.grid.minor = element_blank(),
+      legend.position = "right",
+      legend.text = element_text(size = base_size * 0.8),
+      legend.title = element_text(size = base_size, face = "bold"),
+      legend.background = element_rect(fill = "white", colour = NA),
+      legend.box.background = element_rect(colour = "grey80", linetype = "solid"),
+      legend.key = element_rect(fill = "white", colour = "white")
+    )
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+num_cores <- parallel::detectCores() -1
+data.table::setDTthreads(threads = num_cores)#restore_after_fork = NULL, throttle = NULL)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#CONFIG #######################################################################
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+options(scipen=2) #display numbers rather scientific number
+
+
+nixtlar::nixtla_client_setup(api_key = readLines(paste0(gsub("f1/","", getwd() ),"/key.txt"))[[2]])
+
+```
+</div>
+
+### Collapse
+
+
+We collapsed data by aggregating it at the day–year level for treatment and control areas. For each cell, we summed the number of high-speed tickets and documented vehicles and license holders, and averaged the minimum temperature, maximum temperature, while the 2-day-lagged precipitation and total daily precipitation were summarized by the median. We restricted post-outcome period to 7 days.
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: colapse-db-format-synth
+#| eval: true
+#| results: "hold"
+
+#total_precip_median_lin lag_2_prec_median_lin_imp
+if(identical(collisions_weather_corr_rect$lag_2_prec_median_lin_imp, collisions_weather_corr_rect$total_precip_median_lin)){warning("Identical lagged with not lagged variable")}
+
+
+collisions_weather_corr_rect_synth <-
+  collisions_weather_corr_rect |>
+  filter(date_num <= unclass(race_date) + 7) |>
+  group_by(tr_contr_sens, year, yday_corr, date) |>
+  summarise(
+    sum_velocidad = sum(velocidad, na.rm = TRUE),
+    exp_veh       = sum(vehicles_use_type,        na.rm = TRUE), # Nº de vehículos expuestos
+    exp_lic       = sum(license_holders_sex_age,  na.rm = TRUE), # Nº de conductores
+    median_lag_2_prec_median_imp = median(lag_2_prec_median_lin_imp, na.rm = TRUE),
+    mean_min_temp_mean_lin       = mean(min_temp_mean_lin,       na.rm = TRUE),
+    mean_max_temp_mean_lin       = mean(max_temp_mean_lin,       na.rm = TRUE),
+    median_total_precip_median_lin = median(total_precip_median_lin, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  mutate(                                     # ── aux variables
+    rate_veh = sum_velocidad / exp_veh * 1e6, # not to model
+    rate_lic = sum_velocidad / exp_lic * 1e6, # not to model
+    off_veh  = log(exp_veh),                  # offset
+    off_lic  = log(exp_lic)
+  ) |>
+  left_join(races, by = c("date" = "race_date")) |>
+  mutate(
+    race_day = if_else(!is.na(year.y), 1L, 0L),
+    id       = as.numeric(factor(paste0(tr_contr_sens, year.x)))
+  ) |>
+  select(-year.y)
+
+
+if(identical(collisions_weather_corr_rect_synth$median_total_precip_median_lin, collisions_weather_corr_rect_synth$median_lag_2_prec_median_imp)){warning("Identical lagged with not lagged variable")}
+
+cat("Day of the race \n")
+collisions_weather_corr_rect_synth |> 
+  filter(race_day==1) |> reframe(min=yday_corr, max=yday_corr) |>  print(n=40)
+
+############################################################
+## 1.  “Only-treated, one series”  ─────────────────────────
+##     (collisions_weather_corr_rect_synth_tr)
+############################################################
+cat("Generate a summary of counts of every year in treated only\n")
+collisions_weather_corr_rect_synth_tr <- 
+  collisions_weather_corr_rect_synth %>%              # start from the long table
+  filter(tr_contr_sens == "treatment") %>%            # keep treated rows only
+  group_by(tr_contr_sens, yday_corr) %>%              # collapse across MRC × years
+  summarise(
+    sum_velocidad = sum(sum_velocidad, na.rm = TRUE),
+    exp_veh       = sum(exp_veh,       na.rm = TRUE),
+    exp_lic       = sum(exp_lic,       na.rm = TRUE),
+    mean_median_lag_2_prec_median_imp   = mean(median_lag_2_prec_median_imp,   na.rm = TRUE),
+    mean_min_temp_mean_lin              = mean(mean_min_temp_mean_lin,         na.rm = TRUE),
+    mean_max_temp_mean_lin              = mean(mean_max_temp_mean_lin,         na.rm = TRUE),
+    mean_median_total_precip_median_lin = mean(median_total_precip_median_lin, na.rm = TRUE),
+    .groups = "drop"
+  ) %>% 
+  mutate(
+    rate_veh = sum_velocidad / exp_veh * 1e6,
+    rate_lic = sum_velocidad / exp_lic * 1e6,
+    off_veh  = log(exp_veh),
+    off_lic  = log(exp_lic),
+    year.x   = 2000,                       # dummy year / date just to keep structure
+    date     = as.Date("2019-05-19"),
+    race_day = 0L,
+    id       = 40                          # single ID for the synthetic treated series
+  )
+
+############################################################
+## 2.  “One treated - many controls”  ─────────────────────
+##     (collisions_weather_corr_rect_synth_one_tr_many_cntrls)
+############################################################
+
+# controls left at their original resolution (one ID per MRC–year)
+controls_long <- collisions_weather_corr_rect_synth %>% 
+  filter(tr_contr_sens != "treatment") %>% 
+  rename(
+    mean_median_lag_2_prec_median_imp   = median_lag_2_prec_median_imp,
+    mean_median_total_precip_median_lin = median_total_precip_median_lin
+  )
+
+collisions_weather_corr_rect_synth_one_tr_many_cntrls <- bind_rows(
+  controls_long,
+  collisions_weather_corr_rect_synth_tr          # the single treated series from step 1
+)
+
+############################################################
+## 3.  “Only-controls, one series”  ───────────────────────
+##     (collisions_weather_corr_rect_synth_cntr)
+############################################################
+
+collisions_weather_corr_rect_synth_cntr <- 
+  collisions_weather_corr_rect_synth %>% 
+  filter(tr_contr_sens != "treatment") %>%          # keep controls
+  group_by(tr_contr_sens, yday_corr) %>%            # collapse across all control IDs
+  summarise(
+    sum_velocidad = sum(sum_velocidad, na.rm = TRUE),
+    exp_veh       = sum(exp_veh,       na.rm = TRUE),
+    exp_lic       = sum(exp_lic,       na.rm = TRUE),
+    
+    # distributional summaries to keep a sense of variability
+    p25_lag_2_prec_median_imp   = quantile(median_lag_2_prec_median_imp,   .25, na.rm = TRUE),
+    p75_lag_2_prec_median_imp   = quantile(median_lag_2_prec_median_imp,   .75, na.rm = TRUE),
+    mean_median_lag_2_prec_median_imp   = mean(median_lag_2_prec_median_imp,   na.rm = TRUE),
+    
+    p25_min_temp_mean_lin = quantile(mean_min_temp_mean_lin, .25, na.rm = TRUE),
+    p75_min_temp_mean_lin = quantile(mean_min_temp_mean_lin, .75, na.rm = TRUE),
+    mean_min_temp_mean_lin = mean(mean_min_temp_mean_lin, na.rm = TRUE),
+    
+    p25_max_temp_mean_lin = quantile(mean_max_temp_mean_lin, .25, na.rm = TRUE),
+    p75_max_temp_mean_lin = quantile(mean_max_temp_mean_lin, .75, na.rm = TRUE),
+    mean_max_temp_mean_lin = mean(mean_max_temp_mean_lin, na.rm = TRUE),
+    
+    p25_total_precip_median_lin = quantile(median_total_precip_median_lin, .25, na.rm = TRUE),
+    p75_total_precip_median_lin = quantile(median_total_precip_median_lin, .75, na.rm = TRUE),
+    mean_median_total_precip_median_lin = mean(median_total_precip_median_lin, na.rm = TRUE),
+    .groups = "drop"
+  ) %>% 
+  mutate(
+    rate_veh = sum_velocidad / exp_veh * 1e6,
+    rate_lic = sum_velocidad / exp_lic * 1e6,
+    off_veh  = log(exp_veh),
+    off_lic  = log(exp_lic),
+    year.x   = 2000,
+    date     = as.Date("2019-05-19"),
+    race_day = 0L,
+    id       = 1                               # single ID for the synthetic control
+  ) %>% 
+  # rename the median variables so their names match the treated table
+  rename(
+    mean_median_lag_2_prec_median_imp   = mean_median_lag_2_prec_median_imp,
+    mean_median_total_precip_median_lin = mean_median_total_precip_median_lin
+  )
+
+############################################################
+## Quick sanity checks
+############################################################
+# glimpse(collisions_weather_corr_rect_synth_tr)
+# glimpse(collisions_weather_corr_rect_synth_one_tr_many_cntrls)
+# glimpse(collisions_weather_corr_rect_synth_cntr)
+
+cat("Check imbalances\n")
+collisions_weather_corr_rect_synth_one_tr_many_cntrls |> group_by(id) |> reframe(max=max(yday_corr), min=min(yday_corr), n=n()) |> tail()
+
+
+invisible("Consolidate one treated and one control")
+collisions_weather_corr_rect_synth_cntr_tr <- 
+rbind.data.frame(collisions_weather_corr_rect_synth_cntr,collisions_weather_corr_rect_synth_tr |> 
+  # rename(collisions_weather_corr_rect_synth_tr, "median_lag_2_prec_mean_imp"= "mean_lag_2_prec_mean_imp", "median_total_precip_mean_lin"= "mean_total_precip_mean_lin")|>  
+  mutate(p25_lag_2_prec_median_imp=0, p75_lag_2_prec_median_imp=0, p25_min_temp_mean_lin=0, p75_min_temp_mean_lin=0, p25_max_temp_mean_lin=0, p75_max_temp_mean_lin=0, p25_total_precip_median_lin=0, p75_total_precip_median_lin=0))|> data.frame()
+
+```
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: colapse-db-format-synth-quebec
+#| eval: true
+#| results: "hold"
+
+collisions_weather_corr_rect_quebec_synth <-
+  collisions_weather_corr_rect |>
+  filter(date_num <= unclass(race_date) + 7) |>
+  group_by(tr_contr, year, yday_corr, date) |>
+  summarise(
+    sum_velocidad = sum(velocidad, na.rm = TRUE),
+    exp_veh       = sum(vehicles_use_type,        na.rm = TRUE), # Nº de vehículos expuestos
+    exp_lic       = sum(license_holders_sex_age,  na.rm = TRUE), # Nº de conductores
+    median_lag_2_prec_median_imp = median(lag_2_prec_median_lin_imp, na.rm = TRUE),
+    mean_min_temp_mean_lin       = mean(min_temp_mean_lin,       na.rm = TRUE),
+    mean_max_temp_mean_lin       = mean(max_temp_mean_lin,       na.rm = TRUE),
+    median_total_precip_median_lin = median(total_precip_median_lin, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  mutate(                                     # ── aux variables
+    rate_veh = sum_velocidad / exp_veh * 1e6, # not to model
+    rate_lic = sum_velocidad / exp_lic * 1e6, # not to model
+    off_veh  = log(exp_veh),                  # offset
+    off_lic  = log(exp_lic)
+  ) |>
+  left_join(races, by = c("date" = "race_date")) |>
+  mutate(
+    race_day = if_else(!is.na(year.y), 1L, 0L),
+    id       = as.numeric(factor(paste0(tr_contr, year.x)))
+  ) |>
+  select(-year.y)
+
+
+collisions_weather_corr_rect_quebec_synth_tr <- 
+  collisions_weather_corr_rect_quebec_synth %>%              # start from the long table
+  filter(tr_contr == "treatment") %>%            # keep treated rows only
+  group_by(tr_contr, yday_corr) %>%              # collapse across MRC × years
+  summarise(
+    sum_velocidad = sum(sum_velocidad, na.rm = TRUE),
+    exp_veh       = sum(exp_veh,       na.rm = TRUE),
+    exp_lic       = sum(exp_lic,       na.rm = TRUE),
+    mean_median_lag_2_prec_median_imp   = mean(median_lag_2_prec_median_imp,   na.rm = TRUE),
+    mean_min_temp_mean_lin              = mean(mean_min_temp_mean_lin,         na.rm = TRUE),
+    mean_max_temp_mean_lin              = mean(mean_max_temp_mean_lin,         na.rm = TRUE),
+    mean_median_total_precip_median_lin = mean(median_total_precip_median_lin, na.rm = TRUE),
+    .groups = "drop"
+  ) %>% 
+  mutate(
+    rate_veh = sum_velocidad / exp_veh * 1e6,
+    rate_lic = sum_velocidad / exp_lic * 1e6,
+    off_veh  = log(exp_veh),
+    off_lic  = log(exp_lic),
+    year.x   = 2000,                       # dummy year / date just to keep structure
+    date     = as.Date("2019-05-19"),
+    race_day = 0L,
+    id       = 40                          # single ID for the synthetic treated series
+  )
+
+controls_quebec_long <- collisions_weather_corr_rect_quebec_synth %>% 
+  filter(tr_contr != "treatment") %>% 
+  rename(
+    mean_median_lag_2_prec_median_imp   = median_lag_2_prec_median_imp,
+    mean_median_total_precip_median_lin = median_total_precip_median_lin
+  )
+
+collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls <- bind_rows(
+  controls_quebec_long,
+  collisions_weather_corr_rect_quebec_synth_tr          # the single treated series from step 1
+)
+
+
+collisions_weather_corr_rect_quebec_synth_cntr <- 
+  collisions_weather_corr_rect_quebec_synth %>% 
+  filter(tr_contr != "treatment") %>%          # keep controls
+  group_by(tr_contr, yday_corr) %>%            # collapse across all control IDs
+  summarise(
+    sum_velocidad = sum(sum_velocidad, na.rm = TRUE),
+    exp_veh       = sum(exp_veh,       na.rm = TRUE),
+    exp_lic       = sum(exp_lic,       na.rm = TRUE),
+    
+    # distributional summaries to keep a sense of variability
+    p25_lag_2_prec_median_imp   = quantile(median_lag_2_prec_median_imp,   .25, na.rm = TRUE),
+    p75_lag_2_prec_median_imp   = quantile(median_lag_2_prec_median_imp,   .75, na.rm = TRUE),
+    mean_median_lag_2_prec_median_imp   = mean(median_lag_2_prec_median_imp,   na.rm = TRUE),
+    
+    p25_min_temp_mean_lin = quantile(mean_min_temp_mean_lin, .25, na.rm = TRUE),
+    p75_min_temp_mean_lin = quantile(mean_min_temp_mean_lin, .75, na.rm = TRUE),
+    mean_min_temp_mean_lin = mean(mean_min_temp_mean_lin, na.rm = TRUE),
+    
+    p25_max_temp_mean_lin = quantile(mean_max_temp_mean_lin, .25, na.rm = TRUE),
+    p75_max_temp_mean_lin = quantile(mean_max_temp_mean_lin, .75, na.rm = TRUE),
+    mean_max_temp_mean_lin = mean(mean_max_temp_mean_lin, na.rm = TRUE),
+    
+    p25_total_precip_median_lin = quantile(median_total_precip_median_lin, .25, na.rm = TRUE),
+    p75_total_precip_median_lin = quantile(median_total_precip_median_lin, .75, na.rm = TRUE),
+    mean_median_total_precip_median_lin = mean(median_total_precip_median_lin, na.rm = TRUE),
+    .groups = "drop"
+  ) %>% 
+  mutate(
+    rate_veh = sum_velocidad / exp_veh * 1e6,
+    rate_lic = sum_velocidad / exp_lic * 1e6,
+    off_veh  = log(exp_veh),
+    off_lic  = log(exp_lic),
+    year.x   = 2000,
+    date     = as.Date("2019-05-19"),
+    race_day = 0L,
+    id       = 1                               # single ID for the synthetic control
+  ) %>% 
+  # rename the median variables so their names match the treated table
+  rename(
+    mean_median_lag_2_prec_median_imp   = mean_median_lag_2_prec_median_imp,
+    mean_median_total_precip_median_lin = mean_median_total_precip_median_lin
+  )
+
+collisions_weather_corr_rect_quebec_synth_cntr_tr <- 
+  rbind.data.frame(collisions_weather_corr_rect_quebec_synth_cntr,collisions_weather_corr_rect_quebec_synth_tr |> 
+  mutate(p25_lag_2_prec_median_imp=0, p75_lag_2_prec_median_imp=0, p25_min_temp_mean_lin=0, p75_min_temp_mean_lin=0, 
+         p25_max_temp_mean_lin=0, p75_max_temp_mean_lin=0, p25_total_precip_median_lin=0, p75_total_precip_median_lin=0))|> data.frame()
+```
+
+
+#### Test series structure
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "ACF plots, treated"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: plot-autocorr-ts1
+#| fig-cols: 2
+#| fig-align: "center"
+#| out.width: "45%"
+
+acf(collisions_weather_corr_rect_synth_tr$rate_veh*10,  lag.max = 50, main = "Treatments\nACF:high-speed tickets per 1MM vehicles")
+pacf(collisions_weather_corr_rect_synth_tr$rate_veh*10, lag.max = 50, main = "Treatments\nPACF:high-speed tickets per 1MM vehicles")
+```
+
+We noticed a partial autocorrelation of 10 days in the treated.
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "ACF plots, controls"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: plot-autocorr-ts1-control
+#| fig-cols: 2
+#| fig-align: "center"
+#| out.width: "45%"
+acf(collisions_weather_corr_rect_synth_cntr$rate_veh*10,  lag.max = 50, main = "Controls,\nACF:high-speed tickets per 1MM vehicles")
+pacf(collisions_weather_corr_rect_synth_cntr$rate_veh*10, lag.max = 50, main = "Controls,\nPACF:high-speed tickets per 1MM vehicles")
+```
+
+We noticed a partial autocorrelation of 25 days in the controls.
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Weekly decomposition of series"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: plot-autocorr-ts1-decomp
+#| fig-cols: 2
+#| fig-align: "center"
+#| out.width: "45%"
+
+x_vals <- time(forecast::msts(
+    collisions_weather_corr_rect_synth_cntr$rate_veh*10,
+    start = c(2019, 1),
+    seasonal.periods = c(7)
+))
+
+
+forecast::autoplot(forecast::mstl(forecast::msts(collisions_weather_corr_rect_synth_tr$rate_veh*10,start = c(2019, 1),seasonal.periods = c(7)), robust = TRUE))+ ggtitle("Treated")+
+  scale_x_continuous(
+    breaks = seq(2019, 2025, by = 1/7)[seq(1, 43, by = 7)],          # where the ticks sit
+    labels = seq(-35, 7)[seq(1, 43, by = 7)]         # what the ticks say
+  ) +
+  geom_vline(
+    xintercept = seq(2019, 2025, by = 1/7)[which.min(abs(seq(-35, 7)))],   # rel_day 0
+    linetype   = "dashed", colour = "black")
+  
+
+forecast::autoplot(forecast::mstl(forecast::msts(collisions_weather_corr_rect_synth_cntr$rate_veh*10,start = c(2019, 1),seasonal.periods = c(7)), robust = TRUE))+ ggtitle("Controls")+
+    scale_x_continuous(
+    breaks = seq(2019, 2025, by = 1/7)[seq(1, 43, by = 7)],          # where the ticks sit
+    labels = seq(-35, 7)[seq(1, 43, by = 7)]         # what the ticks say
+  ) +
+  geom_vline(
+    xintercept = seq(2019, 2025, by = 1/7)[which.min(abs(seq(-35, 7)))],   # rel_day 0
+    linetype   = "dashed", colour = "black")
+  
+```
+
+The decomposition shows that differences between treated and control groups emerge in the trend, not in weekly seasonality, with treated show a downward trend, while controls show an upward trend. Any modelling or graphical comparison should therefore adjust for the weekly effect and focus on the diverging long-term trajectory.
+
+We visualize series differentiating by treated or control cities.
+
+::: {.panel-tabset}
+
+#### High‑speed tickets
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Daily High‑speed tickets per Treated/Control cities"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-speed-day-tr-cntrl
+
+
+ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = sum_velocidad)) +
+  geom_line(aes(group = id, colour = ifelse(id==40,"Treated", "Controls"))) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
+  labs(x = "Days (-30 to 5 days post-treatment)", y = "Number of High‑speed Tickets (sum)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
+```
+
+#### Rate of high-speed per vehicles
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Rate of daily high-speed collisions per 1MM vehicle counts by Treated/Control status"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-Y-day-tr-cntrl
+
+ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = (sum_velocidad/exp_veh)*1e6)) +
+  geom_line(aes(group = id, colour = ifelse(id==40,"Treated", "Controls"))) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
+  labs(x = "Days (-30 to 5 days post-treatment)", y = "Number of Daily high-speed collisions per 1MM vehicle counts (sum)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
+```
+
+
+#### Min temperature
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Min temperature by Treated/Control status"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-mint-day-tr-cntrl
+
+ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = mean_min_temp_mean_lin)) +
+  geom_line(aes(group = id, colour = ifelse(id==40,"Treated", "Controls"))) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
+  labs(x = "Days (-30 to 5 days post-treatment)", y = "Min temperature") +
+    geom_ribbon(
+    data = collisions_weather_corr_rect_synth_cntr,
+    aes(x = yday_corr, y = mean_min_temp_mean_lin,
+        ymin = p25_min_temp_mean_lin,
+        ymax = p75_min_temp_mean_lin),
+    inherit.aes = FALSE,
+    fill = "grey70",  # o un color que combine con tu paleta
+    alpha = 0.3
+  )+
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
+```
+
+
+#### Max temperature
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Max temperature by Treated/Control status"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-maxt-day-tr-cntrl
+
+ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = mean_max_temp_mean_lin)) +
+  geom_line(aes(group = id, colour = ifelse(id==40,"Treated", "Controls"))) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
+  labs(x = "Days (-30 to 5 days post-treatment)", y = "Max temperature") +
+    geom_ribbon(
+    data = subset(collisions_weather_corr_rect_synth_cntr_tr, id != 40),
+    aes(x = yday_corr, y = mean_max_temp_mean_lin,
+        ymin = p25_max_temp_mean_lin,
+        ymax = p75_max_temp_mean_lin),
+    inherit.aes = FALSE,
+    fill = "grey70",  # o un color que combine con tu paleta
+    alpha = 0.3
+  )+
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
+```
+
+
+#### Precipitations
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Total precipitations by Treated/Control status"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-precip-day-tr-cntrl
+
+ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = mean_median_total_precip_median_lin)) +
+  geom_line(aes(group = id, colour = ifelse(id==40,"Treated", "Controls"))) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
+  labs(x = "Days (-30 to 5 days post-treatment)", y = "Precipitations \n(annual mean of city-level medians, where each city median\nis computed from the medians of its weather stations)") +
+    geom_ribbon(
+    data = subset(collisions_weather_corr_rect_synth_cntr_tr, id != 40),
+    aes(x = yday_corr, y = mean_median_total_precip_median_lin,
+        ymin = p25_total_precip_median_lin,
+        ymax = p75_total_precip_median_lin),
+    inherit.aes = FALSE,
+    fill = "grey70",  # o un color que combine con tu paleta
+    alpha = 0.3
+  )+
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
+```
+
+
+#### Precipitations (2-day lagged)
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Total precipitations (lagged 2) by Treated/Control status"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-lag2-precip-day-tr-cntrl
+
+ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = mean_median_lag_2_prec_median_imp)) +
+  geom_line(aes(group = id, colour = ifelse(id==40,"Treated", "Controls"))) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
+  labs(x = "Days (-30 to 5 days post-treatment)", y = "Precipitations (2-day lagged)\n(annual mean of city-level medians, where each city median\nis computed from the medians of its weather stations)") +
+    geom_ribbon(
+    data = subset(collisions_weather_corr_rect_synth_cntr_tr, id != 40),
+    aes(x = yday_corr, y = mean_median_lag_2_prec_median_imp,
+        ymin = p25_lag_2_prec_median_imp,
+        ymax = p75_lag_2_prec_median_imp),
+    inherit.aes = FALSE,
+    fill = "grey70",  # o un color que combine con tu paleta
+    alpha = 0.3
+  )+
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
+```
+
+
+:::
+
+## Analysis plan
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: analysis-plan
+#| results: "hold"
+
+library(DiagrammeR)
+
+gr <- 
+grViz("
+digraph study_design {
+
+graph [layout = dot, rankdir = TB]
+
+node [shape = rectangle, style = filled, color = LightSkyBlue, fontname = Helvetica]
+
+start [label = 'Analysis Start']
+
+adelanto [label = 'Advance two days (D)']
+no_adelanto [label = 'No advance\n(from race day) (D_off)']
+
+quebec_only [label = 'Quebec only as control (D)']
+quebec_sherbrooke [label = 'Quebec and Sherbrooke\nas control (D_sens)']
+
+exp_3days [label = 'Exposure 3 days\nafter the race (D)']
+exp_7days [label = 'Exposure 7 days\nafter the race (D7)']
+
+# edges
+start -> {adelanto no_adelanto}
+
+adelanto -> {quebec_only quebec_sherbrooke}
+
+quebec_only -> {exp_3days exp_7days}
+
+}", 
+  width = 1000,
+  height = 1400)
+gr
+
+```
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: analysis-plan2
+#| results: "hide"
+#| fig.show: "hide"
+unlink(paste0(getwd(),"/_figs/analysisplan_files"), recursive = TRUE)
+htmlwidgets::saveWidget(gr, paste0(getwd(),"/_figs/analysisplan.html"))
+webshot::webshot(paste0(getwd(),"/_figs/analysisplan.html"), 
+                 paste0(getwd(),"/_figs/analysisplan.png"),
+                 vwidth = 300, vheight = 300*1.2,  zoom=10, expand=100)  # Test w/ diff coords:top, left, width, and height
+```
+
+
+<br>
+
+# Session info
+
+```{r session-info, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+cat(paste0("R library: ", Sys.getenv("R_LIBS_USER")))
+cat(paste0("Date: ",withr::with_locale(new = c('LC_TIME' = 'C'), code =Sys.time())))
+cat(paste0("Editor context: ", getwd()))
+cat("quarto version: "); system("quarto --version") 
+
+quarto::quarto_version()
+
+save.image("_data/step12.RData")
+saveRDS(collisions_weather_corr, file = "_data/collisions_weather.rds", ascii = FALSE, version = NULL, compress = TRUE, refhook = NULL)
+```
+
+```{r session-info-r, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+#| class-output: center-table
+
+sesion_info <- devtools::session_info()
+dplyr::select(
+  tibble::as_tibble(sesion_info$packages),
+  c(package, loadedversion, source)
+) |> 
+ knitr::kable(caption = "R packages", format = "html",
+      col.names = c("Row number", "Package", "Version"),
+    row.names = FALSE,
+      align = c("c", "l", "r")) |> 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)|> 
+  kableExtra::scroll_box(width = "100%", height = "375px")  
+```
+
+```{r session-info-python, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+#| class-output: center-table
+
+reticulate::py_list_packages()%>% 
+ knitr::kable(caption = "Python packages", format = "html",
+      col.names = c("Package", "Version", "Requirement"),
+    row.names = FALSE,
+      align = c("c", "l", "r", "r"))%>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)|>
+  kableExtra::scroll_box(width = "100%", height = "375px")  
+```

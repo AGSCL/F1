@@ -1,0 +1,2327 @@
+---
+title: "Fast followers?/Speed contagion: assessing the impact of Montreal F1 Grand Prix on high-speed ticketing rates (2000-2022)"
+description: |
+  Step 1. Weather variables. We defined the dates by year and availability (whether the event took place or not), days of the week, time windows, and pre and post-event spans, which we then linked to nearby meteorological stations. Also we linked with Collisions data.
+lang: en
+date: last-modified #date-format: "D [d]e MMM, YYYY"
+bibliography: [_lit/refs.bib]
+csl: "_lit/american-medical-association.csl" # (Opcional: estilo de citas, p.ej., APA)
+author: "Andrés González Santa Cruz"
+format: 
+  html:
+    css: [_lib/styles.scss]
+    code-fold: true
+    embed-resources: true
+    fig-cap-location: top
+lightbox: auto
+toc: true
+toc-depth: 5
+toc-location: left
+toc-float: true
+editor: source
+---
+
+<style>
+.scrollable-content {
+  max-height: 350px;
+  overflow-y: auto;
+}
+</style>
+<style>
+pre.scrollable-code {
+  max-height: 350px;
+  overflow-y: auto;
+}
+</style>
+
+```{r}
+#| message: true
+#| include: true
+#| warning: true
+
+# remove objects and memory
+rm(list=ls());gc()
+
+#remove images
+while(!dev.cur())dev.off()
+cat("\014")
+
+```
+
+# Load libraries and data
+
+Particularly, the `weathercan` library, which contains information on climate change and environmental variables from stations across Canada [@LaZerte2018weathercan].
+
+
+<div class="scrollable-content">
+```{r}
+#| label: setup
+#| message: true
+#| warning: true
+#| class-output: center-table
+#| include: true
+#| results: "hold"
+
+#borrar caché
+#system("fc-cache -f -v")
+
+#check R version
+if(Sys.info()["sysname"]=="Windows"){
+if (getRversion() != "4.4.1") { stop("Requiere versión de R 4.4.1. Actual: ", getRversion()) }
+}
+if(Sys.info()["sysname"]=="Linux"){
+if (getRversion() != "4.4.1") { stop("Requiere versión de R 4.4.1. Actual: ", getRversion()) }
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+# install.packages(c("dplyr", #for data
+#                    "tidyr", #for data
+#                    "lubridate",  #for dates
+#                    "openxlsx", #for excel files
+#                    "rio", #for importing and exporting data
+#                    "purrr", #for iterating in databases
+#                    "devtools", #for external packages
+#                    "DiagrammeR", #para visualizar DAG
+#                    "dagitty",
+#                    "ggdag",
+#                    "ggplot2" #for graphics
+#                    "kableExtra", #pretty tables
+#                    "quarto", #for documents
+#                    "geosphere" #for coordinates and classifying
+#                    "geepack", #for regression
+#                    "glmmTMB", #For GLMMs
+#                    "DHARMa", #For residual diagnostics
+#                    "car", #For hypothesis testing
+#                    "brms", #Bayesian model
+#                    "bayesplot",
+#                    "loo",
+#                    "Synth", #for synthetic control method
+#                    "weathercan",#for weather data
+#                    "sandwich", #cluster robust intervals
+#                    "emmeans", #for predictions
+#                    "gnm", #Conditional Poisson models
+#                    "splines", #nonlinearity 
+#                    "geeM", #negative binomial and more flexible GEE models
+#                    "PanelMatch", #Matching technique with panel data
+#                    "scpi" #control sintético
+#                    "nixtlar", #for time series analysis and prediction
+#                    "CausalImpact" #for time series causal impact
+#                    "forecast" #for time series analysis prediction and decomposition
+#                    ))
+library(dplyr); library(lubridate); library(tidyverse); library(openxlsx); library(rio); library(purrr); library(dagitty); library(ggdag); library(kableExtra); library(geosphere); library(geepack); library(lme4); library(glmmTMB); library(DHARMa); library(car); library(brms); library(bayesplot); library(loo); library(Synth);  library(weathercan); library(sandwich); library(emmeans); library(gnm); library(splines); library(geeM); library(plm); library(PanelMatch); library(scpi); library(fect); library(nixtlar); library(CausalImpact); library(forecast); library(webshot)
+
+#special repository indicated or the package
+if(!require(weathercan)){
+   install.packages("weathercan", 
+                  repos = c("https://ropensci.r-universe.dev", "https://cloud.r-project.org")); library(weathercan)
+  }
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+if(!require(bpmn)){devtools::install_github("bergant/bpmn")}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+sum_dates <- function(x){
+ 
+  cbind.data.frame(
+	min= as.Date(min(unclass(as.Date(x)), na.rm=T), origin = "1970-01-01"),
+	p001= as.Date(quantile(unclass(as.Date(x)), .001, na.rm=T), origin = "1970-01-01"),
+	p005= as.Date(quantile(unclass(as.Date(x)), .005, na.rm=T), origin = "1970-01-01"),
+	p025= as.Date(quantile(unclass(as.Date(x)), .025, na.rm=T), origin = "1970-01-01"),
+	p25= as.Date(quantile(unclass(as.Date(x)), .25, na.rm=T), origin = "1970-01-01"),
+	p50= as.Date(quantile(unclass(as.Date(x)), .5, na.rm=T), origin = "1970-01-01"),
+	p75= as.Date(quantile(unclass(as.Date(x)), .75, na.rm=T), origin = "1970-01-01"),
+	p975= as.Date(quantile(unclass(as.Date(x)), .975, na.rm=T), origin = "1970-01-01"),
+	p995= as.Date(quantile(unclass(as.Date(x)), .995, na.rm=T), origin = "1970-01-01"),
+	p999= as.Date(quantile(unclass(as.Date(x)), .999, na.rm=T), origin = "1970-01-01"),
+	max= as.Date(max(unclass(as.Date(x)), na.rm=T), origin = "1970-01-01")
+  )
+}
+smd_bin <- function(x,y){
+  z <- x*(1-x)
+  t <- y*(1-y)
+  k <- sum(z,t)
+  l <- k/2
+  
+  return((x-y)/sqrt(l))
+  
+}
+
+theme_custom_sjplot2 <- function(base_size = 12, base_family = "") {
+  theme_minimal(base_size = base_size, base_family = base_family) +
+    theme(
+      # Text elements
+      text = element_text(size = base_size, family = base_family),
+      plot.title = element_text(face = "bold", hjust = 0.5, size = base_size * 1.2),
+      plot.subtitle = element_text(hjust = 0.5, margin = margin(b = 10)),
+      axis.title = element_text(size = base_size, face = "bold"),
+      axis.text = element_text(size = base_size * 0.8),
+      axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5),
+      axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5),
+      axis.title.x = element_text(margin = margin(t = 10)),
+      axis.title.y = element_text(margin = margin(r = 10)),
+      
+      # Plot layout
+      plot.margin = margin(t = 20, r = 20, b = 20, l = 20),
+      panel.grid.major = element_line(color = "grey80"),
+      panel.grid.minor = element_blank(),
+      legend.position = "right",
+      legend.text = element_text(size = base_size * 0.8),
+      legend.title = element_text(size = base_size, face = "bold"),
+      legend.background = element_rect(fill = "white", colour = NA),
+      legend.box.background = element_rect(colour = "grey80", linetype = "solid"),
+      legend.key = element_rect(fill = "white", colour = "white")
+    )
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+num_cores <- parallel::detectCores() -1
+data.table::setDTthreads(threads = num_cores)#restore_after_fork = NULL, throttle = NULL)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#CONFIG #######################################################################
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+options(scipen=2) #display numbers rather scientific number
+
+
+nixtlar::nixtla_client_setup(api_key = readLines(paste0(gsub("f1/","", getwd() ),"/key.txt"))[[2]])
+
+```
+</div>
+
+Get the F1 race calendar 1978-2024. Since 2000 the race almost always falls on the second Sunday of June (seven times) or the first Sunday (five times). Some outliers occurred in 2006 (25 Jun), when the event was pushed two weeks later to balance the calendar; in 2022 (19 Jun) the event slipped a week because of the re-shuffled post-COVID schedule. In 2009 it was cancelled due to a commercial dispute, and in 2020-21, pandemic travel restrictions imposed the non-realization of the event [@canadianracer_cancelled_gp].
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: dates
+#| fig.show: "hold"
+races <- tibble::tribble(
+  ~year, ~race_date,
+  1978, "1978-10-08",
+  1979, "1979-09-30",
+  1980, "1980-09-28",
+  1981, "1981-09-27",
+  1982, "1982-06-13",
+  1983, "1983-06-12",
+  1984, "1984-06-17",
+  1985, "1985-06-16",
+  1986, "1986-06-15",
+  1987, NA_character_,   # cancelada
+  1988, "1988-06-12",
+  1989, "1989-06-18",
+  1990, "1990-06-10",
+  1991, "1991-06-02",
+  1992, "1992-06-14",
+  1993, "1993-06-13",
+  1994, "1994-06-12",
+  1995, "1995-06-11",
+  1996, "1996-06-16",
+  1997, "1997-06-15",
+  1998, "1998-06-07",
+  1999, "1999-06-13",
+  2000, "2000-06-18",
+  2001, "2001-06-10",
+  2002, "2002-06-09",
+  2003, "2003-06-15",
+  2004, "2004-06-13",
+  2005, "2005-06-12",
+  2006, "2006-06-25",
+  2007, "2007-06-10",
+  2008, "2008-06-08",
+  2009, NA_character_,   # cancelada
+  2010, "2010-06-13",
+  2011, "2011-06-12",
+  2012, "2012-06-10",
+  2013, "2013-06-09",
+  2014, "2014-06-08",
+  2015, "2015-06-07",
+  2016, "2016-06-12",
+  2017, "2017-06-11",
+  2018, "2018-06-10",
+  2019, "2019-06-09",
+  2020, NA_character_,   # cancelada
+  2021, NA_character_,   # cancelada
+  2022, "2022-06-19",
+  2023, "2023-06-18",
+  2024, "2024-06-09"
+) %>% 
+  mutate(race_date = as_date(race_date))
+
+
+```
+
+## Metheorological variables
+
+We created a **named character vector** called `station_patterns` as a lookup table where each **short, convenient name** (like `trudeau` or `mctavish`) is directly linked to the **full, official name of a specific Canadian weather station** from Environment and Climate Change Canada. **10 different weather stations** are being identified. These stations represent a variety of locations, including a major international airport (`trudeau`), an urban center (`mctavish`), and various points across a broader geographic area (e.g., west, northwest, northeast of a specific island, and surrounding regions like Laval and the South Shore). This approach makes your code more readable and easier to maintain, as you can refer to complex station names using simple aliases, and any future changes to official names only require an update in this single, centralized location.
+
+After 2025-06-12, we added 8 stations explicitly located in Longueuil (2), Trois-Rivières (1), Québec (1) and Sherbrooke (4).
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: station-names
+#| fig.show: "hold"
+#| 
+station_patterns <- c(
+  trudeau          = "MONTREAL/PIERRE ELLIOTT TRUDEAU INTL",   # Dorval :contentReference[oaicite:0]{index=0}
+  mctavish         = "MCTAVISH",                               # centro urbano :contentReference[oaicite:1]{index=1}
+  ste_anne         = "STE-ANNE-DE-BELLEVUE 1",                 # extremo-oeste :contentReference[oaicite:2]{index=2}
+  ste_genevieve    = "STE GENEVIEVE",                          # noroeste isla :contentReference[oaicite:3]{index=3}
+  rdp              = "RIVIERE DES PRAIRIES",                   # noreste isla :contentReference[oaicite:4]{index=4}
+  lave_auteuil     = "AUTEUIL",                                # Laval norte :contentReference[oaicite:5]{index=5}
+  ste_therese      = "STE THERESE OUEST",                      # al N de Laval :contentReference[oaicite:6]{index=6}
+  lave_dorothee    = "STE DOROTHEE",                           # Laval oeste (serie vigente)
+  st_hubert        = "MONTREAL/ST-HUBERT A",                   # aeropuerto Longueuil :contentReference[oaicite:7]{index=7}
+  la_prairie       = "LAPRAIRIE",                               # Rive-Sud suroeste :contentReference[oaicite:8]{index=8}
+  vercheres        = "VERCHERES",
+  st_amable        = "ST AMABLE"
+)
+
+#Before 2025-06-12, stations covers the urban areas of Laval, Montreal, and Longueuil 
+#added missing stations explicitly located in:
+#Trois-Rivières
+#Québec
+#Sherbrooke
+#
+station_patterns_rec <- c(
+  station_patterns,
+  trois_rivieres    = "TROIS RIVIERES AQUEDUC",    # Aqueduc Trois-Rivières (≈10 km from YRQ)
+  quebec_airport    = "QUEBEC/JEAN LESAGE INTL",  # Québec City Airport
+  sherbrooke_air    = "SHERBROOKE A",             # Sherbrooke Airport
+  # sherbrooke_city = "SHERBROOKE",               # Sherbrooke urban center (if needed)
+  lennoxville       = "LENNOXVILLE",              # Lennoxville (near Sherbrooke)
+  vercheres         = "VERCHERES",                # Verchères (south shore, covers May 2019)
+  st_amable         = "ST AMABLE",                # Saint-Amable (south shore)
+  sawyerville_nord  = "SAWYERVILLE NORD",         # Sawyerville Nord (≤25 km from Sherbrooke A)
+  bromptonville     = "BROMPTONVILLE",            # Bromptonville (≤25 km from Sherbrooke A)
+  st_hubert2        = "MONTREAL/ST-HUBERT"        # New St-Hubert hourly automated station
+)
+
+```
+
+We get a glimpse of stations, we got the daily measurements for each station.
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: map-values-stations
+#| fig.show: "hold"
+stations_df <- purrr::imap_dfr(
+  station_patterns_rec,
+  function(pattern, alias) {
+    out <- stations_search(pattern) %>%           # busca por cadena
+      filter(interval %in% c("day")) %>%  # prioriza estaciones operativas
+      slice(1)                                    # toma la coincidencia más cercana
+    if (nrow(out) == 0)
+      stop(sprintf("No se encontró ninguna estación para «%s»", pattern), call. = FALSE)
+    out %>% mutate(alias = alias) %>%             # añade el nombre “amistoso”
+      select(alias, station_id, start, end, station_name)
+  }
+)
+```
+
+
+We set up geographical information for 10 weather stations and 3 major urban centers, then calculates which of those 3 cities is geographically closest to each weather station (using Haversine distance). After this, we categorize stations based on proximity.
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: classify-stations-to-cities
+#| fig.show: "hold"
+# 1. Define your stations
+stations <- data.frame(
+  station = c(
+    names(station_patterns)[1:10],
+    "trois_rivieres", "quebec_airport", "sherbrooke_air", "lennoxville", "vercheres", "st_amable", "sawyerville_nord", 
+"bromptonville", "st_hubert2"
+  ),
+  lat = c(
+    45.470556, 45.500000, 45.430000, 45.500000, 45.700000,
+    45.650000, 45.650000, 45.516667, 45.516667, 45.380000,
+    46.350000, 46.791000, 45.433000, 45.366700, 45.76667, 45.65000, 45.36667, 45.48333, 45.5
+  ),
+  lon = c(
+    -73.740833, -73.580000, -73.930000, -73.850000, -73.500000,
+    -73.733300, -73.883300, -73.783333, -73.416667, -73.430000,
+    -72.567000, -71.393000, -71.683000, -71.833300, -73.36667, -73.30000, -71.53333, -71.950000, -73.4
+  )
+)
+ 
+# 2. Define the centroids
+centroids <- data.frame(
+  city = c("Montreal", "Laval", "Longueuil", "Trois-Rivieres", "Quebec", "Sherbrooke"),
+  lat  = c(45.508888, 45.600000, 45.536945, 46.343239, 46.813878, 45.404476),
+  lon  = c(-73.561668, -73.733000, -73.510712, -72.543283, -71.207981, -71.888351)
+)
+
+# 3. Compute distance matrix and assign nearest city
+dist_mat <- distm(
+  stations[, c("lon", "lat")],
+  centroids[, c("lon", "lat")],
+  fun = geosphere::distHaversine
+)
+stations$nearest <- centroids$city[apply(dist_mat, 1, which.min)]
+
+stations_and_location<- 
+stations_df |> 
+  left_join(stations, by=c("alias"="station"))|> 
+  mutate(mrc= case_when(
+    nearest == "Laval" ~ 65,
+    nearest == "Longueuil" ~ 58,
+    nearest == "Montreal" ~ 66,
+    nearest == "Quebec" ~ 23,
+    nearest == "Sherbrooke" ~ 43,
+    nearest == "Trois-Rivieres" ~ 371, T~ NA_real_
+  ))
+
+
+stations_and_location|> 
+  filter(!alias %in% c("lave_dorothee", "ste_genevieve"))|>
+  knitr::kable(caption = "Updated Stations with Nearest Cities")
+```
+
+STE GENEVIEVE  and STE DOROTHEE were discarded because they did not coer the study period.
+
+
+There are missing ("M") values not well labelled as such.
+
+For each F1 race from 1978:
+
+- took one of the 10 stations listed above
+- selected the period between May and September of each year
+- for different measurements, we calculated the median and the mean (not sure if this is useful if each observation is a daily measurement) of precipitations, maximum and minimum temperature, snow, etc.
+
+<div class="scrollable-content">
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: map-values-stations2
+#| fig.show: "hold"
+#weather_dl( 30165, start="1978-10-01", end="1978-10-15")
+#skip givin NA if no data available for a year
+#skip if there is no data for a given year
+
+#vignette("flags", package = "weathercan")
+get_window <- function(st_id, alias) {
+  # Info de la estación
+  station_info <- stations_df %>% filter(station_id == st_id)
+  start_avail <- as_date(station_info$start)
+  end_avail   <- as_date(station_info$end)
+
+  races %>%
+    #filter(!is.na(race_date)) %>%
+    rowwise() %>%
+    filter(year > 1999, year < 2023)%>% # The extra parenthesis was here
+    mutate(
+      range_start = make_date(year, 5, 1),#race_date - days(14),
+      range_end   = make_date(year, 9, 30),#race_date+  days(14),
+      data = list(
+        tryCatch({
+          df <- weather_dl(station_id = st_id,
+                           start = range_start,
+                           end   = range_end,
+                           interval = "day") %>%
+            group_by(date) %>%
+            summarise(
+              across(
+                any_of(c(
+                  "pressure", "rel_hum", "precip_amt",
+                  "min_temp", "max_temp", "total_precip", "total_rain", "total_snow",
+                  "temp", "temp_dew", "wind_chill", "wind_spd"
+                )),
+                list(
+                  mean   = ~ mean(.x, na.rm = TRUE),
+                  median = ~ median(.x, na.rm = TRUE)
+                ),
+                .names = "{.col}_{.fn}"
+              )
+            )
+          df
+        }, error = function(e) tibble())
+      )
+    ) %>%
+    ungroup() %>%
+    unnest(data) %>%
+    mutate(station = alias)%>%
+    relocate(station, date, race_date)
+}
+#2004-06-06
+#2004-06-20
+## 30165 10761 10873  3758  5441  5313  5285  5460  5490  5389  5201 26892  5530  5528  5397
+## There are no data for station 5528, in this time range (2004-06-06 to 2004-06-20), for this interval (day), 
+# so we skip it
+test<- 
+ weather_dl(station_id = 5441,#5460, #
+           start = make_date(2022, 5, 1),#"1978-10-01",
+           end   = make_date(2022, 9, 30),#"1978-10-15",
+           interval = "day") |>
+   group_by(date) |> 
+  summarise(
+    across(
+      any_of(c(
+        "pressure", "rel_hum", "precip_amt",
+        "min_temp", "max_temp", "total_precip", "total_rain", "total_snow",
+        "temp", "temp_dew", "wind_chill", "wind_spd"
+      )),
+      list(
+        mean   = ~ mean(.x, na.rm = TRUE),
+        median = ~ median(.x, na.rm = TRUE)
+      ),
+      .names = "{.col}_{.fn}"
+    )
+  )         
+
+
+wx_all <- map2_dfr(setdiff(stations_df$station_id,c(3758, 5460)), setdiff(stations_df$alias,c("lave_dorothee", "ste_genevieve")), get_window) 
+
+wx_all <- wx_all%>% 
+    mutate(
+    # define an indicator that is 1 if race_date ∈ [or3, or3 + 3 days], 0 otherwise
+    study_window = as.integer(dplyr::between(date, race_date - days(35), race_date + days(35)))
+  )
+```
+</div>
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Proportion of missing values by station and variable"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: misising-values-station
+#Select the relevant variables
+wx_all_subset <- wx_all %>%
+  dplyr::select(station, min_temp_mean, min_temp_median, max_temp_mean, max_temp_median, 
+         total_precip_mean, total_precip_median, total_rain_mean, 
+         total_rain_median, total_snow_mean, total_snow_median)
+
+# Count missing values for station and variables
+missing_counts <- wx_all_subset %>%
+  pivot_longer(cols = -station, names_to = "variable", values_to = "value") %>%
+  group_by(station, variable) %>%
+  summarize(missing_count = sum(is.na(value) | is.nan(value)),n=n(), perc= missing_count/n, .groups = "drop")
+
+# Graphic with facet_wrap by station
+missing_counts|> 
+  filter(variable %in% c(paste0( c("max_temp", "min_temp"), "_mean"), paste0( c("total_precip", "total_rain", "total_snow"), "_median")))|> 
+ggplot(aes(x = variable, y = perc, fill = variable)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ station, ncol = 4) +
+  labs(x = "Variable", y = "Proportion of missing values") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+```
+
+Due to the high proportion of missing values, the variables `total_rain_mean`, `total_rain_median`, `total_snow_mean`, and `total_snow_median` were removed from the analysis. Likewise, the monitoring sites La Prairie (Montreal), Ste-Anne (Laval), and Trudeau (Laval) might be excluded from further analysis.
+
+Here it is a glossary of the metrics selected [@ECCCGlossary2025].
+
+| Variable              | Description                                                                                                                                                     | Unit                                     |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| **max_temp**         | Daily maximum air temperature: the highest dry-bulb temperature recorded during the 24-hour observation period.                                                 | degrees Celsius (°C) ([Climate Data][1]) |
+| **min_temp**         | Daily minimum air temperature: the lowest dry-bulb temperature recorded during the 24-hour observation period.                                                  | degrees Celsius (°C) ([Climate Data][1]) |
+| **tot_precip**       | Daily total precipitation: sum of the water equivalent of all liquid and solid precipitation (rain, snow, hail, etc.) accumulated over the day.                 | millimetres (mm) ([Climate Data][1])     |
+| **tot_precip_lag2** | Two-day-lagged total precipitation: the value of **tot_precip** shifted backward by two days, useful for capturing antecedent moisture conditions in analyses. | millimetres (mm) ([Climate Data][1])     |
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: group-temp-rain
+#| fig.show: "hold"
+wx_summary_filt2002_22_all<- 
+wx_all %>%
+  filter(date>"1999-12-31", date<"2023-01-01")|> 
+  select(station, date, race_date, year, min_temp_mean, min_temp_median, max_temp_mean, max_temp_median, 
+         total_precip_mean, total_precip_median) %>%
+  left_join(stations_and_location, by = c("station"="alias"), multiple="first") %>%
+  group_by(date, nearest, mrc) %>%
+  summarise(across(c("min_temp_mean", "min_temp_median", "max_temp_mean", "max_temp_median", "total_precip_mean", "total_precip_median"), ~ mean(.x, na.rm=T))) |> 
+  ungroup()
+
+wx_summary_filt2002_22_all %>%
+  ungroup() |> 
+  select(
+    nearest,
+    min_temp_mean, min_temp_median,
+    max_temp_mean, max_temp_median,
+    total_precip_mean, total_precip_median
+  ) %>%
+  pivot_longer(
+    cols = -nearest,
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  group_by(nearest, variable) %>%
+  summarise(
+    missing_count = sum(is.na(value) | is.nan(value)),
+    n             = n(),
+    perc_missing  = scales::percent(missing_count / n, accuracy=.1),
+    .groups       = "drop"
+  ) %>%
+  arrange(nearest, variable) -> missing_summary
+
+missing_summary|> 
+  head(20) %>%
+  knitr::kable(caption = "Sample of missing values by station and variable")
+```
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: group-temp-rain2
+#| fig.show: "hold"
+wx_summary_filt2002_22_all |> 
+  head(20) %>%
+  knitr::kable(caption = "Sample of average values by station and date", digits=1, col.names = c("Date", "Nearest City", "MRC", "Min Temp (M°C)", "Min Temp (Mdn°C)", "Max Temp (M°C)", "Max Temp(Mdn°C)", "Precipitation (M mm)", "Precipitation (Mdn mm)"))
+```
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: summary-weather-by-city
+#| fig.show: "hold"
+summary_vars <- c("min_temp_mean", "min_temp_median", "max_temp_mean",
+                  "max_temp_median", "total_precip_mean", "total_precip_median")
+
+# Realizar el resumen
+summary_stats <- wx_summary_filt2002_22_all %>%
+  group_by(nearest) %>%
+  summarise(
+    across(.cols = all_of(summary_vars),
+           .fns = list(
+             mean_sd = ~ sprintf("%.1f (%.1f)", mean(.x, na.rm = TRUE), sd(.x, na.rm = TRUE)),
+             median_iqr = ~ sprintf("%.1f [%.1f, %.1f]",
+                                    median(.x, na.rm = TRUE),
+                                    quantile(.x, probs = 0.25, na.rm = TRUE),
+                                    quantile(.x, probs = 0.75, na.rm = TRUE)),
+             p5_p95_range = ~ sprintf("%.1f - %.1f",
+                                      quantile(.x, probs = 0.05, na.rm = TRUE),
+                                      quantile(.x, probs = 0.95, na.rm = TRUE))
+           ),
+           .names = "{.col}_{.fn}" # Naming convention for the new columns
+    )
+  )
+
+summary_stats_long <- summary_stats %>%
+  pivot_longer(
+    cols = -nearest, # Todas las columnas excepto 'nearest'
+    names_to = c("variable_original", "statistic_type"), # Crea dos nuevas columnas para los nombres
+    names_sep = "_(?=[^_]*$)", # Separa por el último '_' para obtener la variable y el tipo de estadística
+    values_to = "value" # La columna donde irán los valores formateados
+  ) %>%
+  # Opcional: Reordenar y limpiar los nombres de las variables/estadísticas
+  mutate(
+    variable_original = gsub("_(mean|median)$", "", variable_original), # Quitar _mean o _median del nombre de la variable
+    statistic_type = case_when(
+      statistic_type == "mean_sd" ~ "Mean (SD)",
+      statistic_type == "median_iqr" ~ "Median [Q1, Q3]",
+      statistic_type == "p5_p95_range" ~ "Range [P5, P95]",
+      TRUE ~ statistic_type # Por si acaso hay otros tipos que no queremos renombrar
+    )
+  ) %>%
+  # Opcional: Reordenar las columnas para mejor lectura
+  relocate(nearest, variable_original, statistic_type, value) %>%
+  arrange(nearest, variable_original, statistic_type) |> 
+  mutate(variable_original= gsub("_p5_p95","",variable_original)) |> 
+  mutate(statistic_type= gsub("sd","mean sd",statistic_type)) |> 
+  mutate(statistic_type= gsub("range","90% range",statistic_type))
+
+summary_stats_long |> 
+  knitr::kable(caption = "Summary statistics for weather variables by nearest city",
+               col.names = c("Nearest City", "Variable", "Statistic Type", "Value"),
+               digits = 1, format.args = list(big.mark = ",")) %>%
+  kableExtra::kable_classic() |> 
+  kableExtra::scroll_box(width = "100%", height = "400px")
+```
+
+We chose to maintain the `tot_precip` variable as the average of the median precipitation through stations. The rest of variables are the average across stations.
+
+
+<br>
+
+## Collisions database
+
+We imported a Stata-formatted dataset named **`Allcollisions2000_22.summer.2.dta`**, storing it as the **`collisions`** data frame. This comprehensive dataset chronicles traffic collisions in Quebec from 2000 to 2022, with a specific focus on the summer months (May to September, roughly late spring to early autumn). It includes data from several key cities and census divisions (MRCs), such as **Trois-Rivières (MRC 371)** and **Québec (MRC 23)**, which serve as control areas, alongside **Laval (MRC 65)**, **Montréal (MRC 66)**, **Longueuil (MRC 58)**, and **Sherbrooke (MRC 43)**, the latter also may act as a control.
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: import-stata_collision
+#| fig.show: "hold"
+collisions<- 
+rio::import(paste0(getwd(),"/_data/Allcollisions2000_22.summer.2.dta"))
+
+#  The SAAQ dataset is considered complete for fatal collisions, but mild-injury counts can be under-reported.
+# • Alcohol and speed flags reflect the police officer’s assessment; they are not mutually exclusive.
+glimpse(collisions, width=80)
+```
+
+Trois-Rivières (MRC 371) is absent from the database. That leaves us with **Quebec (MRC 23)**, and possibly **Sherbrooke (MRC 43)** as the control cities.
+
+Weimported the offset data form google sheets containing vehicle/license holder statistics by year and city. then, we joined with weather data and defined treatment/control grou based on MRC codes, createdmultiple exposure widows around race dates. Posteriorly, we added temporal variables (ISO week, year of day), we also generated treatment indicator (D). Lastly, for data quality assessment, we checked for duplicates in the dataset, identified missing dates, generated diagnostic tables showing row count discrepancies by MRC/year and specific missing dates in the collision database.
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: join-with-weather-data
+#| results: "hold"
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+invisible("Add offset")
+
+labels <- c(
+  "License holders by sex and age",
+  "Vehicles in circulation by use and type",
+  "Vehicles in circulation by use, type and vehicle age"
+)
+
+offsets_db<- rio::import("https://docs.google.com/spreadsheets/d/1znDbWVXO2A5uSKiVazQwFJKZcrrH-VZXnQsG-INBQ-w/gviz/tq?tqx=out:tsv&gid=819465529", skip=1, header=T) |> filter(MRC!="MRC")
+
+offsets_db$ind <- c(rep("license_holders_sex_age",5), rep(NA, 2), rep("vehicles_use_type",5), rep(NA, 2), rep("vehicles_use_type_vehicle_age", 5))
+
+offsets_db<- dplyr::select(offsets_db, EQUALS, MRC, ind, everything())|>
+                filter(!is.na(`2000`))|>
+                pivot_longer(cols= c("2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", 
+"2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022"), names_to = "year")|>
+  pivot_wider(names_from=ind, values_from=value)|> 
+  mutate(year= as.numeric(year), EQUALS=ifelse(EQUALS=="Longueiuil", "Longueuil", EQUALS))
+  
+
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+invisible("2025-06-25: missing data in weather variables")
+# filter(wx_summary_filt2002_22_all, dplyr::between(date,as.Date("2006-09-24"), as.Date("2006-09-30")), nearest=="Sherbrooke")
+# filter(wx_summary_filt2002_22_all, dplyr::between(date,as.Date("2019-05-01"), as.Date("2019-05-31")), nearest=="Longueuil")
+
+wx_summary_filt2002_22_all$date_num <- unclass(wx_summary_filt2002_22_all$date)
+
+collisions_weather<- 
+collisions|>
+  mutate(date_num= unclass(stata_date))|> 
+  left_join(wx_summary_filt2002_22_all, by=c("date_num"="date_num", "mrc"="mrc"))|> 
+  group_by(mrc, date)|> 
+  arrange(mrc, date)|>  
+  mutate(lag_2_prec_median= lag(total_precip_median, n=2))|> 
+  ungroup()|>
+  mutate(tr_contr=ifelse(mrc %in% c(371, 23), "control", "treatment"))|>
+  mutate(tr_contr_sens=ifelse(mrc %in% c(371, 23, 43), "control", "treatment"))|>  #adding Sherbrook
+  left_join(races, by="year")|>
+  #2025-06-25. missing weather variables for Longueuil
+  #select(year, date, mrc, nearest, date_num)|> #2025-06-25= 2006 43 2006-09-24 to 2006-09-30; 2019 58 2019-05-01 to 2019-05-31
+  mutate(date_num= unclass(date))|>
+  left_join(offsets_db, by= c("nearest"="EQUALS", "year"="year"))|>
+  mutate(
+    exposure          = case_when(
+      date_num <= (unclass(race_date) - 2) &    # t0-2
+      date_num <= (unclass(race_date) + 3) ~ 1, # t+3
+      TRUE ~ 0
+    ),
+    exposure_alt7     = case_when(
+      date_num <= (unclass(race_date) - 2) &    # t0-2
+      date_num <= (unclass(race_date) + 7) ~ 1, # t+7
+      TRUE ~ 0
+    ),
+    exposure_off      = case_when(
+      date_num <= (unclass(race_date)) &        # t0
+      date_num <= (unclass(race_date) + 3) ~ 1, # t+3
+      TRUE ~ 0
+    ),
+    exposure_alt7_off = case_when(
+      date_num <= (unclass(race_date)) &        # t0
+      date_num <= (unclass(race_date) + 7) ~ 1, # t+7
+      TRUE ~ 0
+    )
+  )|>
+  mutate(
+    week_iso            = isoweek(stata_date),
+    year_f             = factor(year),
+    mrc_f              = factor(mrc),
+    #exposure          = factor(exposure, levels = c(0, 1)),
+    iso_yday           = yday(stata_date),
+    log_veh            = log(nb_vehicules + 1),  # adding 1 to avoid log(0)
+    D                  = ifelse(tr_contr == "treatment" & exposure == 1, 1, 0),
+    D_sens             = ifelse(tr_contr_sens == "treatment" & exposure == 1, 1, 0),
+    D7                 = ifelse(tr_contr == "treatment" & exposure_alt7 == 1, 1, 0),
+    D7_sens            = ifelse(tr_contr_sens == "treatment" & exposure_alt7 == 1, 1, 0),
+    D_off              = ifelse(tr_contr == "treatment" & exposure_off == 1, 1, 0),
+    D_sens_off         = ifelse(tr_contr_sens == "treatment" & exposure_off == 1, 1, 0),
+    D7_off             = ifelse(tr_contr == "treatment" & exposure_alt7_off == 1, 1, 0),
+    D7_sens_off        = ifelse(tr_contr_sens == "treatment" & exposure_alt7_off == 1, 1, 0)
+  )|>
+  left_join(offsets_db, by=c("year", "MRC", "license_holders_sex_age",
+    "vehicles_use_type", "vehicles_use_type_vehicle_age"))
+
+cat("Duplicates?\n")
+collisions_weather |>
+  mutate(date = as.Date(stata_date)) |>
+  filter(month(date) %in% 5:9) |>
+  count(mrc, year, date) |>
+  filter(n > 1)
+
+cat("How many rows the database should have approx?\n")
+23*length(unique(collisions_weather$mrc))*as.numeric(difftime(as.Date("2000-09-30"),as.Date("2000-05-01"), "days"))
+
+cat("What we have \n")
+nrow(collisions_weather)
+
+cat("What we should have \n")
+weather_filled <- collisions_weather |>
+  mutate(rn= row_number()) |> 
+mutate(date = as.Date(iso_yday - 1,
+                      origin = paste0(year, "-01-01"))) |>
+    filter(month(date) %in% 5:9) |>
+    group_by(mrc, year) |>
+    complete(
+        date = seq.Date(min(date), max(date), by = "day")
+    ) |>
+    ungroup()
+nrow(weather_filled)
+
+invisible("Filled database has more rows")
+orig_db <- 
+  collisions_weather |> group_by(mrc, year) |> summarise(n=n(),.groups="drop")
+proc_db<- 
+weather_filled |> group_by(mrc, year) |> summarise(n=n(),.groups="drop")
+
+orig_db |> 
+  left_join(proc_db, by=c("mrc", "year"))|> 
+    filter(n.x!=n.y) |> 
+  rename("original"="n.x", "processed"="n.y")|> 
+   knitr::kable(caption="Number of by MRC and year",
+               col.names = c("MRC","Year", "Original DB", "Processed-dates DB")) |> 
+  kableExtra::kable_classic() |> 
+  kableExtra::scroll_box(width="100%", height="200px") 
+
+present_dates <- collisions_weather |>
+  mutate(date = as.Date(stata_date)) |>
+  filter(month(date) %in% 5:9) |>
+  select(mrc, year, date)
+
+weather_filled |>
+  anti_join(present_dates, by = c("mrc", "year", "date")) |>
+  arrange(mrc, year, date) |> 
+  select(mrc, date) |> 
+  knitr::kable(caption="Missing Dates in Collisions Database",
+               col.names = c("MRC", "Dates")) |> 
+  kableExtra::kable_classic() |> 
+  kableExtra::scroll_box(width="100%", height="200px")
+```
+
+Given that there were some missing dates, we added the assuming cero counts in these days.
+
+We also interpolated linearly missing values in weather variables.
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: join-with-weather-data-corr
+#| results: "hold"
+
+collisions_weather_corr<- 
+collisions |>
+  mutate(rn= row_number())|> 
+  #2025-06-13: added missing rows manually
+  mutate(date = as.Date(yday(stata_date) - 1,
+                        origin = paste0(year, "-01-01")))|>
+      filter(month(date) %in% 5:9) |>
+      group_by(mrc, year) |>
+      complete(
+          date = seq.Date(min(date), max(date), by = "day")
+      )|>
+      ungroup()|>
+    mutate(
+    across(
+      c(nb_collisions, alcohol, velocidad,
+        nb_mort_c, nb_blese_grave_c, nb_blese_leger_c,
+        nb_vehicules),
+      ~ if_else(is.na(stata_date), 0, .x)
+    )
+  )|> 
+  dplyr::select(-month, -day_of_week, -stata_date)|> 
+  mutate(date_num= unclass(date))|> 
+  left_join(wx_summary_filt2002_22_all, by=c("date_num"="date_num", "mrc"="mrc"))|> 
+  rename("date"="date.x")|> 
+  group_by(mrc, date)|> 
+  arrange(mrc, date)|>  
+  ungroup()|> 
+  mutate(tr_contr=ifelse(mrc %in% c(371, 23), "control", "treatment")) |>
+  mutate(tr_contr_sens=ifelse(mrc %in% c(371, 23, 43), "control", "treatment"))|>  #adding Sherbrook
+  left_join(races, by="year")|>
+  #2025-06-25. missing weather variables for Longueuil
+  #select(year, date, mrc, nearest, date_num)|> #2025-06-25= 2006 43 2006-09-24 to 2006-09-30; 2019 58 2019-05-01 to 2019-05-31
+  mutate(date_num= unclass(date))|>
+  left_join(offsets_db, by= c("nearest"="EQUALS", "year"="year"))|>  
+  mutate(
+    exposure      = coalesce(
+      as.integer(dplyr::between(date, race_date - days(2),
+                                 race_date + days(3))), 0L),
+    exposure_alt7 = coalesce(
+      as.integer(dplyr::between(date, race_date - days(2),
+                                 race_date + days(7))), 0L),
+    exposure_off  = coalesce(
+      as.integer(dplyr::between(date, race_date,
+                             race_date + days(3))), 0L),
+    exposure_alt7_off = coalesce(
+      as.integer(dplyr::between(date, race_date,
+                             race_date + days(7))), 0L)
+  )|>
+  mutate(
+    week_iso            = isoweek(date),
+    year_f             = factor(year),
+    mrc_f              = factor(mrc),
+    exposure           = factor(exposure, levels = c(0, 1)),
+    iso_yday           = yday(date),
+    log_veh            = log(nb_vehicules + 1),  # adding 1 to avoid log(0)
+    D                  = ifelse(tr_contr == "treatment" & exposure == 1, 1, 0),
+    D_sens             = ifelse(tr_contr_sens == "treatment" & exposure == 1, 1, 0),
+    D7                 = ifelse(tr_contr == "treatment" & exposure_alt7 == 1, 1, 0),
+    D7_sens            = ifelse(tr_contr_sens == "treatment" & exposure_alt7 == 1, 1, 0),
+    D_off              = ifelse(tr_contr == "treatment" & exposure_off == 1, 1, 0),
+    D_sens_off         = ifelse(tr_contr_sens == "treatment" & exposure_off == 1, 1, 0),
+    D7_off             = ifelse(tr_contr == "treatment" & exposure_alt7_off == 1, 1, 0),
+    D7_sens_off        = ifelse(tr_contr_sens == "treatment" & exposure_alt7_off == 1, 1, 0)
+  )|>
+  group_by(mrc, year)|>
+   arrange(date, .by_group = TRUE)|>
+  mutate(across(
+    c(min_temp_mean, min_temp_median, max_temp_mean, max_temp_median, 
+total_precip_mean, total_precip_median),           # <- weather variables
+    ~ zoo::na.approx(.x, x = date, na.rm = FALSE, rule = 2),
+    .names = "{.col}_lin"                        # create *_lin instead overwriting
+  ))|>
+  ungroup()
+
+
+if(filter(collisions_weather_corr, is.na(license_holders_sex_age)|is.na(vehicles_use_type)|is.na(vehicles_use_type_vehicle_age))|> nrow()){
+  stop("Missing data in offsets")
+  }
+
+
+cat("Check the rows left after discarding missing observations in weather variables (not interpolated ones)\n")
+collisions_weather_corr |>  filter(!is.na(min_temp_mean), !is.na(max_temp_mean), !is.na(total_precip_mean)) |> 
+  nrow()
+
+cat("Added the Lag precipitation mean (2 days) by MRC and year:\n")
+collisions_weather_corr$lag_2_prec_median_lin <- 
+collisions_weather_corr|> 
+    group_by(mrc, year)|> 
+    mutate(total_precip_median_lin_lag2 = dplyr::lag(total_precip_median_lin, 2, order_by = iso_yday))|> 
+    ungroup()|>
+    pull(total_precip_median_lin_lag2) 
+
+if(
+identical(collisions_weather_corr$total_precip_median_lin, collisions_weather_corr$lag_2_prec_median_lin)
+){stop("The variable was not lagged")}
+
+summary(collisions_weather_corr$lag_2_prec_median_lin)
+
+cat("Lag precipitation mean (2 days) by MRC and year:\n")
+table(is.na(collisions_weather_corr$lag_2_prec_median_lin))
+
+cat("Lag precipitation mean, range of missing days:\n")
+if(collisions_weather_corr|>  filter(is.na(lag_2_prec_median_lin)) |> nrow()>0){
+collisions_weather_corr|>  filter(is.na(lag_2_prec_median_lin))|> dplyr::select(mrc, year, iso_yday)|> summarise(max=max(iso_yday), min= min(iso_yday))
+}
+cat("There ara no missing values\n")
+
+cat("Added the cluster variable by MRC and year:\n")
+collisions_weather_corr$cluster<- interaction(collisions_weather_corr$year, collisions_weather_corr$mrc)
+
+cat("Add moving 3-day moving average\n")
+Mean <- function(x) if (sum(!is.na(x)) >= 2) mean(x, na.rm = TRUE) else NA
+#prior x elements (list(-seq(x)))
+roll <- function(x)  zoo::rollapply(x, list(-seq(3)), Mean, fill = NA, partial = TRUE)
+collisions_weather_corr <- 
+transform(collisions_weather_corr, mov_ave_velocidad = ave(velocidad, cluster, FUN = roll))
+
+cat("We generated the moving average of high-speed collisions, rounding to 0 decimals, and imputing the first two values (MRC-year) with the third value\n")
+collisions_weather_corr<- 
+collisions_weather_corr|> 
+  dplyr::arrange(mrc, year, iso_yday)|> 
+  #dplyr::select(mrc, year, cluster, iso_yday, velocidad, mov_ave_velocidad)|> 
+  #filter(mrc!=23)|> 
+    dplyr::group_by(cluster)|> 
+    dplyr::mutate(
+        third_value = nth(na.omit(mov_ave_velocidad), 1),
+        mov_ave_velocidad = ifelse(is.na(mov_ave_velocidad), third_value, mov_ave_velocidad)
+    )|>
+    dplyr::select(-third_value)|> 
+  dplyr::mutate(mov_ave_velocidad= round(mov_ave_velocidad, 0))|> 
+  ungroup()
+
+
+cat("Imputed with the value of the third period\n")
+collisions_weather_corr$lag_2_prec_median_lin_imp <- 
+collisions_weather_corr|>
+    group_by(cluster)|>
+    mutate(
+        third_value = nth(na.omit(lag_2_prec_median_lin), 1),
+        lag_2_prec_median_lin_imp = ifelse(is.na(lag_2_prec_median_lin), third_value, lag_2_prec_median_lin)
+    )|>
+    dplyr::select(-third_value)|>
+    ungroup()|>
+    pull(lag_2_prec_median_lin_imp)
+if(
+identical(collisions_weather_corr$lag_2_prec_median_lin, collisions_weather_corr$lag_2_prec_median_lin_imp)
+){stop("The variable was not imputed")}
+if(
+identical(collisions_weather_corr$total_precip_median_lin, collisions_weather_corr$lag_2_prec_median_lin_imp)
+){stop("The variable was not lagged")}
+
+
+cat("Missing in imputed values of 2-day lagged precipitations\n")
+collisions_weather_corr|> 
+    filter(is.na(lag_2_prec_median_lin_imp))|> dplyr::select(mrc, year, iso_yday) |> nrow()
+
+invisible("All are the first ranges")
+
+cat("MRCs treated and controls and days of exposure:\n")
+table(collisions_weather_corr$tr_contr, collisions_weather_corr$exposure)
+cat("MRCs treated and controls and days of exposure(+ Sherbrooke as control):\n")
+table(collisions_weather_corr$tr_contr_sens, collisions_weather_corr$exposure)
+
+cat("Added the time variable: year and standardized day in the year\n")
+collisions_weather_corr$time_id <- with(collisions_weather_corr, paste0(year_f, "_", iso_yday))
+
+
+xtabs(~ year+mrc+tr_contr + exposure, data = collisions_weather_corr)|> 
+  data.frame()|>
+  filter(
+    case_when(mrc%in% c(43, 58, 65, 66)& tr_contr=="control"& exposure==0~F,
+    mrc%in% c(43, 58, 65, 66)& tr_contr=="control"& exposure==1~F,
+    mrc== 23 & tr_contr=="treatment"& exposure==0~F,
+    mrc== 23 & tr_contr=="treatment"& exposure==1~F,
+                   T~T)) |> 
+  arrange(tr_contr, mrc, year, exposure) |> 
+  data.frame()|> 
+  knitr::kable(caption="Number of observations by treatment status, MRC, year and exposure",
+               col.names = c("Year", "MRC", "Control/Treated cities", "Days of exposure", "Observations"))|> 
+  kableExtra::kable_classic() |> 
+  kableExtra::scroll_box(width="100%", height="400px")
+
+table(collisions_weather_corr$cluster, collisions_weather_corr$tr_contr) |> data.frame()|> 
+  filter(Freq>0)|>
+  knitr::kable(caption="Number of observations by MRC and year",
+               col.names = c("MRC-Year", "Control/Treated cities", "Observations"))|> 
+  kableExtra::kable_classic()|> 
+  kableExtra::scroll_box(width="100%", height="400px")
+```
+
+- MRCs are the treated units
+
+- MRCs 65, 66, and 58 are the treated units (Laval, Montreal, Longueuil)
+
+- MRCs 23 and 43 are the control units (Quebec and Sherbrooke)
+
+- 2009, 2020 and 2021 are years where races didnt occurr
+
+
+We formatted the data recatangularily by subsetting 35 days before and 35 days after the race, for each combination of MRC and year.
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: rectangle-db
+#| results: "hold"
+
+collisions_weather_corr_rect <- 
+  collisions_weather_corr|>
+  group_by(cluster)|>
+  mutate(day_diff = as.numeric(difftime(date, race_date, units = "days")))|> # Calculate difference in days
+  mutate(race_window = dplyr::between(day_diff, -35, 35))|> # Check if difference is within -30 to 30 days
+  ungroup()|>
+  filter(race_window == TRUE)|>
+  group_by(cluster)|>
+  mutate(yday_corr = row_number())|>
+  dplyr::select(-race_window, -day_diff)|> # Remove the temporary columns
+  ungroup()  
+
+cat(paste0("Number of rows: ", nrow(collisions_weather_corr_rect),"\n\n\n\n"))
+```
+
+
+### Panel series
+
+::: {.panel-tabset}
+
+#### Collisions per MRC
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Weekly Collisions per MRC (gray band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-collisions
+
+df_collisions <- collisions_weather_corr|> 
+  group_by(mrc_f, year, week_iso, exposure) %>%   # group by MRC, year and week
+  summarise(
+    nb_collisions = sum(nb_collisions),                         # count collisions
+    .groups = "drop"
+  )
+
+#exposure band
+exp_band <- df_collisions %>% 
+    filter(exposure == 1) %>% 
+    distinct(year, week_iso) %>%      # one row per (year, week) that has exposure
+    mutate(
+        xmin = week_iso - 0.5,            # band spans full week on x-axis
+        xmax = week_iso + 0.5,
+        ymin = -Inf,                      # full panel height
+        ymax =  Inf
+    )
+
+ggplot(df_collisions, aes(x = week_iso, y = nb_collisions)) +
+  geom_line(
+    aes(group= mrc_f, colour = mrc_f), linetype = "solid"
+  ) +
+  geom_rect(
+    data       = exp_band,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill   = "grey40",
+    alpha  = 0.2
+  ) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  scale_shape_manual(
+    name   = "MRC",
+    values = 0:(nlevels(df_collisions$mrc_f)-1)
+  ) +
+  facet_wrap(~ year, ncol = 6) +                 # <- one panel per year
+  labs(
+    x     = "ISO Week",
+    y     = "Number of Collisions"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position  = "right"
+  )
+```
+
+If they series look strange is because in the same exposure week might be a non-exposure count.
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Daily Collisions per MRC (gray band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-collisions-day
+
+df_collisions_day <- collisions_weather_corr|> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%   # group by MRC, year and week
+  summarise(
+    nb_collisions = sum(nb_collisions),                         # count collisions
+    .groups = "drop"
+  )
+exp_band_day <- df_collisions_day %>% 
+    filter(exposure == 1) %>% 
+    distinct(year, iso_yday) %>%      # one row per (year, week) that has exposure
+    mutate(
+        xmin = iso_yday - 0.5,            # band spans full week on x-axis
+        xmax = iso_yday + 0.5,
+        ymin = -Inf,                      # full panel height
+        ymax =  Inf
+    )
+
+ggplot(df_collisions_day, aes(x = iso_yday, y = nb_collisions)) +
+  geom_line(
+    aes(group= mrc_f, colour = mrc_f), linetype = "solid"
+  ) +
+  geom_rect(
+    data       = exp_band_day,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill   = "grey40",
+    alpha  = 0.2
+  ) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  scale_shape_manual(
+    name   = "MRC",
+    values = 0:(nlevels(df_collisions_day$mrc_f)-1)
+  ) +
+  facet_wrap(~ year, ncol = 6) +                 # <- one panel per year
+  labs(
+    x     = "ISO Day",
+    y     = "Number of Collisions"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position  = "right"
+  )
+```
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "3-day moving average of Collisions per MRC (gray band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-collisions-mov-ave
+
+df_collisions_day <- collisions_weather_corr|> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%   # group by MRC, year and week
+  summarise(
+    nb_collisions = sum(nb_collisions),                         # count collisions
+    .groups = "drop"
+  )
+df_collisions_day$cluster<- interaction(df_collisions_day$mrc_f,df_collisions_day$year)
+Mean <- function(x) if (sum(!is.na(x)) >= 2) mean(x, na.rm = TRUE) else NA
+#prior x elements (list(-seq(x)))
+roll <- function(x)  zoo::rollapply(x, list(-seq(3)), Mean, fill = NA, partial = TRUE)
+df_collisions_day<- 
+transform(df_collisions_day, roll = ave(nb_collisions, cluster, FUN = roll))
+
+exp_band_day <- df_collisions_day %>% 
+    filter(exposure == 1) %>% 
+    distinct(year, iso_yday) %>%      # one row per (year, week) that has exposure
+    mutate(
+        xmin = iso_yday - 0.5,            # band spans full week on x-axis
+        xmax = iso_yday + 0.5,
+        ymin = -Inf,                      # full panel height
+        ymax =  Inf
+    )
+
+ggplot(df_collisions_day, aes(x = iso_yday, y = roll)) +
+  geom_line(
+    aes(group= mrc_f, colour = mrc_f), linetype = "solid"
+  ) +
+  geom_rect(
+    data       = exp_band_day,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill   = "grey40",
+    alpha  = 0.2
+  ) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  scale_shape_manual(
+    name   = "MRC",
+    values = 0:(nlevels(df_collisions_day$mrc_f)-1)
+  ) +
+  facet_wrap(~ year, ncol = 6) +                 # <- one panel per year
+  labs(
+    x     = "ISO Day",
+    y     = "Number of Collisions"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position  = "right"
+  )
+```
+
+
+#### Alcohol-related collisions per MRC
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Weekly Alcohol-related collisions per MRC (gray band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-alcohol
+df_alcohol <- collisions_weather_corr|> 
+  group_by(mrc_f, year, week_iso, exposure) %>%   # group by MRC, year and week
+  summarise(
+    alcohol = sum(alcohol),                         # count collisions
+    .groups = "drop"
+  )
+
+#exposure band
+exp_band_oh <- df_alcohol %>% 
+    filter(exposure == 1) %>% 
+    distinct(year, week_iso) %>%      # one row per (year, week) that has exposure
+    mutate(
+        xmin = week_iso - 0.5,            # band spans full week on x-axis
+        xmax = week_iso + 0.5,
+        ymin = -Inf,                      # full panel height
+        ymax =  Inf
+    )
+
+ggplot(df_alcohol, aes(x = week_iso, y = alcohol)) +
+  geom_line(
+    aes(group= mrc_f, colour = mrc_f), linetype = "solid"
+  ) +
+  geom_rect(
+    data       = exp_band_oh,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill   = "grey40",
+    alpha  = 0.2
+  ) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  scale_shape_manual(
+    name   = "MRC",
+    values = 0:(nlevels(df_alcohol$mrc_f)-1)
+  ) +
+  facet_wrap(~ year, ncol = 6) +                 # <- one panel per year
+  labs(
+    x     = "ISO Week",
+    y     = "Number of Collisions Related to Alcohol (log scaled)"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position  = "right"
+  )+
+  scale_y_continuous(
+    trans  = scales::pseudo_log_trans(base = 10),  # maneja n = 0
+    breaks = c(0, 1, 2, 5, 10, 20, 50, 100),
+    labels = scales::comma
+  ) 
+```
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Daily Alcohol-related collisions per MRC (gray band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-alcohol-day
+
+df_alcohol_day <- collisions_weather_corr|> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%   # group by MRC, year and week
+  summarise(
+    alcohol = sum(alcohol),                         # count collisions
+    .groups = "drop"
+  )
+exp_band_day_oh <- df_alcohol_day %>% 
+    filter(exposure == 1) %>% 
+    distinct(year, iso_yday) %>%      # one row per (year, week) that has exposure
+    mutate(
+        xmin = iso_yday - 0.5,            # band spans full week on x-axis
+        xmax = iso_yday + 0.5,
+        ymin = -Inf,                      # full panel height
+        ymax =  Inf
+    )
+
+ggplot(df_alcohol_day, aes(x = iso_yday, y = alcohol)) +
+  geom_line(
+    aes(group= mrc_f, colour = mrc_f), linetype = "solid"
+  ) +
+  geom_rect(
+    data       = exp_band_day,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill   = "grey40",
+    alpha  = 0.2
+  ) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  scale_shape_manual(
+    name   = "MRC",
+    values = 0:(nlevels(df_alcohol_day$mrc_f)-1)
+  ) +
+  facet_wrap(~ year, ncol = 6) +                 # <- one panel per year
+  labs(
+    x     = "ISO Day",
+    y     = "Number of Collisions Related to Alcohol (log scaled)"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position  = "right"
+  )+
+  scale_y_continuous(
+    trans  = scales::pseudo_log_trans(base = 10),  # maneja n = 0
+    breaks = c(0, 1, 2, 5, 10, 20, 50, 100),
+    labels = scales::comma
+  ) 
+```
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "3-day moving average of Alcohol-related collisions per MRC (gray band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-alcohol-mov-ave
+
+df_alcohol_day <- collisions_weather_corr|> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%   # group by MRC, year and week
+  summarise(
+    alcohol = sum(alcohol),                         # count collisions
+    .groups = "drop"
+  )
+
+df_alcohol_day$cluster<- interaction(df_alcohol_day$mrc_f,df_alcohol_day$year)
+Mean <- function(x) if (sum(!is.na(x)) >= 2) mean(x, na.rm = TRUE) else NA
+#prior x elements (list(-seq(x)))
+roll <- function(x)  zoo::rollapply(x, list(-seq(3)), Mean, fill = NA, partial = TRUE)
+df_alcohol_day<- 
+transform(df_alcohol_day, roll = ave(alcohol, cluster, FUN = roll))
+
+exp_band_day_oh <- df_alcohol_day %>% 
+    filter(exposure == 1) %>% 
+    distinct(year, iso_yday) %>%      # one row per (year, week) that has exposure
+    mutate(
+        xmin = iso_yday - 0.5,            # band spans full week on x-axis
+        xmax = iso_yday + 0.5,
+        ymin = -Inf,                      # full panel height
+        ymax =  Inf
+    )
+
+ggplot(df_alcohol_day, aes(x = iso_yday, y = roll)) +
+  geom_line(
+    aes(group= mrc_f, colour = mrc_f), linetype = "solid"
+  ) +
+  geom_rect(
+    data       = exp_band_day,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill   = "grey40",
+    alpha  = 0.2
+  ) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  scale_shape_manual(
+    name   = "MRC",
+    values = 0:(nlevels(df_alcohol_day$mrc_f)-1)
+  ) +
+  facet_wrap(~ year, ncol = 6) +                 # <- one panel per year
+  labs(
+    x     = "ISO Day",
+    y     = "Number of Collisions related to Alcohol (log scaled)"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position  = "right"
+  )+
+  scale_y_continuous(
+    trans  = scales::pseudo_log_trans(base = 10),  # maneja n = 0
+    breaks = c(0, 1, 2, 5, 10, 20, 50, 100),
+    labels = scales::comma
+  ) 
+```
+
+#### High‑speed collisions per MRC
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Weekly High‑speed collisions per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-speed
+
+df_speed <- collisions_weather_corr |> 
+  group_by(mrc_f, year, week_iso, exposure) %>%
+  summarise(high_speed_tickets = sum(velocidad), .groups = "drop")
+
+exp_band_speed <- df_speed %>%
+  filter(exposure == 1) %>%
+  distinct(year, week_iso) %>%
+  mutate(xmin = week_iso - 0.5, xmax = week_iso + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_speed, aes(x = week_iso, y = high_speed_tickets)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_speed, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Week", y = "Number of High‑speed Collisions (log scaled)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Daily High‑speed Collisions per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-speed-day
+
+df_speed_day <- collisions_weather_corr |> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%
+  summarise(high_speed_tickets = sum(velocidad), .groups = "drop")
+
+exp_band_speed_day <- df_speed_day %>%
+  filter(exposure == 1) %>%
+  distinct(year, iso_yday) %>%
+  mutate(xmin = iso_yday - 0.5, xmax = iso_yday + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_speed_day, aes(x = iso_yday, y = high_speed_tickets)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_speed_day, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Day", y = "Number of High‑speed Collisions (log scaled)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+
+#### High‑speed collisions per 100 vehicles by MRC
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Weekly High‑speed collisions per 1 MM vehicles by MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-speed-per-vh
+
+df_speed_per_vh <- collisions_weather_corr |> 
+  group_by(mrc_f, year, week_iso, exposure) %>%
+  reframe(high_speed_tickets_per_vh = (sum(velocidad, na.rm=T)/sum(vehicles_use_type, na.rm=T))*1e6, .groups = "drop")
+
+exp_band_speed_per_vh <- df_speed_per_vh %>%
+  filter(exposure == 1) %>%
+  distinct(year, week_iso) %>%
+  mutate(xmin = week_iso - 0.5, xmax = week_iso + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_speed_per_vh, aes(x = week_iso, y = high_speed_tickets_per_vh)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_speed_per_vh, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Week", y = "Number of High‑speed Collisions (log scaled)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right")  +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Daily High‑speed collisions per 1MM vehicles by MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-speed-day-per-vh
+
+df_speed_day_per_vh <- collisions_weather_corr |> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%
+  reframe(high_speed_tickets_per_vh = (sum(velocidad, na.rm=T)/sum(vehicles_use_type, na.rm=T))*1e6, .groups = "drop")
+
+exp_band_speed_day_per_vh <- df_speed_day_per_vh %>%
+  filter(exposure == 1) %>%
+  distinct(year, iso_yday) %>%
+  mutate(xmin = iso_yday - 0.5, xmax = iso_yday + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_speed_day_per_vh, aes(x = iso_yday, y = high_speed_tickets_per_vh)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_speed_day_per_vh, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Day", y = "Number of High‑speed Tickets per 100 vehicles (log scaled)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+#### Fatalities per MRC
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Weekly Fatalities per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-fatalities
+
+df_fatal <- collisions_weather_corr |> 
+  group_by(mrc_f, year, week_iso, exposure) %>%
+  summarise(fatalities = sum(nb_mort_c), .groups = "drop")
+
+exp_band_fatal <- df_fatal %>%
+  filter(exposure == 1) %>%
+  distinct(year, week_iso) %>%
+  mutate(xmin = week_iso - 0.5, xmax = week_iso + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_fatal, aes(x = week_iso, y = fatalities)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_fatal, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Week", y = "Number of Fatalities (log scaled)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Daily Fatalities per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-fatalities-day
+
+df_fatal_day <- collisions_weather_corr |> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%
+  summarise(fatalities = sum(nb_mort_c), .groups = "drop")
+
+exp_band_fatal_day <- df_fatal_day %>%
+  filter(exposure == 1) %>%
+  distinct(year, iso_yday) %>%
+  mutate(xmin = iso_yday - 0.5, xmax = iso_yday + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_fatal_day, aes(x = iso_yday, y = fatalities)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_fatal_day, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Day", y = "Number of Fatalities (log scaled)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "3-day moving average Fatalities per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-fatalities-mov-ave
+
+df_fatal_day <- collisions_weather_corr |> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%
+  summarise(fatalities = sum(nb_mort_c), .groups = "drop")
+
+
+df_fatal_day$cluster<- interaction(df_fatal_day$mrc_f,df_fatal_day$year)
+Mean <- function(x) if (sum(!is.na(x)) >= 2) mean(x, na.rm = TRUE) else NA
+#prior x elements (list(-seq(x)))
+roll <- function(x)  zoo::rollapply(x, list(-seq(3)), Mean, fill = NA, partial = TRUE)
+df_speed_day<- 
+transform(df_fatal_day, roll = ave(fatalities, cluster, FUN = roll))
+
+exp_band_fatal_day <- df_fatal_day %>%
+  filter(exposure == 1) %>%
+  distinct(year, iso_yday) %>%
+  mutate(xmin = iso_yday - 0.5, xmax = iso_yday + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_fatal_day, aes(x = iso_yday, y = fatalities)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_fatal_day, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Day", y = "Number of Fatalities (log scaled)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+#### Seriously injured per MRC
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Weekly Seriously Injured per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-serious
+
+df_serious <- collisions_weather_corr |> 
+  group_by(mrc_f, year, week_iso, exposure) %>%
+  summarise(seriously_injured = sum(nb_blese_grave_c), .groups = "drop")
+
+exp_band_serious <- df_serious %>%
+  filter(exposure == 1) %>%
+  distinct(year, week_iso) %>%
+  mutate(xmin = week_iso - 0.5, xmax = week_iso + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_serious, aes(x = week_iso, y = seriously_injured)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_serious, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Week", y = "Seriously Injured (log scale)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Daily Seriously Injured per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-serious-day
+
+df_serious_day <- collisions_weather_corr |> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%
+  summarise(seriously_injured = sum(nb_blese_grave_c), .groups = "drop")
+
+exp_band_serious_day <- df_serious_day %>%
+  filter(exposure == 1) %>%
+  distinct(year, iso_yday) %>%
+  mutate(xmin = iso_yday - 0.5, xmax = iso_yday + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_serious_day, aes(x = iso_yday, y = seriously_injured)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_serious_day, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Day", y = "Seriously Injured (log scale)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "3-day moving average Seriously Injured per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-serious-mov-ave
+
+df_serious_day <- collisions_weather_corr |> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%
+  summarise(seriously_injured = sum(nb_blese_grave_c), .groups = "drop")
+
+
+df_serious_day$cluster<- interaction(df_serious_day$mrc_f,df_serious_day$year)
+Mean <- function(x) if (sum(!is.na(x)) >= 2) mean(x, na.rm = TRUE) else NA
+#prior x elements (list(-seq(x)))
+roll <- function(x)  zoo::rollapply(x, list(-seq(3)), Mean, fill = NA, partial = TRUE)
+df_serious_day<- 
+transform(df_serious_day, roll = ave(seriously_injured, cluster, FUN = roll))
+
+exp_band_serious_day <- df_serious_day %>%
+  filter(exposure == 1) %>%
+  distinct(year, iso_yday) %>%
+  mutate(xmin = iso_yday - 0.5, xmax = iso_yday + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_serious_day, aes(x = iso_yday, y = seriously_injured)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_serious_day, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Day", y = "Seriously Injured (log scale)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+#### Minor injuries per MRC
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Weekly Minor Injuries per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-minor
+
+df_minor <- collisions_weather_corr |> 
+  group_by(mrc_f, year, week_iso, exposure) %>%
+  summarise(minor_injuries = sum(nb_blese_leger_c), .groups = "drop")
+
+exp_band_minor <- df_minor %>%
+  filter(exposure == 1) %>%
+  distinct(year, week_iso) %>%
+  mutate(xmin = week_iso - 0.5, xmax = week_iso + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_minor, aes(x = week_iso, y = minor_injuries)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_minor, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Week", y = "Minor Injuries (log scale)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Daily Minor Injuries per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-minor-day
+
+df_minor_day <- collisions_weather_corr |> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%
+  summarise(minor_injuries = sum(nb_blese_leger_c), .groups = "drop")
+
+exp_band_minor_day <- df_minor_day %>%
+  filter(exposure == 1) %>%
+  distinct(year, iso_yday) %>%
+  mutate(xmin = iso_yday - 0.5, xmax = iso_yday + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_minor_day, aes(x = iso_yday, y = minor_injuries)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_minor_day, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Day", y = "Minor Injuries (log scale)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "3-day moving average Minor Injuries per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-minor-mov-ave
+
+df_minor_day <- collisions_weather_corr |> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%
+  summarise(minor_injuries = sum(nb_blese_leger_c), .groups = "drop")
+
+
+df_minor_day$cluster<- interaction(df_minor_day$mrc_f,df_minor_day$year)
+Mean <- function(x) if (sum(!is.na(x)) >= 2) mean(x, na.rm = TRUE) else NA
+#prior x elements (list(-seq(x)))
+roll <- function(x)  zoo::rollapply(x, list(-seq(3)), Mean, fill = NA, partial = TRUE)
+df_speed_day<- 
+transform(df_minor_day, roll = ave(minor_injuries, cluster, FUN = roll))
+
+exp_band_minor_day <- df_minor_day %>%
+  filter(exposure == 1) %>%
+  distinct(year, iso_yday) %>%
+  mutate(xmin = iso_yday - 0.5, xmax = iso_yday + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_minor_day, aes(x = iso_yday, y = minor_injuries)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_minor_day, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Day", y = "Minor Injuries (log scale)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") +
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 10),
+                     breaks = c(0,1,2,5,10,20,50,100), labels = scales::comma)
+```
+
+#### Vehicle counts per MRC
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Weekly Vehicle Counts per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-vehicules
+
+df_vehicules <- collisions_weather_corr |> 
+  group_by(mrc_f, year, week_iso, exposure) %>%
+  summarise(nb_vehicules = sum(nb_vehicules), .groups = "drop")
+
+exp_band_veh <- df_vehicules %>%
+  filter(exposure == 1) %>%
+  distinct(year, week_iso) %>%
+  mutate(xmin = week_iso - 0.5, xmax = week_iso + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_vehicules, aes(x = week_iso, y = nb_vehicules)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_veh, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Week", y = "Vehicle Counts") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") 
+```
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Daily Vehicle Counts per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-vehicules-day
+
+df_vehicules_day <- collisions_weather_corr |> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%
+  summarise(nb_vehicules = sum(nb_vehicules), .groups = "drop")
+
+exp_band_veh_day <- df_vehicules_day %>%
+  filter(exposure == 1) %>%
+  distinct(year, iso_yday) %>%
+  mutate(xmin = iso_yday - 0.5, xmax = iso_yday + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_vehicules_day, aes(x = iso_yday, y = nb_vehicules)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_veh_day, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Day", y = "Vehicle Counts") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") 
+```
+
+
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "3-day moving average Vehicle Counts per MRC (grey band where exposure = 1)"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: tseries-vehicules-mov-ave
+
+df_vehicules_day <- collisions_weather_corr |> 
+  group_by(mrc_f, year, iso_yday, exposure) %>%
+  summarise(nb_vehicules = sum(nb_vehicules), .groups = "drop")
+
+
+df_vehicules_day$cluster<- interaction(df_vehicules_day$mrc_f,df_vehicules_day$year)
+Mean <- function(x) if (sum(!is.na(x)) >= 2) mean(x, na.rm = TRUE) else NA
+#prior x elements (list(-seq(x)))
+roll <- function(x)  zoo::rollapply(x, list(-seq(3)), Mean, fill = NA, partial = TRUE)
+df_speed_day<- 
+transform(df_vehicules_day, roll = ave(nb_vehicules, cluster, FUN = roll))
+
+exp_band_veh_day <- df_vehicules_day %>%
+  filter(exposure == 1) %>%
+  distinct(year, iso_yday) %>%
+  mutate(xmin = iso_yday - 0.5, xmax = iso_yday + 0.5, ymin = -Inf, ymax = Inf)
+
+ggplot(df_vehicules_day, aes(x = iso_yday, y = nb_vehicules)) +
+  geom_line(aes(group = mrc_f, colour = mrc_f)) +
+  geom_rect(data = exp_band_veh_day, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            inherit.aes = FALSE, fill = "grey40", alpha = 0.2) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  facet_wrap(~ year, ncol = 6) +
+  labs(x = "ISO Day", y = "Vehicle Counts") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "right") 
+```
+
+
+:::
+
+
+#### Test panel structure
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: tests-panel
+#| eval: true
+#| results: "hold"
+#https://cran.r-project.org/web/packages/plm/vignettes/A_plmPackage.html
+
+E <- plm::pdata.frame(collisions_weather_corr_rect|>
+                        mutate(sum_veh=vehicles_use_type, Y= (velocidad/vehicles_use_type)*1e6), 
+                      index=c("cluster","yday_corr"), drop.index=TRUE, row.names=TRUE)
+
+cat("Fixed effects (two–way: individual + time)\n")
+fixef_model <- plm(Y ~ D+ min_temp_mean_lin+ max_temp_mean_lin+ total_precip_median_lin+ lag_2_prec_median_lin_imp,#+ offset(vehicles_use_type), #not needed
+           data = E, model = "within", index = "townid")
+summary(fixef_model)
+
+cat("Robust coefficients\n")
+lmtest::coeftest(fixef_model,
+         vcov = function(x) vcovSCC(x, type = "HC1", maxlag = 2))
+
+cat("Random effects (two–way)\n")
+re_tw <- plm(
+  Y ~ D + min_temp_mean_lin + max_temp_mean_lin +
+        total_precip_median_lin + lag_2_prec_median_lin_imp,#+ offset(vehicles_use_type), #not needed
+  data   = E,
+  model  = "random",
+  effect = "twoways"
+)
+summary(re_tw)
+
+ phtest(fixef_model, re_tw) 
+# 	Hausman Test
+# 
+# data:  Y ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin +  ...
+# chisq = 22.392, df = 5, p-value = 0.000441
+# alternative hypothesis: one model is inconsistent
+
+cat("Wooldridge test (first-order, idiosyncratic)\n")
+pbgtest(fixef_model)
+
+# Breusch-Godfrey/Wooldridge test for serial correlation in panel models
+# 
+# data:  Y ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin +  ...
+# chisq = 202.71, df = 71, p-value = 1.321e-14
+# alternative hypothesis: serial correlation in idiosyncratic errors
+
+cat("Breusch–Godfrey (panel)	\n")
+pwartest(fixef_model)
+# 	Wooldridge's test for serial correlation in FE panels
+# 
+# data:  fixef_model
+# F = 0.3438, df1 = 1, df2 = 6998, p-value = 0.5577
+# alternative hypothesis: serial correlation
+
+cat("BP / White (panel)	\n")
+lmtest::bptest(fixef_model)
+# 	studentized Breusch-Pagan test
+# 
+# data:  fixef_model
+# BP = 27.318, df = 5, p-value = 0.00004946
+
+plmtest(fixef_model, type = "bp")
+# 	Lagrange Multiplier Test - (Breusch-Pagan)
+# 
+# data:  Y ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin +  ...
+# chisq = 8552.8, df = 1, p-value < 2.2e-16
+# alternative hypothesis: significant effects
+
+cat("cross-section dependence\n")
+pcdtest(fixef_model, test = "cd") 
+# 	Pesaran CD test for cross-sectional dependence in panels
+# 
+# data:  Y ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin +     lag_2_prec_median_lin_imp
+#z = 3.2052, p-value = 0.00135
+# alternative hypothesis: cross-sectional dependence
+```
+
+- Hausman test indicates that Fixed effects is consistent but FE not. 
+
+- Breusch-Pagan indicates that panel structure is needed, given unobserved heterogeneity, FE shoul be used
+
+- Studentized Breusch-Pagan test indicates that corss-secitonal heteroskedasticity is present 
+
+- Cross section dependence also noted, so there may be correlated units. 
+
+- There is a clear first-order autorregressive structure (Wooldridge's test), and a more general serial correlation (Breusch-Godfrey/Wooldridge test).
+
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: true
+#| eval: true
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "ACF plots"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: plot-autocorr
+#| fig-cols: 2
+#| fig-align: "center"
+#| out.width: "45%"
+acf(residuals(fixef_model), lag.max=50)
+pacf(residuals(fixef_model), lag.max = 50)
+
+Box.test(residuals(fixef_model), lag = 10, type = "Ljung-Box")
+Box.test(residuals(fixef_model), lag = 20, type = "Ljung-Box")
+Box.test(residuals(fixef_model), lag = 30, type = "Ljung-Box")
+```
+
+Several Box–Ljung tests up to lag 10, 20 and 30 rejected white-noise residuals (p < 0.001), indicating serial correlation beyond autorregressive first-order structure. Partial autocorrelation plots show spikes at 3, 4, 10, 11, 14, 18, 19, 20, 25, 38, and 43, this is why there is a direct autocorrelation, despite there is no single lagged structure that dominates. It is recommended that we adjust on the lagged outcome at these spikes.
+
+<br>
+
+# Session info
+
+```{r session-info, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+cat(paste0("R library: ", Sys.getenv("R_LIBS_USER")))
+cat(paste0("Date: ",withr::with_locale(new = c('LC_TIME' = 'C'), code =Sys.time())))
+cat(paste0("Editor context: ", getwd()))
+cat("quarto version: "); system("quarto --version") 
+
+quarto::quarto_version()
+
+save.image("_data/step1.RData")
+saveRDS(collisions_weather_corr, file = "_data/collisions_weather.rds", ascii = FALSE, version = NULL, compress = TRUE, refhook = NULL)
+```
+
+```{r session-info-r, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+#| class-output: center-table
+
+sesion_info <- devtools::session_info()
+dplyr::select(
+  tibble::as_tibble(sesion_info$packages),
+  c(package, loadedversion, source)
+) |> 
+ knitr::kable(caption = "R packages", format = "html",
+      col.names = c("Row number", "Package", "Version"),
+    row.names = FALSE,
+      align = c("c", "l", "r")) |> 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)|> 
+  kableExtra::scroll_box(width = "100%", height = "375px")  
+```
+
+```{r session-info-python, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+#| class-output: center-table
+
+reticulate::py_list_packages()%>% 
+ knitr::kable(caption = "Python packages", format = "html",
+      col.names = c("Package", "Version", "Requirement"),
+    row.names = FALSE,
+      align = c("c", "l", "r", "r"))%>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)|>
+  kableExtra::scroll_box(width = "100%", height = "375px")  
+```
