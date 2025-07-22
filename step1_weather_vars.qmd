@@ -911,6 +911,9 @@ collisions |>
     exposure      = coalesce(
       as.integer(dplyr::between(date, race_date - days(2),
                                  race_date + days(3))), 0L),
+      exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date - days(3),
+                                 race_date + days(1))), 0L),
     exposure_alt7 = coalesce(
       as.integer(dplyr::between(date, race_date - days(2),
                                  race_date + days(7))), 0L),
@@ -919,8 +922,12 @@ collisions |>
                              race_date + days(3))), 0L),
     exposure_alt7_off = coalesce(
       as.integer(dplyr::between(date, race_date,
-                             race_date + days(7))), 0L)
+                             race_date + days(7))), 0L),
+    neg_exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date + days(14-3),
+                                 race_date + days(14+1))), 0L),    
   )|>
+  mutate(exp_neg_exp= ifelse(exposure_post_conv>0|neg_exposure_post_conv>0,1,0)) |> 
   mutate(
     week_iso            = isoweek(date),
     year_f             = factor(year),
@@ -928,6 +935,7 @@ collisions |>
     exposure           = factor(exposure, levels = c(0, 1)),
     iso_yday           = yday(date),
     log_veh            = log(nb_vehicules + 1),  # adding 1 to avoid log(0)
+    D_post_conv        = ifelse(tr_contr == "treatment" & exposure_post_conv == 1, 1, 0),
     D                  = ifelse(tr_contr == "treatment" & exposure == 1, 1, 0),
     D_sens             = ifelse(tr_contr_sens == "treatment" & exposure == 1, 1, 0),
     D7                 = ifelse(tr_contr == "treatment" & exposure_alt7 == 1, 1, 0),
@@ -1017,6 +1025,7 @@ collisions_weather_corr|>
     dplyr::select(-third_value)|>
     ungroup()|>
     pull(lag_2_prec_median_lin_imp)
+
 if(
 identical(collisions_weather_corr$lag_2_prec_median_lin, collisions_weather_corr$lag_2_prec_median_lin_imp)
 ){stop("The variable was not imputed")}
@@ -1028,6 +1037,49 @@ identical(collisions_weather_corr$total_precip_median_lin, collisions_weather_co
 cat("Missing in imputed values of 2-day lagged precipitations\n")
 collisions_weather_corr|> 
     filter(is.na(lag_2_prec_median_lin_imp))|> dplyr::select(mrc, year, iso_yday) |> nrow()
+
+
+cat("Outcome leaded 1 & 2 days\n")
+collisions_weather_corr$velocidad_lead1_post_conv <- 
+collisions_weather_corr|> 
+    group_by(mrc, year)|> 
+    mutate(velocidad_lead1_post_conv = dplyr::lead(velocidad, 1, order_by = iso_yday))|> 
+    ungroup()|>
+    pull(velocidad_lead1_post_conv) 
+collisions_weather_corr$velocidad_lead2_post_conv <- 
+collisions_weather_corr|> 
+    group_by(mrc, year)|> 
+    mutate(velocidad_lead2_post_conv = dplyr::lead(velocidad, 2, order_by = iso_yday))|> 
+    ungroup()|>
+    pull(velocidad_lead2_post_conv) 
+cat("Last value carried forward approach\n")
+
+collisions_weather_corr|>
+    group_by(mrc, year)|> 
+    arrange(iso_yday, .by_group = TRUE) |>
+    # create *_imp copies
+    mutate(across(all_of(starts_with("velocidad_lead")), ~ .x, .names = "{.col}_imp")) |>
+    # LOCF
+    fill(ends_with("_imp"), .direction = "down") |>
+    ungroup()|>
+    (\(df) {
+    pull(df, velocidad_lead2_post_conv_imp) ->> collisions_weather_corr$velocidad_lead2_post_conv_imp
+    pull(df, velocidad_lead1_post_conv_imp) ->> collisions_weather_corr$velocidad_lead1_post_conv_imp
+  })()
+
+    
+if(
+identical(collisions_weather_corr$velocidad_lead2_post_conv, collisions_weather_corr$velocidad_lead2_post_conv_imp)
+){stop("The leaded outcome variable was not imputed")}
+if(
+identical(collisions_weather_corr$velocidad, collisions_weather_corr$velocidad_lead2_post_conv_imp)
+){stop("The leaded outcome variable was not leaded")}
+
+
+cat("Missing in imputed values of 2-day leaded high-speed collisions\n")
+collisions_weather_corr|> 
+    filter(is.na(velocidad_lead2_post_conv_imp))|> dplyr::select(mrc, year, iso_yday) |> nrow()
+
 
 invisible("All are the first ranges")
 
@@ -1072,7 +1124,73 @@ table(collisions_weather_corr$cluster, collisions_weather_corr$tr_contr) |> data
 - 2009, 2020 and 2021 are years where races didnt occurr
 
 
-We formatted the data recatangularily by subsetting 35 days before and 35 days after the race, for each combination of MRC and year.
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: panelview
+#| results: "hold"
+
+cat("Distribution of high-speed collisions:\n"); summary(collisions_weather_corr$velocidad)
+hist(collisions_weather_corr$velocidad, main="High-speed collisions", xlab="Daily High-speed collisions")
+
+panelView::panelview(collisions_weather_corr, Y= "velocidad_lead1_post_conv_imp", D= "exposure_post_conv", index = c("cluster","iso_yday"), show.id=1:40, main="Panelview, First 40 year-MRCs\nafter second meeting with Ignacio")+ 
+  # theme(
+  #   axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)
+  # )+
+    scale_x_continuous(
+    breaks = seq(
+      from = 0,
+      to   = ceiling(max(collisions_weather_corr$iso_yday, na.rm=TRUE))-floor(min(collisions_weather_corr$iso_yday, na.rm=TRUE)),
+      by   = 7
+    )
+  )+
+  labs(x="ISO-standardized day of the year")+
+    scale_fill_manual(
+    name   = "Intervention status",    # legend title
+    values = c(
+      "1"    = "blue", # customize colours as you like
+      "-1" = "lightblue",
+      "-200"            = "white"
+    ),
+    labels = c(
+      "Missing data",    # pretty label for "no-intervention"
+      "No intervention", # pretty label for "under intervention"
+      "Under intervention"        # pretty label for "missing"
+    )
+  ) #es   : Factor w/ 3 levels "-200","-1","1"
+```
+
+
+
+As of 2025-07-16, we added `r round(mean(yday(subset(races,year>2000)$race_date), na.rm=T),0)` days to the first day of the year to create a theoretical race date according to the average date since 2000, for 2009, 2020 and 2021. This transformation was stored in the variable `race_date_rec`.
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: rectangle-db-pre
+#| results: "hold"
+
+
+days_impute_race <- round(mean(yday(subset(races,year>2000)$race_date), na.rm=T),0)
+
+collisions_weather_corr|>
+  mutate(race_date_rec= ifelse(is.na(race_date), as.Date(as.Date(paste0(as.character(year),"-01-01"))+ days(days_impute_race)), race_date))|> 
+  mutate(race_date_rec= as.Date(race_date_rec)) |> 
+    group_by(cluster)|>
+    mutate(day_diff = as.numeric(difftime(date, race_date_rec, units = "days")))|> 
+    summarise(min=min(day_diff, na.rm=T), max= max(day_diff, na.rm=T)) |> 
+  ungroup() |> 
+  slice_max(min) |> pull(min) |> unique() ->> min_value
+```
+
+
+We formatted the data recatangularily by subsetting `r abs(min_value)` days before and 30 days after the race, for each combination of MRC and year. 
 
 ```{r}
 #| class-output: center-table
@@ -1085,9 +1203,11 @@ We formatted the data recatangularily by subsetting 35 days before and 35 days a
 
 collisions_weather_corr_rect <- 
   collisions_weather_corr|>
+  mutate(race_date_rec= ifelse(is.na(race_date), as.Date(as.Date(paste0(as.character(year),"-01-01"))+ days(days_impute_race)), race_date))|> 
+  mutate(race_date_rec= as.Date(race_date_rec)) |> 
   group_by(cluster)|>
-  mutate(day_diff = as.numeric(difftime(date, race_date, units = "days")))|> # Calculate difference in days
-  mutate(race_window = dplyr::between(day_diff, -35, 35))|> # Check if difference is within -30 to 30 days
+  mutate(day_diff = as.numeric(difftime(date, race_date_rec, units = "days")))|> # Calculate difference in days
+  mutate(race_window = dplyr::between(day_diff, min_value, 30))|> # Check if difference is within min_value to 30 days
   ungroup()|>
   filter(race_window == TRUE)|>
   group_by(cluster)|>
@@ -1097,7 +1217,6 @@ collisions_weather_corr_rect <-
 
 cat(paste0("Number of rows: ", nrow(collisions_weather_corr_rect),"\n\n\n\n"))
 ```
-
 
 ### Panel series
 

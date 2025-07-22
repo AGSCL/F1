@@ -110,7 +110,7 @@ if (getRversion() != "4.4.1") { stop("Requiere versión de R 4.4.1. Actual: ", g
 #                    "CausalImpact" #for time series causal impact
 #                    "forecast" #for time series analysis prediction and decomposition
 #                    ))
-library(dplyr); library(lubridate); library(tidyverse); library(openxlsx); library(rio); library(purrr); library(dagitty); library(ggdag); library(kableExtra); library(geosphere); library(geepack); library(lme4); library(glmmTMB); library(DHARMa); library(car); library(brms); library(bayesplot); library(loo); library(Synth);  library(weathercan); library(sandwich); library(emmeans); library(gnm); library(splines); library(geeM); library(plm); library(PanelMatch); library(scpi); library(fect); library(nixtlar); library(CausalImpact); library(forecast); library(webshot)
+library(dplyr); library(lubridate); library(tidyverse); library(openxlsx); library(rio); library(purrr); library(dagitty); library(ggdag); library(kableExtra); library(geosphere); library(geepack); library(lme4); library(glmmTMB); library(DHARMa); library(car); library(brms); library(bayesplot); library(loo); library(Synth);  library(weathercan); library(sandwich); library(emmeans); library(gnm); library(splines); library(geeM); library(plm); library(PanelMatch); library(scpi); library(fect); library(nixtlar); library(CausalImpact); library(forecast); library(webshot); library(tableone)
 
 #special repository indicated or the package
 if(!require(weathercan)){
@@ -210,16 +210,30 @@ We collapsed data by aggregating it at the day–year level for treatment and co
 #| eval: true
 #| results: "hold"
 
-#total_precip_median_lin lag_2_prec_median_lin_imp
-if(identical(collisions_weather_corr_rect$lag_2_prec_median_lin_imp, collisions_weather_corr_rect$total_precip_median_lin)){warning("Identical lagged with not lagged variable")}
+ordered<- 
+paste(rep(c("control","treatment"), each = length(2000:2022)),rep(2000:2022, times = 2), sep=".")
+ordered_with_placebo_years<- 
+c("control.2000", "control.2001", "control.2002", "control.2003", 
+"control.2004", "control.2005", "control.2006", "control.2007", "control.2008", 
+"control.2009", "control.2010", "control.2011", "control.2012", "control.2013", 
+"control.2014", "control.2015", "control.2016", "control.2017", "control.2018", 
+"control.2019", "control.2020", "control.2021", "control.2022", "treatment.2009", 
+"treatment.2020", "treatment.2021", "treatment.2000", "treatment.2001", "treatment.2002", 
+"treatment.2003", "treatment.2004", "treatment.2005", "treatment.2006", 
+"treatment.2007", "treatment.2008", "treatment.2010", "treatment.2011", 
+"treatment.2012", "treatment.2013", "treatment.2014", "treatment.2015", 
+"treatment.2016", "treatment.2017", "treatment.2018", "treatment.2019", 
+ "treatment.2022")
 
 
 collisions_weather_corr_rect_synth <-
   collisions_weather_corr_rect |>
-  filter(date_num <= unclass(race_date) + 7) |>
+  filter(date_num <= unclass(race_date_rec) + 7) |>
   group_by(tr_contr_sens, year, yday_corr, date) |>
   summarise(
     sum_velocidad = sum(velocidad, na.rm = TRUE),
+    sum_velocidad_lead1= sum(velocidad_lead1_post_conv_imp, na.rm = T),
+    sum_velocidad_lead2= sum(velocidad_lead2_post_conv_imp, na.rm = T),
     exp_veh       = sum(vehicles_use_type,        na.rm = TRUE), # Nº de vehículos expuestos
     exp_lic       = sum(license_holders_sex_age,  na.rm = TRUE), # Nº de conductores
     median_lag_2_prec_median_imp = median(lag_2_prec_median_lin_imp, na.rm = TRUE),
@@ -231,22 +245,32 @@ collisions_weather_corr_rect_synth <-
   mutate(                                     # ── aux variables
     rate_veh = sum_velocidad / exp_veh * 1e6, # not to model
     rate_lic = sum_velocidad / exp_lic * 1e6, # not to model
+    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
+    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
+    rate_lead2_veh = sum_velocidad_lead2 / exp_veh * 1e6, # not to model
+    rate_lead2_lic = sum_velocidad_lead2 / exp_lic * 1e6, # not to model        
     off_veh  = log(exp_veh),                  # offset
     off_lic  = log(exp_lic)
   ) |>
   left_join(races, by = c("date" = "race_date")) |>
   mutate(
     race_day = if_else(!is.na(year.y), 1L, 0L),
-    id       = as.numeric(factor(paste0(tr_contr_sens, year.x)))
+    id       = as.numeric(factor(paste0(tr_contr_sens, ".",year.x), levels= ordered_with_placebo_years)),
+    id_lab   = factor(paste0(tr_contr_sens, ".",year.x))
   ) |>
-  select(-year.y)
+  select(-year.y) |> 
+  mutate(id_lab= case_when(id_lab== "treatment.2009"~ "placebo.2009",
+                        id_lab== "treatment.2020"~ "placebo.2020",
+                        id_lab== "treatment.2021"~ "placebo.2021",
+                        T~id_lab)) |> 
+  mutate(tr_contrl_corr= ifelse(grepl("treatment",id_lab),1,0))
 
 
 if(identical(collisions_weather_corr_rect_synth$median_total_precip_median_lin, collisions_weather_corr_rect_synth$median_lag_2_prec_median_imp)){warning("Identical lagged with not lagged variable")}
 
 cat("Day of the race \n")
 collisions_weather_corr_rect_synth |> 
-  filter(race_day==1) |> reframe(min=yday_corr, max=yday_corr) |>  print(n=40)
+  filter(race_day==1) |> reframe(min=yday_corr, max=yday_corr) |>  print(n=46)
 
 ############################################################
 ## 1.  “Only-treated, one series”  ─────────────────────────
@@ -255,10 +279,12 @@ collisions_weather_corr_rect_synth |>
 cat("Generate a summary of counts of every year in treated only\n")
 collisions_weather_corr_rect_synth_tr <- 
   collisions_weather_corr_rect_synth %>%              # start from the long table
-  filter(tr_contr_sens == "treatment") %>%            # keep treated rows only
-  group_by(tr_contr_sens, yday_corr) %>%              # collapse across MRC × years
+  filter(grepl("treatment", id_lab)) %>%            # keep treated rows only
+  group_by(yday_corr) %>%              # collapse across MRC × years
   summarise(
     sum_velocidad = sum(sum_velocidad, na.rm = TRUE),
+    sum_velocidad_lead1= sum(sum_velocidad_lead1, na.rm = T),
+    sum_velocidad_lead2= sum(sum_velocidad_lead2, na.rm = T),    
     exp_veh       = sum(exp_veh,       na.rm = TRUE),
     exp_lic       = sum(exp_lic,       na.rm = TRUE),
     mean_median_lag_2_prec_median_imp   = mean(median_lag_2_prec_median_imp,   na.rm = TRUE),
@@ -270,12 +296,16 @@ collisions_weather_corr_rect_synth_tr <-
   mutate(
     rate_veh = sum_velocidad / exp_veh * 1e6,
     rate_lic = sum_velocidad / exp_lic * 1e6,
+    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
+    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
+    rate_lead2_veh = sum_velocidad_lead2 / exp_veh * 1e6, # not to model
+    rate_lead2_lic = sum_velocidad_lead2 / exp_lic * 1e6, # not to model     
     off_veh  = log(exp_veh),
     off_lic  = log(exp_lic),
     year.x   = 2000,                       # dummy year / date just to keep structure
     date     = as.Date("2019-05-19"),
     race_day = 0L,
-    id       = 40                          # single ID for the synthetic treated series
+    id       = 46                          # single ID for the synthetic treated series
   )
 
 ############################################################
@@ -285,7 +315,7 @@ collisions_weather_corr_rect_synth_tr <-
 
 # controls left at their original resolution (one ID per MRC–year)
 controls_long <- collisions_weather_corr_rect_synth %>% 
-  filter(tr_contr_sens != "treatment") %>% 
+  filter(!grepl("treatment", id_lab)) %>%
   rename(
     mean_median_lag_2_prec_median_imp   = median_lag_2_prec_median_imp,
     mean_median_total_precip_median_lin = median_total_precip_median_lin
@@ -303,10 +333,12 @@ collisions_weather_corr_rect_synth_one_tr_many_cntrls <- bind_rows(
 
 collisions_weather_corr_rect_synth_cntr <- 
   collisions_weather_corr_rect_synth %>% 
-  filter(tr_contr_sens != "treatment") %>%          # keep controls
-  group_by(tr_contr_sens, yday_corr) %>%            # collapse across all control IDs
+  filter(!grepl("treatment", id_lab)) %>%            # keep treated rows only
+  group_by(yday_corr) %>%              # collapse across MRC × years
   summarise(
     sum_velocidad = sum(sum_velocidad, na.rm = TRUE),
+    sum_velocidad_lead1= sum(sum_velocidad_lead1, na.rm = T),
+    sum_velocidad_lead2= sum(sum_velocidad_lead2, na.rm = T),
     exp_veh       = sum(exp_veh,       na.rm = TRUE),
     exp_lic       = sum(exp_lic,       na.rm = TRUE),
     
@@ -331,6 +363,10 @@ collisions_weather_corr_rect_synth_cntr <-
   mutate(
     rate_veh = sum_velocidad / exp_veh * 1e6,
     rate_lic = sum_velocidad / exp_lic * 1e6,
+    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
+    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
+    rate_lead2_veh = sum_velocidad_lead2 / exp_veh * 1e6, # not to model
+    rate_lead2_lic = sum_velocidad_lead2 / exp_lic * 1e6, # not to model       
     off_veh  = log(exp_veh),
     off_lic  = log(exp_lic),
     year.x   = 2000,
@@ -359,7 +395,8 @@ invisible("Consolidate one treated and one control")
 collisions_weather_corr_rect_synth_cntr_tr <- 
 rbind.data.frame(collisions_weather_corr_rect_synth_cntr,collisions_weather_corr_rect_synth_tr |> 
   # rename(collisions_weather_corr_rect_synth_tr, "median_lag_2_prec_mean_imp"= "mean_lag_2_prec_mean_imp", "median_total_precip_mean_lin"= "mean_total_precip_mean_lin")|>  
-  mutate(p25_lag_2_prec_median_imp=0, p75_lag_2_prec_median_imp=0, p25_min_temp_mean_lin=0, p75_min_temp_mean_lin=0, p25_max_temp_mean_lin=0, p75_max_temp_mean_lin=0, p25_total_precip_median_lin=0, p75_total_precip_median_lin=0))|> data.frame()
+  mutate(p25_lag_2_prec_median_imp=0, p75_lag_2_prec_median_imp=0, p25_min_temp_mean_lin=0, p75_min_temp_mean_lin=0, p25_max_temp_mean_lin=0, p75_max_temp_mean_lin=0, p25_total_precip_median_lin=0, p75_total_precip_median_lin=0))|> data.frame() |> 
+  mutate(treated_cntrl= ifelse(id==46, "treated","control"))
 
 ```
 
@@ -376,10 +413,12 @@ rbind.data.frame(collisions_weather_corr_rect_synth_cntr,collisions_weather_corr
 
 collisions_weather_corr_rect_quebec_synth <-
   collisions_weather_corr_rect |>
-  filter(date_num <= unclass(race_date) + 7) |>
+  filter(date_num <= unclass(race_date_rec) + 7) |>
   group_by(tr_contr, year, yday_corr, date) |>
   summarise(
     sum_velocidad = sum(velocidad, na.rm = TRUE),
+    sum_velocidad_lead1= sum(velocidad_lead1_post_conv_imp, na.rm = T),
+    sum_velocidad_lead2= sum(velocidad_lead2_post_conv_imp, na.rm = T),    
     exp_veh       = sum(vehicles_use_type,        na.rm = TRUE), # Nº de vehículos expuestos
     exp_lic       = sum(license_holders_sex_age,  na.rm = TRUE), # Nº de conductores
     median_lag_2_prec_median_imp = median(lag_2_prec_median_lin_imp, na.rm = TRUE),
@@ -391,23 +430,35 @@ collisions_weather_corr_rect_quebec_synth <-
   mutate(                                     # ── aux variables
     rate_veh = sum_velocidad / exp_veh * 1e6, # not to model
     rate_lic = sum_velocidad / exp_lic * 1e6, # not to model
+    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
+    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
+    rate_lead2_veh = sum_velocidad_lead2 / exp_veh * 1e6, # not to model
+    rate_lead2_lic = sum_velocidad_lead2 / exp_lic * 1e6, # not to model    
     off_veh  = log(exp_veh),                  # offset
     off_lic  = log(exp_lic)
   ) |>
-  left_join(races, by = c("date" = "race_date")) |>
+  left_join(races, by = c("date" = "race_date"))|>
   mutate(
     race_day = if_else(!is.na(year.y), 1L, 0L),
-    id       = as.numeric(factor(paste0(tr_contr, year.x)))
+    id       = as.numeric(factor(paste0(tr_contr, ".",year.x), levels= ordered_with_placebo_years)),
+    id_lab   = factor(paste0(tr_contr, ".",year.x))
   ) |>
-  select(-year.y)
+  select(-year.y) |> 
+  mutate(id_lab= case_when(id_lab== "treatment.2009"~ "placebo.2009",
+                           id_lab== "treatment.2020"~ "placebo.2020",
+                           id_lab== "treatment.2021"~ "placebo.2021",
+                           T~id_lab)) |> 
+  mutate(tr_contrl_corr= ifelse(grepl("treatment",id_lab),1,0))
 
 
 collisions_weather_corr_rect_quebec_synth_tr <- 
   collisions_weather_corr_rect_quebec_synth %>%              # start from the long table
-  filter(tr_contr == "treatment") %>%            # keep treated rows only
-  group_by(tr_contr, yday_corr) %>%              # collapse across MRC × years
+  filter(grepl("treatment", id_lab)) %>%            # keep treated rows only
+  group_by(yday_corr) %>%              # collapse across MRC × years
   summarise(
     sum_velocidad = sum(sum_velocidad, na.rm = TRUE),
+    sum_velocidad_lead1= sum(sum_velocidad_lead1, na.rm = T),
+    sum_velocidad_lead2= sum(sum_velocidad_lead2, na.rm = T),     
     exp_veh       = sum(exp_veh,       na.rm = TRUE),
     exp_lic       = sum(exp_lic,       na.rm = TRUE),
     mean_median_lag_2_prec_median_imp   = mean(median_lag_2_prec_median_imp,   na.rm = TRUE),
@@ -419,16 +470,20 @@ collisions_weather_corr_rect_quebec_synth_tr <-
   mutate(
     rate_veh = sum_velocidad / exp_veh * 1e6,
     rate_lic = sum_velocidad / exp_lic * 1e6,
+    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
+    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
+    rate_lead2_veh = sum_velocidad_lead2 / exp_veh * 1e6, # not to model
+    rate_lead2_lic = sum_velocidad_lead2 / exp_lic * 1e6, # not to model    
     off_veh  = log(exp_veh),
     off_lic  = log(exp_lic),
     year.x   = 2000,                       # dummy year / date just to keep structure
     date     = as.Date("2019-05-19"),
     race_day = 0L,
-    id       = 40                          # single ID for the synthetic treated series
+    id       = 46                          # single ID for the synthetic treated series
   )
 
 controls_quebec_long <- collisions_weather_corr_rect_quebec_synth %>% 
-  filter(tr_contr != "treatment") %>% 
+  filter(!grepl("treatment", id_lab)) %>%
   rename(
     mean_median_lag_2_prec_median_imp   = median_lag_2_prec_median_imp,
     mean_median_total_precip_median_lin = median_total_precip_median_lin
@@ -442,10 +497,12 @@ collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls <- bind_rows(
 
 collisions_weather_corr_rect_quebec_synth_cntr <- 
   collisions_weather_corr_rect_quebec_synth %>% 
-  filter(tr_contr != "treatment") %>%          # keep controls
-  group_by(tr_contr, yday_corr) %>%            # collapse across all control IDs
+  filter(!grepl("treatment", id_lab)) %>%            # keep treated rows only
+  group_by(yday_corr) %>%            # collapse across all control IDs
   summarise(
     sum_velocidad = sum(sum_velocidad, na.rm = TRUE),
+    sum_velocidad_lead1= sum(sum_velocidad_lead1, na.rm = T),
+    sum_velocidad_lead2= sum(sum_velocidad_lead2, na.rm = T),         
     exp_veh       = sum(exp_veh,       na.rm = TRUE),
     exp_lic       = sum(exp_lic,       na.rm = TRUE),
     
@@ -470,6 +527,10 @@ collisions_weather_corr_rect_quebec_synth_cntr <-
   mutate(
     rate_veh = sum_velocidad / exp_veh * 1e6,
     rate_lic = sum_velocidad / exp_lic * 1e6,
+    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
+    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
+    rate_lead2_veh = sum_velocidad_lead2 / exp_veh * 1e6, # not to model
+    rate_lead2_lic = sum_velocidad_lead2 / exp_lic * 1e6, # not to model        
     off_veh  = log(exp_veh),
     off_lic  = log(exp_lic),
     year.x   = 2000,
@@ -486,7 +547,165 @@ collisions_weather_corr_rect_quebec_synth_cntr <-
 collisions_weather_corr_rect_quebec_synth_cntr_tr <- 
   rbind.data.frame(collisions_weather_corr_rect_quebec_synth_cntr,collisions_weather_corr_rect_quebec_synth_tr |> 
   mutate(p25_lag_2_prec_median_imp=0, p75_lag_2_prec_median_imp=0, p25_min_temp_mean_lin=0, p75_min_temp_mean_lin=0, 
-         p25_max_temp_mean_lin=0, p75_max_temp_mean_lin=0, p25_total_precip_median_lin=0, p75_total_precip_median_lin=0))|> data.frame()
+         p25_max_temp_mean_lin=0, p75_max_temp_mean_lin=0, p25_total_precip_median_lin=0, p75_total_precip_median_lin=0))|> data.frame() |> 
+  mutate(treated_cntrl= ifelse(id==46, "treated","control"))
+
+```
+
+
+After the second meeting with Ignacio, we decided to compare exclusivelly one week with the race. So we selected 
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: filtered-db-mega-collapsed
+#| results: "hold"
+
+collisions_weather_corr_rect_pre_post |> 
+    filter(pre_exposure_post_conv==1) |> 
+    group_by(cluster) |> 
+    summarise(min=min(date), max= max(date))
+
+collisions_weather_corr_rect_pre_post <-
+  collisions_weather_corr_rect |>
+  #4 days , 2 weeks before
+    mutate(
+    pre_exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date - days((14+3)),
+                                 race_date - days((14-0)))), 0L),
+      exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date - days(3),
+                                 race_date + days(0))), 0L),
+    #4 days , 2 weeks after
+    neg_exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date + days(14-3),
+                                 race_date + days(14+0))), 0L),
+    exposure_window= case_when(pre_exposure_post_conv==1~ "Pre-exposure",
+                               exposure_post_conv==1~ "Exposure",
+                               neg_exposure_post_conv==1~ "Post-exposure"))|>
+  group_by(cluster, exposure_window)|>
+  summarise(
+    sum_velocidad = sum(velocidad, na.rm = TRUE),
+    sum_velocidad_lead1= sum(velocidad_lead1_post_conv_imp, na.rm = T),
+    sum_velocidad_lead2= sum(velocidad_lead2_post_conv_imp, na.rm = T),
+    exp_veh       = sum(vehicles_use_type,        na.rm = TRUE), # Nº de vehículos expuestos
+    exp_lic       = sum(license_holders_sex_age,  na.rm = TRUE), # Nº de conductores
+    median_lag_2_prec_median_imp = median(lag_2_prec_median_lin_imp, na.rm = TRUE),
+    mean_min_temp_mean_lin       = mean(min_temp_mean_lin,       na.rm = TRUE),
+    sd_min_temp_mean_lin       = sd(min_temp_mean_lin,       na.rm = TRUE),
+    mean_max_temp_mean_lin       = mean(max_temp_mean_lin,       na.rm = TRUE),
+    sd_max_temp_mean_lin       = sd(max_temp_mean_lin,       na.rm = TRUE),
+    median_total_precip_median_lin = median(total_precip_median_lin, na.rm = TRUE),
+    q1_total_precip_median_lin = quantile(total_precip_median_lin, .25, na.rm = TRUE),
+    q3_total_precip_median_lin = quantile(total_precip_median_lin, .75, na.rm = TRUE),
+    min_date= as.Date(min(unclass(date))),
+    max_date= as.Date(max(unclass(date))),
+    .groups = "drop"
+  ) |>
+  mutate(                                     # ── aux variables
+    rate_veh = sum_velocidad / exp_veh * 1e6, # not to model
+    rate_lic = sum_velocidad / exp_lic * 1e6, # not to model
+    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
+    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
+    rate_lead2_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
+    rate_lead2_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model        
+    off_veh  = log(exp_veh),                  # offset
+    off_lic  = log(exp_lic)
+  ) |> 
+  filter(!is.na(exposure_window)) |> 
+  mutate(
+    treated = !grepl("\\.(23)$", cluster) &
+              grepl(paste0("^(", paste(as.character(setdiff(2000:2022, c(2009, 2020, 2021))), collapse="|"), ")"), cluster)
+  ) |> 
+  mutate(
+    treated_sens = !grepl("\\.(23|43)$", cluster) &
+              grepl(paste0("^(", paste(as.character(setdiff(2000:2022, c(2009, 2020, 2021))), collapse="|"), ")"), cluster),
+  D= paste0(exposure_window, ".", treated),
+  D_sens= paste0(exposure_window, ".", treated_sens)
+  )
+
+
+collisions_weather_corr_rect_pre_post_full <-
+  collisions_weather_corr_rect |>
+  #4 days , 2 weeks before
+    mutate(
+    pre_exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date - days((14+3)),
+                                 race_date - days((14-1)))), 0L),
+      exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date - days(3),
+                                 race_date + days(1))), 0L),
+    #4 days , 2 weeks after
+    neg_exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date + days(14-3),
+                                 race_date + days(14+1))), 0L),
+    exposure_window= case_when(pre_exposure_post_conv==1~ "Pre-exposure",
+                               exposure_post_conv==1~ "Exposure",
+                               neg_exposure_post_conv==1~ "Post-exposure"))|>
+  filter(!is.na(exposure_window)) |> 
+  mutate(
+    treated = !grepl("\\.(23)$", cluster) &
+              grepl(paste0("^(", paste(as.character(setdiff(2000:2022, c(2009, 2020, 2021))), collapse="|"), ")"), cluster)
+  ) |> 
+  mutate(
+    treated_sens = !grepl("\\.(23|43)$", cluster) &
+              grepl(paste0("^(", paste(as.character(setdiff(2000:2022, c(2009, 2020, 2021))), collapse="|"), ")"), cluster),
+  D= paste0(exposure_window, ".", treated),
+  D_sens= paste0(exposure_window, ".", treated_sens)
+  )
+
+
+# ── 1.  load package ------------------------------------------
+library(tableone)
+
+# ── 2.  identify the variables by distribution -----------------
+nonnormal <- c("rate_veh",
+               "rate_lic",
+               "rate_lead1_veh",
+               "rate_lead1_lic",
+               "rate_lead2_veh",
+               "rate_lead2_lic",
+               "median_lag_2_prec_median_imp",
+               "median_total_precip_median_lin",
+               "q1_total_precip_median_lin",
+               "q3_total_precip_median_lin")
+
+normal <- c("mean_min_temp_mean_lin",
+            "sd_min_temp_mean_lin",
+            "mean_max_temp_mean_lin",
+            "sd_max_temp_mean_lin")
+
+vars <- c(nonnormal, normal)
+
+# ── 4.  create Table 1 -----------------------------------------
+#Exposure.FALSE Exposure.TRUE Post-exposure.FALSE Post-exposure.TRUE Pre-exposure.FALSE Pre-exposure.TRUE 
+tab1 <- CreateTableOne(vars      = vars,
+                       strata    = "D",
+                       data      = subset(collisions_weather_corr_rect_pre_post, grepl("Pre",exposure_window)),
+                       test      = TRUE)
+
+# ── 5.  print / export -----------------------------------------
+print(tab1, smd = TRUE, nonnormal= nonnormal, quote = TRUE, noSpaces = TRUE)           # console
+# write.csv(print(tab1), "table1.csv")   # if you want a CSV
+
+tab1_exp <- CreateTableOne(vars      = vars,
+                       strata    = "D",
+                       data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Exposure",exposure_window)),
+                       test      = TRUE)
+
+# ── 5.  print / export -----------------------------------------
+print(tab1_exp, smd = TRUE, nonnormal= nonnormal, quote = TRUE, noSpaces = TRUE)           # console# write.csv(print(tab1), "table1.csv")   # if you want a CSV
+
+tab1_post <- CreateTableOne(vars      = vars,
+                       strata    = "D",
+                       data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Exposure",exposure_window)),
+                       test      = TRUE)
+
+# ── 5.  print / export -----------------------------------------
+print(tab1_post, smd = TRUE, nonnormal= nonnormal, quote = TRUE, noSpaces = TRUE)           # console# write.csv(print(tab1), "table1.csv")   # if you want a CSV
 ```
 
 
@@ -512,8 +731,8 @@ collisions_weather_corr_rect_quebec_synth_cntr_tr <-
 #| fig-align: "center"
 #| out.width: "45%"
 
-acf(collisions_weather_corr_rect_synth_tr$rate_veh*10,  lag.max = 50, main = "Treatments\nACF:high-speed tickets per 1MM vehicles")
-pacf(collisions_weather_corr_rect_synth_tr$rate_veh*10, lag.max = 50, main = "Treatments\nPACF:high-speed tickets per 1MM vehicles")
+acf(collisions_weather_corr_rect_synth_tr$rate_veh,  lag.max = 50, main = "Treatments\nACF:high-speed tickets per 1MM vehicles")
+pacf(collisions_weather_corr_rect_synth_tr$rate_veh, lag.max = 50, main = "Treatments\nPACF:high-speed tickets per 1MM vehicles")
 ```
 
 We noticed a partial autocorrelation of 10 days in the treated.
@@ -562,29 +781,29 @@ We noticed a partial autocorrelation of 25 days in the controls.
 #| out.width: "45%"
 
 x_vals <- time(forecast::msts(
-    collisions_weather_corr_rect_synth_cntr$rate_veh*10,
+    collisions_weather_corr_rect_synth_cntr$rate_veh,
     start = c(2019, 1),
     seasonal.periods = c(7)
 ))
 
 
-forecast::autoplot(forecast::mstl(forecast::msts(collisions_weather_corr_rect_synth_tr$rate_veh*10,start = c(2019, 1),seasonal.periods = c(7)), robust = TRUE))+ ggtitle("Treated")+
+forecast::autoplot(forecast::mstl(forecast::msts(collisions_weather_corr_rect_synth_tr$rate_veh*10,start = c(2019, 1),seasonal.periods = c(7)), robust = TRUE))+ ggtitle("Treated (per10M)")+
   scale_x_continuous(
     breaks = seq(2019, 2025, by = 1/7)[seq(1, 43, by = 7)],          # where the ticks sit
     labels = seq(-35, 7)[seq(1, 43, by = 7)]         # what the ticks say
   ) +
   geom_vline(
-    xintercept = seq(2019, 2025, by = 1/7)[which.min(abs(seq(-35, 7)))],   # rel_day 0
+    xintercept = seq(2019, 2025, by = 1/7)[which.min(abs(seq(-abs(min_value)+1, 7)))],   # rel_day 0
     linetype   = "dashed", colour = "black")
   
 
-forecast::autoplot(forecast::mstl(forecast::msts(collisions_weather_corr_rect_synth_cntr$rate_veh*10,start = c(2019, 1),seasonal.periods = c(7)), robust = TRUE))+ ggtitle("Controls")+
+forecast::autoplot(forecast::mstl(forecast::msts(collisions_weather_corr_rect_synth_cntr$rate_veh*10,start = c(2019, 1),seasonal.periods = c(7)), robust = TRUE))+ ggtitle("Controls (per 10M)")+
     scale_x_continuous(
     breaks = seq(2019, 2025, by = 1/7)[seq(1, 43, by = 7)],          # where the ticks sit
     labels = seq(-35, 7)[seq(1, 43, by = 7)]         # what the ticks say
   ) +
   geom_vline(
-    xintercept = seq(2019, 2025, by = 1/7)[which.min(abs(seq(-35, 7)))],   # rel_day 0
+    xintercept = seq(2019, 2025, by = 1/7)[which.min(abs(seq(-abs(min_value)+1, 7)))],   # rel_day 0
     linetype   = "dashed", colour = "black")
   
 ```
@@ -615,9 +834,18 @@ We visualize series differentiating by treated or control cities.
 
 
 ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = sum_velocidad)) +
-  geom_line(aes(group = id, colour = ifelse(id==40,"Treated", "Controls"))) +
+  geom_line(aes(group = id, colour = treated_cntrl)) +
   scale_colour_brewer(palette = "Dark2", name = "MRC") +
-  geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
+  geom_vline(xintercept = abs(min_value)+1, linetype = "dashed", color = "black", linewidth=1) +
+  labs(x = "Days (-30 to 5 days post-treatment)", y = "Number of High‑speed Tickets (sum)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
+
+
+ggplot(collisions_weather_corr_rect_quebec_synth_cntr_tr, aes(x = yday_corr, y = sum_velocidad)) +
+  geom_line(aes(group = id, colour = treated_cntrl)) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  geom_vline(xintercept = abs(min_value)+1, linetype = "dashed", color = "black", linewidth=1) +
   labs(x = "Days (-30 to 5 days post-treatment)", y = "Number of High‑speed Tickets (sum)") +
   theme_minimal() +
   theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
@@ -643,7 +871,16 @@ ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = sum_ve
 #| label: tseries-Y-day-tr-cntrl
 
 ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = (sum_velocidad/exp_veh)*1e6)) +
-  geom_line(aes(group = id, colour = ifelse(id==40,"Treated", "Controls"))) +
+  geom_line(aes(group = id, colour = treated_cntrl)) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
+  labs(x = "Days (-30 to 5 days post-treatment)", y = "Number of Daily high-speed collisions per 1MM vehicle counts (sum)") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
+
+
+ggplot(collisions_weather_corr_rect_quebec_synth_cntr_tr, aes(x = yday_corr, y = (sum_velocidad/exp_veh)*1e6)) +
+  geom_line(aes(group = id, colour = treated_cntrl)) +
   scale_colour_brewer(palette = "Dark2", name = "MRC") +
   geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
   labs(x = "Days (-30 to 5 days post-treatment)", y = "Number of Daily high-speed collisions per 1MM vehicle counts (sum)") +
@@ -672,7 +909,25 @@ ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = (sum_v
 #| label: tseries-mint-day-tr-cntrl
 
 ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = mean_min_temp_mean_lin)) +
-  geom_line(aes(group = id, colour = ifelse(id==40,"Treated", "Controls"))) +
+  geom_line(aes(group = id, colour = treated_cntrl)) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
+  labs(x = "Days (-30 to 5 days post-treatment)", y = "Min temperature") +
+    geom_ribbon(
+    data = collisions_weather_corr_rect_synth_cntr,
+    aes(x = yday_corr, y = mean_min_temp_mean_lin,
+        ymin = p25_min_temp_mean_lin,
+        ymax = p75_min_temp_mean_lin),
+    inherit.aes = FALSE,
+    fill = "grey70",  # o un color que combine con tu paleta
+    alpha = 0.3
+  )+
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
+
+
+ggplot(collisions_weather_corr_rect_quebec_synth_cntr_tr, aes(x = yday_corr, y = mean_min_temp_mean_lin)) +
+  geom_line(aes(group = id, colour = treated_cntrl)) +
   scale_colour_brewer(palette = "Dark2", name = "MRC") +
   geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
   labs(x = "Days (-30 to 5 days post-treatment)", y = "Min temperature") +
@@ -710,12 +965,29 @@ ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = mean_m
 #| label: tseries-maxt-day-tr-cntrl
 
 ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = mean_max_temp_mean_lin)) +
-  geom_line(aes(group = id, colour = ifelse(id==40,"Treated", "Controls"))) +
+  geom_line(aes(group = id, colour = treated_cntrl)) +
   scale_colour_brewer(palette = "Dark2", name = "MRC") +
   geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
   labs(x = "Days (-30 to 5 days post-treatment)", y = "Max temperature") +
     geom_ribbon(
-    data = subset(collisions_weather_corr_rect_synth_cntr_tr, id != 40),
+    data = collisions_weather_corr_rect_synth_cntr,
+    aes(x = yday_corr, y = mean_max_temp_mean_lin,
+        ymin = p25_max_temp_mean_lin,
+        ymax = p75_max_temp_mean_lin),
+    inherit.aes = FALSE,
+    fill = "grey70",  # o un color que combine con tu paleta
+    alpha = 0.3
+  )+
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
+
+ggplot(collisions_weather_corr_rect_quebec_synth_cntr_tr, aes(x = yday_corr, y = mean_max_temp_mean_lin)) +
+  geom_line(aes(group = id, colour = treated_cntrl)) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
+  labs(x = "Days (-30 to 5 days post-treatment)", y = "Max temperature") +
+    geom_ribbon(
+    data = collisions_weather_corr_rect_synth_cntr,
     aes(x = yday_corr, y = mean_max_temp_mean_lin,
         ymin = p25_max_temp_mean_lin,
         ymax = p75_max_temp_mean_lin),
@@ -748,12 +1020,30 @@ ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = mean_m
 #| label: tseries-precip-day-tr-cntrl
 
 ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = mean_median_total_precip_median_lin)) +
-  geom_line(aes(group = id, colour = ifelse(id==40,"Treated", "Controls"))) +
+  geom_line(aes(group = id, colour = treated_cntrl)) +
   scale_colour_brewer(palette = "Dark2", name = "MRC") +
   geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
   labs(x = "Days (-30 to 5 days post-treatment)", y = "Precipitations \n(annual mean of city-level medians, where each city median\nis computed from the medians of its weather stations)") +
     geom_ribbon(
-    data = subset(collisions_weather_corr_rect_synth_cntr_tr, id != 40),
+    data = collisions_weather_corr_rect_synth_cntr,
+    aes(x = yday_corr, y = mean_median_total_precip_median_lin,
+        ymin = p25_total_precip_median_lin,
+        ymax = p75_total_precip_median_lin),
+    inherit.aes = FALSE,
+    fill = "grey70",  # o un color que combine con tu paleta
+    alpha = 0.3
+  )+
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
+
+
+ggplot(collisions_weather_corr_rect_quebec_synth_cntr_tr, aes(x = yday_corr, y = mean_median_total_precip_median_lin)) +
+  geom_line(aes(group = id, colour = treated_cntrl)) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
+  labs(x = "Days (-30 to 5 days post-treatment)", y = "Precipitations \n(annual mean of city-level medians, where each city median\nis computed from the medians of its weather stations)") +
+    geom_ribbon(
+    data = collisions_weather_corr_rect_synth_cntr,
     aes(x = yday_corr, y = mean_median_total_precip_median_lin,
         ymin = p25_total_precip_median_lin,
         ymax = p75_total_precip_median_lin),
@@ -786,12 +1076,30 @@ ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = mean_m
 #| label: tseries-lag2-precip-day-tr-cntrl
 
 ggplot(collisions_weather_corr_rect_synth_cntr_tr, aes(x = yday_corr, y = mean_median_lag_2_prec_median_imp)) +
-  geom_line(aes(group = id, colour = ifelse(id==40,"Treated", "Controls"))) +
+  geom_line(aes(group = id, colour = treated_cntrl)) +
   scale_colour_brewer(palette = "Dark2", name = "MRC") +
   geom_vline(xintercept = 30, linetype = "dashed", color = "black", linewidth=1) +
   labs(x = "Days (-30 to 5 days post-treatment)", y = "Precipitations (2-day lagged)\n(annual mean of city-level medians, where each city median\nis computed from the medians of its weather stations)") +
     geom_ribbon(
-    data = subset(collisions_weather_corr_rect_synth_cntr_tr, id != 40),
+    data = collisions_weather_corr_rect_synth_cntr,
+    aes(x = yday_corr, y = mean_median_lag_2_prec_median_imp,
+        ymin = p25_lag_2_prec_median_imp,
+        ymax = p75_lag_2_prec_median_imp),
+    inherit.aes = FALSE,
+    fill = "grey70",  # o un color que combine con tu paleta
+    alpha = 0.3
+  )+
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom") 
+
+
+ggplot(collisions_weather_corr_rect_quebec_synth_cntr_tr, aes(x = yday_corr, y = mean_median_lag_2_prec_median_imp)) +
+  geom_line(aes(group = id, colour = treated_cntrl)) +
+  scale_colour_brewer(palette = "Dark2", name = "MRC") +
+  geom_vline(xintercept = 38, linetype = "dashed", color = "black", linewidth=1) +
+  labs(x = "Days (-38 to 5 days post-treatment)", y = "Precipitations (2-day lagged)\n(annual mean of city-level medians, where each city median\nis computed from the medians of its weather stations)") +
+    geom_ribbon(
+    data = collisions_weather_corr_rect_quebec_synth_cntr,
     aes(x = yday_corr, y = mean_median_lag_2_prec_median_imp,
         ymin = p25_lag_2_prec_median_imp,
         ymax = p75_lag_2_prec_median_imp),
