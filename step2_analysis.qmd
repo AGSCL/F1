@@ -285,6 +285,33 @@ plot_synth_cscm <- function(res_object,
     # scale_linetype_manual(values = c("SCM" = "solid", "CSCM" = "solid", "Observed" = "solid"))
     )
 }
+
+
+tidy_exp_gnm <- function(model, conf.level = 0.95, use_t = FALSE) {
+  td <- broom::tidy(model)
+  alpha <- 1 - conf.level
+  crit <- if (use_t) {
+    stats::qt(1 - alpha/2, df = model$df.residual)
+  } else {
+    stats::qnorm(1 - alpha/2)
+  }
+    td %>%
+    mutate(
+      conf.low_log  = estimate - crit * std.error,
+      conf.high_log = estimate + crit * std.error,
+      rate_ratio    = exp(estimate),
+      rr_conf.low   = exp(conf.low_log),
+      rr_conf.high  = exp(conf.high_log)
+    ) %>%
+    dplyr::select(term, rate_ratio, rr_conf.low, rr_conf.high, std.error, p.value) |> 
+    data.frame() |> 
+    dplyr::slice(1)
+}
+
+tidy_exp_gnm_corr <- function(modelo) {
+    as_tibble(Epi::ci.exp(modelo, subset = 1, pval = TRUE),
+              rownames = "term")
+}
 ```
 
 
@@ -378,516 +405,6 @@ ggplot() +
 
 <br>
 
-### Stratified DiD?, RE MRC x year
-
-```{r}
-#| class-output: center-table
-#| message: true
-#| include: true
-#| warning: true
-#| error: true
-#| label: test-association1
-#| eval: true
-#| results: "hold"
-
-warning("Model convergence problem; non-positive-definite Hessian matrix. See vignette('troubleshooting')")
-
-cat("Main\n")
-model_nb1 <- glmmTMB(velocidad ~ D+ min_temp_mean_lin+ max_temp_mean_lin+ total_precip_median_lin+ lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                     data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                     control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb1)
-
-cat("Main w/ no previous days\n")
-model_nb1_off <- glmmTMB(velocidad~ D_off+ min_temp_mean_lin+ max_temp_mean_lin+ total_precip_median_lin+ lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                     data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                     control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb1_off)
-
-cat("Sherbrooke as control\n")
-model_nb2 <- glmmTMB(velocidad~ D_sens+ min_temp_mean_lin+ max_temp_mean_lin+ total_precip_median_lin+ lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                     data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                     control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb2)
-
-cat("Sherbrooke as control, no previous days\n")
-model_nb2_off <- glmmTMB(velocidad~ D_sens+ min_temp_mean_lin+ max_temp_mean_lin+ total_precip_median_lin+ lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                     data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                     control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb2_off)
-
-cat("Main w/ exposure of 7 days\n")
-model_nb12 <- glmmTMB(velocidad~ D7+ min_temp_mean_lin+ max_temp_mean_lin+ total_precip_median_lin+ lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                      data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                      control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb12)
-
-cat("Main w/ exposure of 7 days, no previous days\n")
-model_nb12_off <- glmmTMB(velocidad~ D7_off+ min_temp_mean_lin+ max_temp_mean_lin+ total_precip_median_lin+ lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                      data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                      control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb12_off)
-
-cat("Main w/ exposure of 7 days and Sherbrooke as control\n")
-model_nb22 <- glmmTMB(velocidad~ D7_sens+ min_temp_mean_lin+ max_temp_mean_lin+ total_precip_median_lin+ lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                      data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                      control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb22)
-
-cat("Main w/ exposure of 7 days and Sherbrooke as control, no previous days\n")
-model_nb22_off <- glmmTMB(velocidad~ D7_sens_off+ min_temp_mean_lin+ max_temp_mean_lin+ total_precip_median_lin+ lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                      data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                      control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb22_off)
-
-
-
-
-cat("Main, lead 1\n")
-model_nb1_lead1 <- glmmTMB(velocidad_lead1_post_conv_imp~ D+ min_temp_mean_lin+ max_temp_mean_lin+ total_precip_median_lin+ lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                     data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                     control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb1_lead1)
-
-cat("Main w/ no previous days, lead 1\n")
-model_nb1_off_lead1 <- glmmTMB(velocidad_lead1_post_conv_imp~ D_off+ min_temp_mean_lin+ max_temp_mean_lin+ total_precip_median_lin+ lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                     data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                     control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb1_off_lead1)
-
-cat("Sherbrooke as control, lead 1\n")
-model_nb2_lead1 <- glmmTMB(velocidad_lead1_post_conv_imp~ D_sens+ min_temp_mean_lin+ max_temp_mean_lin+ total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                     data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                     control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb2_lead1)
-
-cat("Sherbrooke as control, no previous days, lead 1\n")
-model_nb2_off_lead1 <- glmmTMB(velocidad_lead1_post_conv_imp~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                     data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                     control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb2_off_lead1)
-
-cat("Main w/ exposure of 7 days, lead 1\n")
-model_nb12_lead1 <- glmmTMB(velocidad_lead1_post_conv_imp~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                      data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                      control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb12_lead1)
-
-cat("Main w/ exposure of 7 days, no previous days, lead 1\n")
-model_nb12_off_lead1 <- glmmTMB(velocidad_lead1_post_conv_imp~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                      data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                      control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb12_off_lead1)
-
-cat("Main w/ exposure of 7 days and Sherbrooke as control, lead 1\n")
-model_nb22_lead2 <- glmmTMB(velocidad_lead1_post_conv_imp~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                      data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                      control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb22_lead2)
-
-cat("Main w/ exposure of 7 days and Sherbrooke as control, no previous days, lead 1\n")
-model_nb22_off_lead2 <- glmmTMB(velocidad_lead1_post_conv_imp~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                      data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                      control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb22_off_lead2)
-
-
-
-cat("Main, lead 2\n")
-model_nb1_lead2 <- glmmTMB(velocidad_lead2_post_conv_imp~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                     data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                     control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb1_lead2)
-
-cat("Main w/ no previous days, lead 2\n")
-model_nb1_off_lead2 <- glmmTMB(velocidad_lead2_post_conv_imp~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                     data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                     control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb1_off_lead2)
-
-cat("Sherbrooke as control, lead 2\n")
-model_nb2_lead2 <- glmmTMB(velocidad_lead2_post_conv_imp~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                     data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                     control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb2_lead2)
-
-cat("Sherbrooke as control, no previous days, lead 2\n")
-model_nb2_off_lead2 <- glmmTMB(velocidad_lead2_post_conv_imp~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                     data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                     control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb2_off_lead2)
-
-cat("Main w/ exposure of 7 days, lead 2\n")
-model_nb12_lead2 <- glmmTMB(velocidad_lead2_post_conv_imp~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                      data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                      control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb12_lead2)
-
-cat("Main w/ exposure of 7 days, no previous days, lead 2\n")
-model_nb12_off_lead2 <- glmmTMB(velocidad_lead2_post_conv_imp~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                      data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                      control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb12_off_lead2)
-
-cat("Main w/ exposure of 7 days and Sherbrooke as control, lead 2\n")
-model_nb22_lead2 <- glmmTMB(velocidad_lead2_post_conv_imp~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                      data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                      control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb22_lead2)
-
-cat("Main w/ exposure of 7 days and Sherbrooke as control, no previous days, lead 2\n")
-model_nb22_off_lead2 <- glmmTMB(velocidad_lead2_post_conv_imp~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+(1 | cluster)+ offset(log(license_holders_sex_age)), family= nbinom2, 
-                      data = collisions_weather_corr,#subset(collisions_weather_corr, !mrc_f %in% c(371, 23)), 
-                      control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS")))
-summary(model_nb22_off_lead2)
-
-
-cat("AIC for Main model\n")
-AIC(model_nb1)
-cat("AIC for main w/ no previous days\n")
-AIC(model_nb1_off)
-cat("AIC for Sherbrooke as control model\n")
-AIC(model_nb2)
-cat("AIC for Sherbrooke as control, no previous days\n")
-AIC(model_nb2_off)
-cat("AIC for Main model with 7-day exposure\n")
-AIC(model_nb12)
-cat("AIC for Main w/ exposure of 7 days, no previous days\n")
-AIC(model_nb12_off)
-cat("AIC for Main model with 7-day exposure and Sherbrooke as control\n")
-AIC(model_nb22)
-cat("AIC for Main w/ exposure of 7 days and Sherbrooke as control, no previous days\n")
-AIC(model_nb22_off)
-cat("AIC for Main model, lead 1\n")
-AIC(model_nb1_lead1)
-cat("AIC for main w/ no previous days, lead 1\n")
-AIC(model_nb1_off_lead1)
-cat("AIC for Sherbrooke as control model, lead 1\n")
-AIC(model_nb2_lead1)
-cat("AIC for Sherbrooke as control, no previous days, lead 1\n")
-AIC(model_nb2_off_lead1)
-cat("AIC for Main model with 7-day exposure, lead 1\n")
-AIC(model_nb12_lead1)
-cat("AIC for Main w/ exposure of 7 days, no previous days, lead 1\n")
-AIC(model_nb12_off_lead1)
-cat("AIC for Main model with 7-day exposure and Sherbrooke as control, lead 1\n")
-AIC(model_nb22_lead1)
-cat("AIC for Main w/ exposure of 7 days and Sherbrooke as control, no previous days, lead 1\n")
-AIC(model_nb22_off_lead1)
-cat("AIC for Main model, lead 2\n")
-AIC(model_nb1_lead2)
-cat("AIC for main w/ no previous days, lead 2\n")
-AIC(model_nb1_off_lead2)
-cat("AIC for Sherbrooke as control model, lead 2\n")
-AIC(model_nb2_lead2)
-cat("AIC for Sherbrooke as control, no previous days, lead 2\n")
-AIC(model_nb2_off_lead2)
-cat("AIC for Main model with 7-day exposure, lead 2\n")
-AIC(model_nb12_lead2)
-cat("AIC for Main w/ exposure of 7 days, no previous days, lead 2\n")
-AIC(model_nb12_off_lead2)
-cat("AIC for Main model with 7-day exposure and Sherbrooke as control, lead 2\n")
-AIC(model_nb22_lead2)
-cat("AIC for Main w/ exposure of 7 days and Sherbrooke as control, no previous days, lead 2\n")
-AIC(model_nb22_off_lead2)
-```
-
-
-
-### DiD?,FE MRC x year
-
-```{r}
-#| class-output: center-table
-#| message: true
-#| include: true
-#| warning: true
-#| error: true
-#| label: test-association-did
-#| eval: true
-#| results: "hold"
-cat("Main model (-2,+3), Quebec as control\n")
-model_did1 <- glmmTMB(
-  velocidad ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did1)
-cat("Main model (0,+3), Quebec as control\n")
-model_did1_off <- glmmTMB(
-  velocidad ~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did1_off)
-cat("Main model (-2,+7), Quebec as control\n")
-model_did2 <- glmmTMB(
-  velocidad ~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did2)
-cat("Main model (0,+7), Quebec as control\n")
-model_did2_off <- glmmTMB(
-  velocidad ~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did2_off)
-cat("Sens model (-2,+3), Quebec+Sherbrooke as control\n")
-model_did12 <- glmmTMB(
-  velocidad ~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did12)
-cat("Sens model (0,+3), Quebec+Sherbrooke as control\n")
-model_did12_off <- glmmTMB(
-  velocidad ~ D_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did12_off)
-cat("Sens model (-2,+7), Quebec+Sherbrooke as control\n")
-model_did22 <- glmmTMB(
-  velocidad ~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did22)
-cat("Sens model (0,+7), Quebec+Sherbrooke as control\n")
-model_did22_off <- glmmTMB(
-  velocidad ~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did22_off)
-
-
-
-cat("Main model (-2,+3), Quebec as control, lead1\n")
-model_did1_lead1 <- glmmTMB(
-  velocidad_lead1_post_conv_imp ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did1_lead1)
-cat("Main model (0,+3), Quebec as control, lead1\n")
-model_did1_off_lead1 <- glmmTMB(
-  velocidad_lead1_post_conv_imp~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did1_off_lead1)
-cat("Main model (-2,+7), Quebec as control, lead1\n")
-model_did2_lead1 <- glmmTMB(
-  velocidad_lead1_post_conv_imp~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did2_lead1)
-cat("Main model (0,+7), Quebec as control, lead1\n")
-model_did2_off_lead1 <- glmmTMB(
-  velocidad_lead1_post_conv_imp~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did2_off_lead1)
-cat("Sens model (-2,+3), Quebec+Sherbrooke as control, lead1\n")
-model_did12_lead1 <- glmmTMB(
-  velocidad_lead1_post_conv_imp~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did12_lead1)
-cat("Sens model (0,+3), Quebec+Sherbrooke as control, lead1\n")
-model_did12_off_lead1 <- glmmTMB(
-  velocidad_lead1_post_conv_imp~ D_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did12_off_lead1)
-cat("Sens model (-2,+7), Quebec+Sherbrooke as control, lead1\n")
-model_did22_lead1 <- glmmTMB(
-  velocidad_lead1_post_conv_imp~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did22_lead1)
-cat("Sens model (0,+7), Quebec+Sherbrooke as control, lead1\n")
-model_did22_off_lead1 <- glmmTMB(
-  velocidad_lead1_post_conv_imp~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did22_off_lead1)
-
-
-
-
-cat("Main model (-2,+3), Quebec as control, lead2\n")
-model_did1_lead2 <- glmmTMB(
-  velocidad_lead2_post_conv_imp ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did1_lead2)
-cat("Main model (0,+3), Quebec as control, lead2\n")
-model_did1_off_lead2 <- glmmTMB(
-  velocidad_lead2_post_conv_imp~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did1_off_lead2)
-cat("Main model (-2,+7), Quebec as control, lead2\n")
-model_did2_lead2 <- glmmTMB(
-  velocidad_lead2_post_conv_imp~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did2_lead2)
-cat("Main model (0,+7), Quebec as control, lead2\n")
-model_did2_off_lead2 <- glmmTMB(
-  velocidad_lead2_post_conv_imp~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did2_off_lead2)
-cat("Sens model (-2,+3), Quebec+Sherbrooke as control, lead2\n")
-model_did12_lead2 <- glmmTMB(
-  velocidad_lead2_post_conv_imp~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did12_lead2)
-cat("Sens model (0,+3), Quebec+Sherbrooke as control, lead2\n")
-model_did12_off_lead2 <- glmmTMB(
-  velocidad_lead2_post_conv_imp~ D_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did12_off_lead2)
-cat("Sens model (-2,+7), Quebec+Sherbrooke as control, lead2\n")
-model_did22_lead2 <- glmmTMB(
-  velocidad_lead2_post_conv_imp~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did22_lead2)
-cat("Sens model (0,+7), Quebec+Sherbrooke as control, lead2\n")
-model_did22_off_lead2 <- glmmTMB(
-  velocidad_lead2_post_conv_imp~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +
-    factor(mrc_f) + factor(year_f) + offset(log(license_holders_sex_age)),
-  family= nbinom2,
-  data = collisions_weather_corr,
-  control = glmmTMBControl(optimizer = optim, optArgs = list(method = "BFGS"))
-)
-summary(model_did22_off_lead2)
-
-
-
-
-cat("AIC for Main model (-2,+3), Quebec as control\n")
-AIC(model_did1)
-cat("AIC for Main model (0,+3), Quebec as control\n")
-AIC(model_did1_off)
-cat("AIC for Main model (-2,+7), Quebec as control\n")
-AIC(model_did2)
-cat("AIC for Main model (0,+7), Quebec as control\n")
-AIC(model_did2_off)
-cat("AIC for Sens model (-2,+3), Quebec+Sherbrooke as control\n")
-AIC(model_did12)
-cat("AIC for Sens model (0,+3), Quebec+Sherbrooke as control\n")
-AIC(model_did12_off)
-cat("AIC for Sens model (-2,+7), Quebec+Sherbrooke as control\n")
-AIC(model_did22)
-cat("AIC for Sens model (0,+7), Quebec+Sherbrooke as control\n")
-AIC(model_did22_off)
-
-
-
-cat("AIC for Main model (-2,+3), Quebec as control, lead1\n")
-AIC(model_did1_lead1)
-cat("AIC for Main model (0,+3), Quebec as control, lead1\n")
-AIC(model_did1_off_lead1)
-cat("AIC for Main model (-2,+7), Quebec as control, lead1\n")
-AIC(model_did2_lead1)
-cat("AIC for Main model (0,+7), Quebec as control, lead1\n")
-AIC(model_did2_off_lead1)
-cat("AIC for Sens model (-2,+3), Quebec+Sherbrooke as control, lead1\n")
-AIC(model_did12_lead1)
-cat("AIC for Sens model (0,+3), Quebec+Sherbrooke as control, lead1\n")
-AIC(model_did12_off_lead1)
-cat("AIC for Sens model (-2,+7), Quebec+Sherbrooke as control, lead1\n")
-AIC(model_did22_lead1)
-cat("AIC for Sens model (0,+7), Quebec+Sherbrooke as control, lead1\n")
-AIC(model_did22_off_lead1)
-
-
-
-cat("AIC for Main model (-2,+3), Quebec as control, lead2\n")
-AIC(model_did1_lead2)
-cat("AIC for Main model (0,+3), Quebec as control, lead2\n")
-AIC(model_did1_off_lead2)
-cat("AIC for Main model (-2,+7), Quebec as control, lead2\n")
-AIC(model_did2_lead2)
-cat("AIC for Main model (0,+7), Quebec as control, lead2\n")
-AIC(model_did2_off_lead2)
-cat("AIC for Sens model (-2,+3), Quebec+Sherbrooke as control, lead2\n")
-AIC(model_did12_lead2)
-cat("AIC for Sens model (0,+3), Quebec+Sherbrooke as control, lead2\n")
-AIC(model_did12_off_lead2)
-cat("AIC for Sens model (-2,+7), Quebec+Sherbrooke as control, lead2\n")
-AIC(model_did22_lead2)
-cat("AIC for Sens model (0,+7), Quebec+Sherbrooke as control, lead2\n")
-AIC(model_did22_off_lead2)
-```
-
 
 ```{r}
 #| class-output: center-table
@@ -955,1053 +472,6 @@ invisible("No hay evidencia significativa de autocorrelación temporal en los re
 # testZeroInflation(simulationOutput)
 ```
 
-### GEE
-
-It is not key to account for overdisperssion since we are using robust standard errors.
-
-```{r}
-#| class-output: center-table
-#| message: true
-#| include: true
-#| warning: true
-#| error: true
-#| label: test-association-gee
-#| eval: true
-#| results: "hold"
-invisible("Si hay correlación")
-
-#GEE doesnt need quasipoisson 
-
-warning("Error in geese.fit(xx, yy, id, offset, soffset, w, waves = waves, zsca, : variance invalid.")
-
-# Note: Ensure the geepack library is loaded for QIC calculations
-# library(geepack)
-
-cat("Treatment -2,+3\n")
-gee_model_ar1 <- geeglm(velocidad ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "ar1",
-                        waves = iso_yday,
-                        data = collisions_weather_corr)
-summary(gee_model_ar1)
-qic_ar1 <- QIC(gee_model_ar1)[[1]]
-
-cat("Treatment 0,+3\n")
-gee_model_ar1_off <- geeglm(velocidad ~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "ar1",
-                        waves = iso_yday,
-                        data = collisions_weather_corr)
-summary(gee_model_ar1_off)
-qic_ar1_off <- QIC(gee_model_ar1_off)[[1]]
-
-cat("Fit GEE with independent correlation\n")
-gee_model_ind <- geeglm(velocidad ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "independence",
-                        waves = iso_yday,
-                        data = collisions_weather_corr, 
-                        scale.fix = F)
-summary(gee_model_ind)
-qic_ind <- QIC(gee_model_ind)[[1]]
-
-cat("Treatment 0,+3\n")
-gee_model_ind_off <- geeglm(velocidad ~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "independence",
-                        waves = iso_yday,
-                        data = collisions_weather_corr, 
-                        scale.fix = F)
-summary(gee_model_ind_off)
-qic_ind_off <- QIC(gee_model_ind_off)[[1]]
-
-cat("Fit GEE with exchangeable correlation\n")
-gee_model_ex <- geeglm(velocidad ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                       offset = log(license_holders_sex_age),
-                       id = cluster, 
-                       family = poisson(link = "log"),
-                       corstr = "exchangeable",
-                       waves = iso_yday,
-                       data = collisions_weather_corr,
-                       scale.fix = F)
-summary(gee_model_ex)
-qic_ex <- QIC(gee_model_ex)[[1]]
-
-cat("Treatment 0,+3\n")
-gee_model_ex_off <- geeglm(velocidad ~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                       offset = log(license_holders_sex_age),
-                       id = cluster, 
-                       family = poisson(link = "log"),
-                       corstr = "exchangeable",
-                       waves = iso_yday,
-                       data = collisions_weather_corr,
-                       scale.fix = F)
-summary(gee_model_ex_off)
-qic_ex_off <- QIC(gee_model_ex_off)[[1]]
-
-#:#:#:#:#:#:#:#:#:#:
-
-cat("Without Sherbrooke as treated\n")
-cat("Fit GEE with AR1 correlation structure\n")
-gee_model_ar12 <- geeglm(velocidad ~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                         offset = log(license_holders_sex_age),
-                         id = cluster, 
-                         family = poisson(link = "log"),
-                         corstr = "ar1",
-                         waves = iso_yday,
-                         data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar12)
-qic_ar12 <- QIC(gee_model_ar12)[[1]]
-
-cat("Treatment 0,+3\n")
-gee_model_ar12_off <- geeglm(velocidad ~ D_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                         offset = log(license_holders_sex_age),
-                         id = cluster, 
-                         family = poisson(link = "log"),
-                         corstr = "ar1",
-                         waves = iso_yday,
-                         data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar12_off)
-qic_ar12_off <- QIC(gee_model_ar12_off)[[1]]
-
-cat("Fit GEE with independent correlation\n")
-gee_model_ind2 <- geeglm(velocidad ~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                         offset = log(license_holders_sex_age),
-                         id = cluster, 
-                         family = poisson(link = "log"),
-                         corstr = "independence",
-                         waves = iso_yday,
-                         data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind2)
-qic_ind2 <- QIC(gee_model_ind2)[[1]]
-
-cat("Treatment 0,+3\n")
-gee_model_ind2_off <- geeglm(velocidad ~ D_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                         offset = log(license_holders_sex_age),
-                         id = cluster, 
-                         family = poisson(link = "log"),
-                         corstr = "independence",
-                         waves = iso_yday,
-                         data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind2_off)
-qic_ind2_off <- QIC(gee_model_ind2_off)[[1]]
-
-cat("Fit GEE with exchangeable correlation\n")
-gee_model_ex2 <- geeglm(velocidad ~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "exchangeable",
-                        waves = iso_yday,
-                        data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex2)
-qic_ex2 <- QIC(gee_model_ex2)[[1]]
-
-cat("Treatment 0,+3\n")
-gee_model_ex2_off <- geeglm(velocidad ~ D_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "exchangeable",
-                        waves = iso_yday,
-                        data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex2_off)
-qic_ex2_off <- QIC(gee_model_ex2_off)[[1]]
-
-#:#:#:#:#:#:#:#:#:#:#:#:
-#:#:#:#:#:#:#:#:#:#:#:#:
-
-cat("Fit GEE with AR1 correlation structure\n")
-gee_model_ar1_alt7 <- geeglm(velocidad ~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "ar1",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar1_alt7)
-qic_ar1_alt7 <- QIC(gee_model_ar1_alt7)[[1]]
-
-cat("Treatment 0,+7\n")
-gee_model_ar1_alt7_off <- geeglm(velocidad ~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "ar1",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar1_alt7_off)
-qic_ar1_alt7_off <- QIC(gee_model_ar1_alt7_off)[[1]]
-
-cat("Fit GEE with independent correlation\n")
-gee_model_ind_alt7 <- geeglm(velocidad ~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "independence",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind_alt7)
-qic_ind_alt7 <- QIC(gee_model_ind_alt7)[[1]]
-
-cat("Treatment 0,+7\n")
-gee_model_ind_alt7_off <- geeglm(velocidad ~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "independence",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind_alt7_off)
-qic_ind_alt7_off <- QIC(gee_model_ind_alt7_off)[[1]]
-
-cat("Fit GEE with exchangeable correlation\n")
-gee_model_ex_alt7 <- geeglm(velocidad ~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                            offset = log(license_holders_sex_age),
-                            id = cluster, 
-                            family = poisson(link = "log"),
-                            corstr = "exchangeable",
-                            waves = iso_yday,
-                            data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex_alt7)
-qic_ex_alt7 <- QIC(gee_model_ex_alt7)[[1]]
-
-cat("Treatment 0,+7\n")
-gee_model_ex_alt7_off <- geeglm(velocidad ~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                            offset = log(license_holders_sex_age),
-                            id = cluster, 
-                            family = poisson(link = "log"),
-                            corstr = "exchangeable",
-                            waves = iso_yday,
-                            data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex_alt7_off)
-qic_ex_alt7_off <- QIC(gee_model_ex_alt7_off)[[1]]
-
-#:#:#:#:#:#:#:#:#:#:
-
-cat("Without Sherbrooke as treated\n")
-cat("Fit GEE with AR1 correlation structure\n")
-gee_model_ar12_alt7 <- geeglm(velocidad ~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                              offset = log(license_holders_sex_age),
-                              id = cluster, 
-                              family = poisson(link = "log"),
-                              corstr = "ar1",
-                              waves = iso_yday,
-                              data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar12_alt7)
-qic_ar12_alt7 <- QIC(gee_model_ar12_alt7)[[1]]
-
-cat("Treatment 0,+7\n")
-gee_model_ar12_alt7_off <- geeglm(velocidad ~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                              offset = log(license_holders_sex_age),
-                              id = cluster, 
-                              family = poisson(link = "log"),
-                              corstr = "ar1",
-                              waves = iso_yday,
-                              data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar12_alt7_off)
-qic_ar12_alt7_off <- QIC(gee_model_ar12_alt7_off)[[1]]
-
-cat("Fit GEE with independent correlation\n")
-gee_model_ind2_alt7 <- geeglm(velocidad ~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                              offset = log(license_holders_sex_age),
-                              id = cluster, 
-                              family = poisson(link = "log"),
-                              corstr = "independence",
-                              waves = iso_yday,
-                              data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind2_alt7)
-qic_ind2_alt7 <- QIC(gee_model_ind2_alt7)[[1]]
-
-cat("Treatment 0,+7\n")
-gee_model_ind2_alt7_off <- geeglm(velocidad ~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                              offset = log(license_holders_sex_age),
-                              id = cluster, 
-                              family = poisson(link = "log"),
-                              corstr = "independence",
-                              waves = iso_yday,
-                              data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind2_alt7_off)
-qic_ind2_alt7_off <- QIC(gee_model_ind2_alt7_off)[[1]]
-
-cat("Fit GEE with exchangeable correlation\n")
-gee_model_ex2_alt7 <- geeglm(velocidad ~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "exchangeable",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex2_alt7)
-qic_ex2_alt7 <- QIC(gee_model_ex2_alt7)[[1]]
-
-cat("Treatment 0,+7\n")
-gee_model_ex2_alt7_off <- geeglm(velocidad ~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "exchangeable",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex2_alt7_off)
-qic_ex2_alt7_off <- QIC(gee_model_ex2_alt7_off)[[1]]
-
-
-
-
-
-
-
-cat("Treatment -2,+3, lead1\n")
-
-gee_model_ar1_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "ar1",
-                        waves = iso_yday,
-                        data = collisions_weather_corr)
-summary(gee_model_ar1_lead1)
-qic_ar1_lead1 <- QIC(gee_model_ar1_lead1)[[1]]
-
-cat("Treatment 0,+3, lead1\n")
-gee_model_ar1_off_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "ar1",
-                        waves = iso_yday,
-                        data = collisions_weather_corr)
-summary(gee_model_ar1_off_lead1)
-qic_ar1_off_lead1 <- QIC(gee_model_ar1_off_lead1)[[1]]
-
-cat("Fit GEE with independent correlation, lead1\n")
-gee_model_ind_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "independence",
-                        waves = iso_yday,
-                        data = collisions_weather_corr, 
-                        scale.fix = F)
-summary(gee_model_ind_lead1)
-qic_ind_lead1 <- QIC(gee_model_ind_lead1)[[1]]
-
-cat("Treatment 0,+3, lead1\n")
-gee_model_ind_off_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "independence",
-                        waves = iso_yday,
-                        data = collisions_weather_corr, 
-                        scale.fix = F)
-summary(gee_model_ind_off_lead1)
-qic_ind_off_lead1 <- QIC(gee_model_ind_off_lead1)[[1]]
-
-cat("Fit GEE with exchangeable correlation, lead1\n")
-gee_model_ex_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                       offset = log(license_holders_sex_age),
-                       id = cluster, 
-                       family = poisson(link = "log"),
-                       corstr = "exchangeable",
-                       waves = iso_yday,
-                       data = collisions_weather_corr,
-                       scale.fix = F)
-summary(gee_model_ex_lead1)
-qic_ex_lead1 <- QIC(gee_model_ex_lead1)[[1]]
-
-cat("Treatment 0,+3, lead1\n")
-gee_model_ex_off_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                       offset = log(license_holders_sex_age),
-                       id = cluster, 
-                       family = poisson(link = "log"),
-                       corstr = "exchangeable",
-                       waves = iso_yday,
-                       data = collisions_weather_corr,
-                       scale.fix = F)
-summary(gee_model_ex_off_lead1)
-qic_ex_off_lead1 <- QIC(gee_model_ex_off_lead1)[[1]]
-
-#:#:#:#:#:#:#:#:#:#:
-
-cat("Without Sherbrooke as treated, lead1\n")
-cat("Fit GEE with AR1 correlation structure, lead1\n")
-gee_model_ar12_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                         offset = log(license_holders_sex_age),
-                         id = cluster, 
-                         family = poisson(link = "log"),
-                         corstr = "ar1",
-                         waves = iso_yday,
-                         data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar12_lead1)
-qic_ar12_lead1 <- QIC(gee_model_ar12_lead1)[[1]]
-
-cat("Treatment 0,+3, lead1\n")
-gee_model_ar12_off_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                         offset = log(license_holders_sex_age),
-                         id = cluster, 
-                         family = poisson(link = "log"),
-                         corstr = "ar1",
-                         waves = iso_yday,
-                         data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar12_off_lead1)
-qic_ar12_off_lead1 <- QIC(gee_model_ar12_off_lead1)[[1]]
-
-cat("Fit GEE with independent correlation, lead1\n")
-gee_model_ind2_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                         offset = log(license_holders_sex_age),
-                         id = cluster, 
-                         family = poisson(link = "log"),
-                         corstr = "independence",
-                         waves = iso_yday,
-                         data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind2_lead1)
-qic_ind2_lead1 <- QIC(gee_model_ind2_lead1)[[1]]
-
-cat("Treatment 0,+3, lead1\n")
-gee_model_ind2_off_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                         offset = log(license_holders_sex_age),
-                         id = cluster, 
-                         family = poisson(link = "log"),
-                         corstr = "independence",
-                         waves = iso_yday,
-                         data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind2_off_lead1)
-qic_ind2_off_lead1 <- QIC(gee_model_ind2_off_lead1)[[1]]
-
-cat("Fit GEE with exchangeable correlation, lead1\n")
-gee_model_ex2_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "exchangeable",
-                        waves = iso_yday,
-                        data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex2_lead1)
-qic_ex2_lead1 <- QIC(gee_model_ex2_lead1)[[1]]
-
-cat("Treatment 0,+3, lead1\n")
-gee_model_ex2_off_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "exchangeable",
-                        waves = iso_yday,
-                        data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex2_off_lead1)
-qic_ex2_off_lead1 <- QIC(gee_model_ex2_off_lead1)[[1]]
-
-#:#:#:#:#:#:#:#:#:#:#:#:
-#:#:#:#:#:#:#:#:#:#:#:#:
-
-cat("Fit GEE with AR1 correlation structure, lead1\n")
-gee_model_ar1_alt7_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "ar1",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar1_alt7_lead1)
-qic_ar1_alt7_lead1 <- QIC(gee_model_ar1_alt7_lead1)[[1]]
-
-cat("Treatment 0,+7, lead1\n")
-gee_model_ar1_alt7_off_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "ar1",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar1_alt7_off_lead1)
-qic_ar1_alt7_off_lead1 <- QIC(gee_model_ar1_alt7_off_lead1)[[1]]
-
-cat("Fit GEE with independent correlation, lead1\n")
-gee_model_ind_alt7_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "independence",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind_alt7_lead1)
-qic_ind_alt7_lead1 <- QIC(gee_model_ind_alt7_lead1)[[1]]
-
-cat("Treatment 0,+7, lead1\n")
-gee_model_ind_alt7_off_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "independence",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind_alt7_off_lead1)
-qic_ind_alt7_off_lead1 <- QIC(gee_model_ind_alt7_off_lead1)[[1]]
-
-cat("Fit GEE with exchangeable correlation, lead1\n")
-gee_model_ex_alt7_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                            offset = log(license_holders_sex_age),
-                            id = cluster, 
-                            family = poisson(link = "log"),
-                            corstr = "exchangeable",
-                            waves = iso_yday,
-                            data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex_alt7_lead1)
-qic_ex_alt7_lead1 <- QIC(gee_model_ex_alt7_lead1)[[1]]
-
-cat("Treatment 0,+7, lead1\n")
-gee_model_ex_alt7_off_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                            offset = log(license_holders_sex_age),
-                            id = cluster, 
-                            family = poisson(link = "log"),
-                            corstr = "exchangeable",
-                            waves = iso_yday,
-                            data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex_alt7_off_lead1)
-qic_ex_alt7_off_lead1 <- QIC(gee_model_ex_alt7_off_lead1)[[1]]
-
-#:#:#:#:#:#:#:#:#:#:
-
-cat("Without Sherbrooke as treated, lead1\n")
-cat("Fit GEE with AR1 correlation structure, lead1\n")
-gee_model_ar12_alt7_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                              offset = log(license_holders_sex_age),
-                              id = cluster, 
-                              family = poisson(link = "log"),
-                              corstr = "ar1",
-                              waves = iso_yday,
-                              data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar12_alt7_lead1)
-qic_ar12_alt7_lead1 <- QIC(gee_model_ar12_alt7_lead1)[[1]]
-
-cat("Treatment 0,+7, lead1\n")
-gee_model_ar12_alt7_off_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                              offset = log(license_holders_sex_age),
-                              id = cluster, 
-                              family = poisson(link = "log"),
-                              corstr = "ar1",
-                              waves = iso_yday,
-                              data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar12_alt7_off_lead1)
-qic_ar12_alt7_off_lead1 <- QIC(gee_model_ar12_alt7_off_lead1)[[1]]
-
-cat("Fit GEE with independent correlation, lead1\n")
-gee_model_ind2_alt7_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                              offset = log(license_holders_sex_age),
-                              id = cluster, 
-                              family = poisson(link = "log"),
-                              corstr = "independence",
-                              waves = iso_yday,
-                              data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind2_alt7_lead1)
-qic_ind2_alt7_lead1 <- QIC(gee_model_ind2_alt7_lead1)[[1]]
-
-cat("Treatment 0,+7, lead1\n")
-gee_model_ind2_alt7_off_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                              offset = log(license_holders_sex_age),
-                              id = cluster, 
-                              family = poisson(link = "log"),
-                              corstr = "independence",
-                              waves = iso_yday,
-                              data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind2_alt7_off_lead1)
-qic_ind2_alt7_off_lead1 <- QIC(gee_model_ind2_alt7_off_lead1)[[1]]
-
-cat("Fit GEE with exchangeable correlation, lead1\n")
-gee_model_ex2_alt7_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "exchangeable",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex2_alt7)
-qic_ex2_alt7_lead1 <- QIC(gee_model_ex2_alt7_lead1)[[1]]
-
-cat("Treatment 0,+7, lead1\n")
-gee_model_ex2_alt7_off_lead1 <- geeglm(velocidad_lead1_post_conv_imp ~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "exchangeable",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex2_alt7_off_lead1)
-qic_ex2_alt7_off_lead1 <- QIC(gee_model_ex2_alt7_off_lead1)[[1]]
-
-
-
-
-
-
-
-cat("Treatment -2,+3, lead2\n")
-gee_model_ar1_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "ar1",
-                        waves = iso_yday,
-                        data = collisions_weather_corr)
-summary(gee_model_ar1_lead2)
-qic_ar1_lead2 <- QIC(gee_model_ar1_lead2)[[1]]
-
-cat("Treatment 0,+3, lead2\n")
-gee_model_ar1_off_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "ar1",
-                        waves = iso_yday,
-                        data = collisions_weather_corr)
-summary(gee_model_ar1_off_lead2)
-qic_ar1_off_lead2 <- QIC(gee_model_ar1_off_lead2)[[1]]
-
-cat("Fit GEE with independent correlation\n")
-gee_model_ind_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "independence",
-                        waves = iso_yday,
-                        data = collisions_weather_corr, 
-                        scale.fix = F)
-summary(gee_model_ind_lead2)
-qic_ind_lead2 <- QIC(gee_model_ind_lead2)[[1]]
-
-cat("Treatment 0,+3\n")
-gee_model_ind_off_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "independence",
-                        waves = iso_yday,
-                        data = collisions_weather_corr, 
-                        scale.fix = F)
-summary(gee_model_ind_off_lead2)
-qic_ind_off_lead2 <- QIC(gee_model_ind_off_lead2)[[1]]
-
-cat("Fit GEE with exchangeable correlation\n")
-gee_model_ex_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                       offset = log(license_holders_sex_age),
-                       id = cluster, 
-                       family = poisson(link = "log"),
-                       corstr = "exchangeable",
-                       waves = iso_yday,
-                       data = collisions_weather_corr,
-                       scale.fix = F)
-summary(gee_model_ex_lead2)
-qic_ex_lead2 <- QIC(gee_model_ex_lead2)[[1]]
-
-cat("Treatment 0,+3\n")
-gee_model_ex_off_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                       offset = log(license_holders_sex_age),
-                       id = cluster, 
-                       family = poisson(link = "log"),
-                       corstr = "exchangeable",
-                       waves = iso_yday,
-                       data = collisions_weather_corr,
-                       scale.fix = F)
-summary(gee_model_ex_off_lead2)
-qic_ex_off_lead2 <- QIC(gee_model_ex_off_lead2)[[1]]
-
-#:#:#:#:#:#:#:#:#:#:
-
-cat("Without Sherbrooke as treated\n")
-cat("Fit GEE with AR1 correlation structure\n")
-gee_model_ar12_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                         offset = log(license_holders_sex_age),
-                         id = cluster, 
-                         family = poisson(link = "log"),
-                         corstr = "ar1",
-                         waves = iso_yday,
-                         data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar12_lead2)
-qic_ar12_lead2 <- QIC(gee_model_ar12_lead2)[[1]]
-
-cat("Treatment 0,+3\n")
-gee_model_ar12_off_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                         offset = log(license_holders_sex_age),
-                         id = cluster, 
-                         family = poisson(link = "log"),
-                         corstr = "ar1",
-                         waves = iso_yday,
-                         data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar12_off_lead2)
-qic_ar12_off_lead2 <- QIC(gee_model_ar12_off_lead2)[[1]]
-
-cat("Fit GEE with independent correlation\n")
-gee_model_ind2_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                         offset = log(license_holders_sex_age),
-                         id = cluster, 
-                         family = poisson(link = "log"),
-                         corstr = "independence",
-                         waves = iso_yday,
-                         data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind2_lead2)
-qic_ind2_lead2 <- QIC(gee_model_ind2_lead2)[[1]]
-
-cat("Treatment 0,+3\n")
-gee_model_ind2_off_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                         offset = log(license_holders_sex_age),
-                         id = cluster, 
-                         family = poisson(link = "log"),
-                         corstr = "independence",
-                         waves = iso_yday,
-                         data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind2_off_lead2)
-qic_ind2_off_lead2 <- QIC(gee_model_ind2_off_lead2)[[1]]
-
-cat("Fit GEE with exchangeable correlation\n")
-gee_model_ex2_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "exchangeable",
-                        waves = iso_yday,
-                        data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex2_lead2)
-qic_ex2_lead2 <- QIC(gee_model_ex2_lead2)[[1]]
-
-cat("Treatment 0,+3\n")
-gee_model_ex2_off_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                        offset = log(license_holders_sex_age),
-                        id = cluster, 
-                        family = poisson(link = "log"),
-                        corstr = "exchangeable",
-                        waves = iso_yday,
-                        data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex2_off_lead2)
-qic_ex2_off_lead2 <- QIC(gee_model_ex2_off_lead2)[[1]]
-
-#:#:#:#:#:#:#:#:#:#:#:#:
-#:#:#:#:#:#:#:#:#:#:#:#:
-
-cat("Fit GEE with AR1 correlation structure\n")
-gee_model_ar1_alt7_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "ar1",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar1_alt7_lead2)
-qic_ar1_alt7_lead2 <- QIC(gee_model_ar1_alt7_lead2)[[1]]
-
-cat("Treatment 0,+7\n")
-gee_model_ar1_alt7_off_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "ar1",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar1_alt7_off_lead2)
-qic_ar1_alt7_off_lead2 <- QIC(gee_model_ar1_alt7_off_lead2)[[1]]
-
-cat("Fit GEE with independent correlation\n")
-gee_model_ind_alt7_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "independence",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind_alt7_lead2)
-qic_ind_alt7_lead2 <- QIC(gee_model_ind_alt7_lead2)[[1]]
-
-cat("Treatment 0,+7\n")
-gee_model_ind_alt7_off_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "independence",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind_alt7_off_lead2)
-qic_ind_alt7_off_lead2 <- QIC(gee_model_ind_alt7_off_lead2)[[1]]
-
-cat("Fit GEE with exchangeable correlation\n")
-gee_model_ex_alt7_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D7 + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                            offset = log(license_holders_sex_age),
-                            id = cluster, 
-                            family = poisson(link = "log"),
-                            corstr = "exchangeable",
-                            waves = iso_yday,
-                            data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex_alt7_lead2)
-qic_ex_alt7_lead2 <- QIC(gee_model_ex_alt7_lead2)[[1]]
-
-cat("Treatment 0,+7\n")
-gee_model_ex_alt7_off_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D7_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                            offset = log(license_holders_sex_age),
-                            id = cluster, 
-                            family = poisson(link = "log"),
-                            corstr = "exchangeable",
-                            waves = iso_yday,
-                            data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex_alt7_off_lead2)
-qic_ex_alt7_off_lead2 <- QIC(gee_model_ex_alt7_off_lead2)[[1]]
-
-#:#:#:#:#:#:#:#:#:#:
-
-cat("Without Sherbrooke as treated\n")
-cat("Fit GEE with AR1 correlation structure\n")
-gee_model_ar12_alt7_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                              offset = log(license_holders_sex_age),
-                              id = cluster, 
-                              family = poisson(link = "log"),
-                              corstr = "ar1",
-                              waves = iso_yday,
-                              data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar12_alt7_lead2)
-qic_ar12_alt7_lead2 <- QIC(gee_model_ar12_alt7_lead2)[[1]]
-
-cat("Treatment 0,+7\n")
-gee_model_ar12_alt7_off_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                              offset = log(license_holders_sex_age),
-                              id = cluster, 
-                              family = poisson(link = "log"),
-                              corstr = "ar1",
-                              waves = iso_yday,
-                              data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ar12_alt7_off_lead2)
-qic_ar12_alt7_off_lead2 <- QIC(gee_model_ar12_alt7_off_lead2)[[1]]
-
-cat("Fit GEE with independent correlation\n")
-gee_model_ind2_alt7_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                              offset = log(license_holders_sex_age),
-                              id = cluster, 
-                              family = poisson(link = "log"),
-                              corstr = "independence",
-                              waves = iso_yday,
-                              data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind2_alt7_lead2)
-qic_ind2_alt7_lead2 <- QIC(gee_model_ind2_alt7_lead2)[[1]]
-
-cat("Treatment 0,+7\n")
-gee_model_ind2_alt7_off_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                              offset = log(license_holders_sex_age),
-                              id = cluster, 
-                              family = poisson(link = "log"),
-                              corstr = "independence",
-                              waves = iso_yday,
-                              data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ind2_alt7_off_lead2)
-qic_ind2_alt7_off_lead2 <- QIC(gee_model_ind2_alt7_off_lead2)[[1]]
-
-cat("Fit GEE with exchangeable correlation\n")
-gee_model_ex2_alt7_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D7_sens + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "exchangeable",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex2_alt7_lead2)
-qic_ex2_alt7_lead2 <- QIC(gee_model_ex2_alt7_lead2)[[1]]
-
-cat("Treatment 0,+7\n")
-gee_model_ex2_alt7_off_lead2 <- geeglm(velocidad_lead2_post_conv_imp ~ D7_sens_off + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp,
-                             offset = log(license_holders_sex_age),
-                             id = cluster, 
-                             family = poisson(link = "log"),
-                             corstr = "exchangeable",
-                             waves = iso_yday,
-                             data = collisions_weather_corr, scale.fix = F)
-summary(gee_model_ex2_alt7_off_lead2)
-qic_ex2_alt7_off_lead2 <- QIC(gee_model_ex2_alt7_off_lead2)[[1]]
-
-
-# Print all QIC values at the end with descriptions
-cat("\nQIC Values for All Models:\n")
-cat("QIC for AR1 correlation, treatment D:", qic_ar1, "\n")
-cat("QIC for AR1 correlation, treatment D_off:", qic_ar1_off, "\n")
-cat("QIC for independence correlation, treatment D:", qic_ind, "\n")
-cat("QIC for independence correlation, treatment D_off:", qic_ind_off, "\n")
-cat("QIC for exchangeable correlation, treatment D:", qic_ex, "\n")
-cat("QIC for exchangeable correlation, treatment D_off:", qic_ex_off, "\n")
-cat("QIC for AR1 correlation, treatment D_sens:", qic_ar12, "\n")
-cat("QIC for AR1 correlation, treatment D_sens_off:", qic_ar12_off, "\n")
-cat("QIC for independence correlation, treatment D_sens:", qic_ind2, "\n")
-cat("QIC for independence correlation, treatment D_sens_off:", qic_ind2_off, "\n")
-cat("QIC for exchangeable correlation, treatment D_sens:", qic_ex2, "\n")
-cat("QIC for exchangeable correlation, treatment D_sens_off:", qic_ex2_off, "\n")
-cat("QIC for AR1 correlation, treatment D7:", qic_ar1_alt7, "\n")
-cat("QIC for AR1 correlation, treatment D7_off:", qic_ar1_alt7_off, "\n")
-cat("QIC for independence correlation, treatment D7:", qic_ind_alt7, "\n")
-cat("QIC for independence correlation, treatment D7_off:", qic_ind_alt7_off, "\n")
-cat("QIC for exchangeable correlation, treatment D7:", qic_ex_alt7, "\n")
-cat("QIC for exchangeable correlation, treatment D7_off:", qic_ex_alt7_off, "\n")
-cat("QIC for AR1 correlation, treatment D7_sens:", qic_ar12_alt7, "\n")
-cat("QIC for AR1 correlation, treatment D7_sens_off:", qic_ar12_alt7_off, "\n")
-cat("QIC for independence correlation, treatment D7_sens:", qic_ind2_alt7, "\n")
-cat("QIC for independence correlation, treatment D7_sens_off:", qic_ind2_alt7_off, "\n")
-cat("QIC for exchangeable correlation, treatment D7_sens:", qic_ex2_alt7, "\n")
-cat("QIC for exchangeable correlation, treatment D7_sens_off:", qic_ex2_alt7_off, "\n")
-
-
-
-cat("QIC for AR1 correlation, treatment D lead 1:", qic_ar1_lead1, "\n")
-cat("QIC for AR1 correlation, treatment D_off lead 1:", qic_ar1_off_lead1, "\n")
-cat("QIC for independence correlation, treatment D lead 1:", qic_ind_lead1, "\n")
-cat("QIC for independence correlation, treatment D_off lead 1:", qic_ind_off_lead1, "\n")
-cat("QIC for exchangeable correlation, treatment D lead 1:", qic_ex_lead1, "\n")
-cat("QIC for exchangeable correlation, treatment D_off lead 1:", qic_ex_off_lead1, "\n")
-cat("QIC for AR1 correlation, treatment D_sens lead 1:", qic_ar12_lead1, "\n")
-cat("QIC for AR1 correlation, treatment D_sens_off lead 1:", qic_ar12_off_lead1, "\n")
-cat("QIC for independence correlation, treatment D_sens lead 1:", qic_ind2_lead1, "\n")
-cat("QIC for independence correlation, treatment D_sens_off lead 1:", qic_ind2_off_lead1, "\n")
-cat("QIC for exchangeable correlation, treatment D_sens lead 1:", qic_ex2_lead1, "\n")
-cat("QIC for exchangeable correlation, treatment D_sens_off lead 1:", qic_ex2_off_lead1, "\n")
-cat("QIC for AR1 correlation, treatment D7 lead 1:", qic_ar1_alt7_lead1, "\n")
-cat("QIC for AR1 correlation, treatment D7_off lead 1:", qic_ar1_alt7_off_lead1, "\n")
-cat("QIC for independence correlation, treatment D7 lead 1:", qic_ind_alt7_lead1, "\n")
-cat("QIC for independence correlation, treatment D7_off lead 1:", qic_ind_alt7_off_lead1, "\n")
-cat("QIC for exchangeable correlation, treatment D7 lead 1:", qic_ex_alt7_lead1, "\n")
-cat("QIC for exchangeable correlation, treatment D7_off lead 1:", qic_ex_alt7_off_lead1, "\n")
-cat("QIC for AR1 correlation, treatment D7_sens lead 1:", qic_ar12_alt7_lead1, "\n")
-cat("QIC for AR1 correlation, treatment D7_sens_off lead 1:", qic_ar12_alt7_off_lead1, "\n")
-cat("QIC for independence correlation, treatment D7_sens lead 1:", qic_ind2_alt7_lead1, "\n")
-cat("QIC for independence correlation, treatment D7_sens_off lead 1:", qic_ind2_alt7_off_lead1, "\n")
-cat("QIC for exchangeable correlation, treatment D7_sens lead 1:", qic_ex2_alt7_lead1, "\n")
-cat("QIC for exchangeable correlation, treatment D7_sens_off lead 1:", qic_ex2_alt7_off_lead1, "\n")
-
-cat("QIC for AR1 correlation, treatment D lead2:", qic_ar1_lead2, "\n")
-cat("QIC for AR1 correlation, treatment D_off lead2:", qic_ar1_off_lead2, "\n")
-cat("QIC for independence correlation, treatment D lead2:", qic_ind_lead2, "\n")
-cat("QIC for independence correlation, treatment D_off lead2:", qic_ind_off_lead2, "\n")
-cat("QIC for exchangeable correlation, treatment D lead2:", qic_ex_lead2, "\n")
-cat("QIC for exchangeable correlation, treatment D_off lead2:", qic_ex_off_lead2, "\n")
-cat("QIC for AR1 correlation, treatment D_sens lead2:", qic_ar12_lead2, "\n")
-cat("QIC for AR1 correlation, treatment D_sens_off lead2:", qic_ar12_off_lead2, "\n")
-cat("QIC for independence correlation, treatment D_sens lead2:", qic_ind2_lead2, "\n")
-cat("QIC for independence correlation, treatment D_sens_off lead2:", qic_ind2_off_lead2, "\n")
-cat("QIC for exchangeable correlation, treatment D_sens lead2:", qic_ex2_lead2, "\n")
-cat("QIC for exchangeable correlation, treatment D_sens_off lead2:", qic_ex2_off_lead2, "\n")
-cat("QIC for AR1 correlation, treatment D7 lead2:", qic_ar1_alt7_lead2, "\n")
-cat("QIC for AR1 correlation, treatment D7_off lead2:", qic_ar1_alt7_off_lead2, "\n")
-cat("QIC for independence correlation, treatment D7 lead2:", qic_ind_alt7_lead2, "\n")
-cat("QIC for independence correlation, treatment D7_off lead2:", qic_ind_alt7_off_lead2, "\n")
-cat("QIC for exchangeable correlation, treatment D7 lead2:", qic_ex_alt7_lead2, "\n")
-cat("QIC for exchangeable correlation, treatment D7_off lead2:", qic_ex_alt7_off_lead2, "\n")
-cat("QIC for AR1 correlation, treatment D7_sens lead2:", qic_ar12_alt7_lead2, "\n")
-cat("QIC for AR1 correlation, treatment D7_sens_off lead2:", qic_ar12_alt7_off_lead2, "\n")
-cat("QIC for independence correlation, treatment D7_sens lead2:", qic_ind2_alt7_lead2, "\n")
-cat("QIC for independence correlation, treatment D7_sens_off lead2:", qic_ind2_alt7_off_lead2, "\n")
-cat("QIC for exchangeable correlation, treatment D7_sens lead2:", qic_ex2_alt7_lead2, "\n")
-cat("QIC for exchangeable correlation, treatment D7_sens_off lead2:", qic_ex2_alt7_off_lead2, "\n")
-```
-
-
-```{r}
-#| class-output: center-table
-#| message: true
-#| include: true
-#| warning: true
-#| error: true
-#| label: test-association-geeM
-#| eval: false
-#| results: "hold"
-
-collisions_weather_corr <- collisions_weather_corr |>
-  dplyr::arrange(cluster, iso_yday) |>  data.frame()
-
-# (b) Ajuste Poisson con AR(1).  M = 1 para AR(1);  M = 2 sería AR(2)
-geeM_pois_m2 <- geem(
-  velocidad ~ offset(license_holders_sex_age) + D + min_temp_mean_lin +
-    max_temp_mean_lin + total_precip_median_lin,
-  id      = collisions_weather_corr$cluster,
-  waves   = as.integer(collisions_weather_corr$iso_yday),
-  corstr  = "m-dependent",
-  M       = 40,                 # correlaciones solo hasta lag 2
-  family  = poisson(link = "log"),
-  data    = collisions_weather_corr,
-  scale.fix = FALSE
-)
-summary(geeM_pois_m2)
-
-
-```
-
-
-```{r}
-#| class-output: center-table
-#| message: true
-#| include: true
-#| warning: true
-#| error: true
-#| label: test-association2
-#| eval: false
-#| results: "hold"
-#library(brms)
-
-# Modelo bayesiano jerárquico con efectos fijos por ciudad y efectos aleatorios por año
-bayes_model <- brm(
-  formula = velocidad ~ D + min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp+ factor(year) + factor(mrc) + offset(log(offset)) ,
-  family = negbinomial(),
-  data = collisions_weather_corr,
-  chains = 4, cores = 8, iter = 4000, warmup = 1000,
-  control = list(adapt_delta = 0.95)
-)
-
-summary(bayes_model)
-plot(bayes_model)
-
-# Calcular LOO para ambos modelos
-loo_model_full <- loo(bayes_model)
-loo_model_simple <- loo(bayes_model_simple)
-
-# Comparar claramente ambos modelos
-loo_compare(loo_model_full, loo_model_simple)
-
-
-# Diagnósticos claros
-mcmc_trace(bayes_model_prior)
-mcmc_pairs(bayes_model_prior, np = nuts_params(bayes_model_prior))
-```
-
-
-```{r}
-#| class-output: center-table
-#| message: true
-#| include: true
-#| warning: true
-#| error: true
-#| label: test-association22
-#| eval: false
-#| results: "hold"
-# Crear dataset contrafactual (exposure = 0 para todos los días)
-data_cf <- data %>% mutate(exposure = 0)
-
-# Predicciones observadas
-pred_obs <- posterior_predict(bayes_model, newdata = data, summary = TRUE)
-
-# Predicciones contrafactuales
-pred_cf <- posterior_predict(bayes_model, newdata = data_cf, summary = TRUE)
-
-# Agregar resultados al dataset original
-data$pred_obs_mean <- pred_obs[, "Estimate"]
-data$pred_cf_mean <- pred_cf[, "Estimate"]
-
-ggplot(data, aes(x = date)) +
-  geom_line(aes(y = pred_obs_mean, color = "Observado")) +
-  geom_line(aes(y = pred_cf_mean, color = "Contrafactual (sin exposición)")) +
-  facet_wrap(~ city, scales = "free_y") +
-  labs(y = "Número esperado de tickets", x = "Fecha",
-       title = "Evolución observada vs contrafactual por ciudad",
-       color = "Escenario") +
-  theme_minimal()
-```
 
 ### GNM
 
@@ -2067,22 +537,22 @@ qic_gnm <- function(mod_quasi) {
 
 cat("Treated (w/o Sherbrooke), contemporaneous effects\n")
 model_gnm_tratados <- gnm(
-  sum_velocidad_lead1 ~ exposure_window + mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
     offset(off_lic),
   eliminate = cluster,                            # <── “conditional” part
   family    = quasipoisson(link = "log"),
-  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated==TRUE)
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==TRUE)
 )
 summary(model_gnm_tratados)
 
 
 cat("Controls (w/o Sherbrooke), contemporaneous effects\n")
 model_gnm_controles <- gnm(
-  sum_velocidad_lead1 ~ exposure_window + mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
     offset(off_lic),
   eliminate = cluster,                            # <── “conditional” part
   family    = quasipoisson(link = "log"),
-  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated==FALSE)
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==FALSE)
 )
 summary(model_gnm_controles)
 
@@ -2094,10 +564,21 @@ cat("Controls vs. Treated (w/o Sherbrooke), contemporaneous effects;  p-values\n
 p
 
 
+log_rrr  <- b2- b1
+se_rrr   <- sqrt(se1^2 + se2^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR      <- exp(log_rrr)
+lo95     <- exp(log_rrr - 1.96 * se_rrr)
+hi95     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR, lo95, hi95))
+
+
 
 cat("Treated (w/o Sherbrooke), effects after 1 day\n")
 model_gnm_tratados_lead1 <- gnm(
-  sum_velocidad_lead1 ~ exposure_window + mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
     offset(off_lic),
   eliminate = cluster,                            # <── “conditional” part
   family    = quasipoisson(link = "log"),
@@ -2108,7 +589,7 @@ summary(model_gnm_tratados_lead1)
 
 cat("Controls (w/o Sherbrooke), effects after 1 day\n")
 model_gnm_controles_lead1 <- gnm(
-  sum_velocidad_lead1 ~ exposure_window + mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
     offset(off_lic),
   eliminate = cluster,                            # <── “conditional” part
   family    = quasipoisson(link = "log"),
@@ -2124,9 +605,21 @@ cat("Controls vs. Treated (w/o Sherbrooke), effects after 1 day;  p-values\n")
 p_lead1
 
 
+log_rrr  <- b2_lead1- b1_lead1
+se_rrr   <- sqrt(se1_lead1^2 + se2_lead1^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead1      <- exp(log_rrr)
+lo95_lead1     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_lead1     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_lead1, lo95_lead1, hi95_lead1))
+
+
+
 cat("Treated (w/o Sherbrooke), effects after 2 days\n")
 model_gnm_tratados_lead2 <- gnm(
-  sum_velocidad_lead2 ~ exposure_window + mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
     offset(off_lic),
   eliminate = cluster,                            # <── “conditional” part
   family    = quasipoisson(link = "log"),
@@ -2137,7 +630,7 @@ summary(model_gnm_tratados_lead2)
 
 cat("Controls (w/o Sherbrooke), effects after 2 days\n")
 model_gnm_controles_lead2 <- gnm(
-  sum_velocidad_lead2 ~ exposure_window + mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
     offset(off_lic),
   eliminate = cluster,                            # <── “conditional” part
   family    = quasipoisson(link = "log"),
@@ -2152,13 +645,25 @@ p_lead2   <- 2 * pnorm(-abs(z_lead2))     # 0.32
 cat("Controls vs. Treated (w/o Sherbrooke), effects after 2 days;  p-values\n")
 p_lead2
 
+
+log_rrr  <- b2_lead2- b1_lead2
+se_rrr   <- sqrt(se1_lead2^2 + se2_lead2^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2      <- exp(log_rrr)
+lo95_lead2     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_lead2     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_lead2, lo95_lead2, hi95_lead2))
+
+
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 cat("With Sherbrooke\n")
 
 cat("Treated (w/ Sherbrooke), contemporaneous effects\n")
 model_gnm_tratados_sens <- gnm(
-  sum_velocidad_lead1 ~ exposure_window + mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
     offset(off_lic),
   eliminate = cluster,                            # <── “conditional” part
   family    = quasipoisson(link = "log"),
@@ -2169,7 +674,7 @@ summary(model_gnm_tratados_sens)
 
 cat("Controls (w/ Sherbrooke), contemporaneous effects\n")
 model_gnm_controles_sens <- gnm(
-  sum_velocidad_lead1 ~ exposure_window + mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
     offset(off_lic),
   eliminate = cluster,                            # <── “conditional” part
   family    = quasipoisson(link = "log"),
@@ -2185,10 +690,20 @@ cat("Controls (w/ Sherbrooke) vs. Treated, contemporaneous effects;  p-values\n"
 p_sens
 
 
+log_rrr  <- b2_sens- b1_sens 
+se_rrr   <- sqrt(se1_sens^2 + se2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_sens      <- exp(log_rrr)
+lo95_sens     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_sens     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_sens, lo95_sens, hi95_sens))
+
 
 cat("Treated (w/ Sherbrooke), effects after 1 day\n")
 model_gnm_tratados_lead1_sens <- gnm(
-  sum_velocidad_lead1 ~ exposure_window + mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
     offset(off_lic),
   eliminate = cluster,                            # <── “conditional” part
   family    = quasipoisson(link = "log"),
@@ -2199,7 +714,7 @@ summary(model_gnm_tratados_lead1_sens)
 
 cat("Controls (w/ Sherbrooke), effects after 1 day\n")
 model_gnm_controles_lead1_sens <- gnm(
-  sum_velocidad_lead1 ~ exposure_window + mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
     offset(off_lic),
   eliminate = cluster,                            # <── “conditional” part
   family    = quasipoisson(link = "log"),
@@ -2214,10 +729,20 @@ p_lead1_sens   <- 2 * pnorm(-abs(z_lead1_sens))     # 0.32
 cat("Controls (w/ Sherbrooke) vs. Treated, effects after 1 day;  p-values\n")
 p_lead1_sens
 
+log_rrr  <- b2_lead1_sens- b1_lead1_sens
+se_rrr   <- sqrt(se1_lead1_sens^2 + se2_lead1_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead1_sens      <- exp(log_rrr)
+lo95_lead1_sens     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_lead1_sens     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_lead1_sens, lo95_lead1_sens, hi95_lead1_sens))
+
 
 cat("Treated (w/ Sherbrooke), effects after 2 days\n")
 model_gnm_tratados_lead2_sens <- gnm(
-  sum_velocidad_lead2 ~ exposure_window + mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
     offset(off_lic),
   eliminate = cluster,                            # <── “conditional” part
   family    = quasipoisson(link = "log"),
@@ -2228,7 +753,7 @@ summary(model_gnm_tratados_lead2_sens)
 
 cat("Controls (w/ Sherbrooke), effects after 2 days\n")
 model_gnm_controles_lead2_sens <- gnm(
-  sum_velocidad_lead2 ~ exposure_window + mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
     offset(off_lic),
   eliminate = cluster,                            # <── “conditional” part
   family    = quasipoisson(link = "log"),
@@ -2244,6 +769,16 @@ cat("Controls (w/ Sherbrooke) vs. Treated, effects after 2 days;  p-values\n")
 p_lead2_sens
 
 
+log_rrr  <- b2_lead2_sens-b1_lead2_sens
+se_rrr   <- sqrt(se1_lead2_sens^2 + se2_lead2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_sens      <- exp(log_rrr)
+lo95_lead2_sens     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_lead2_sens     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_lead2_sens, lo95_lead2_sens, hi95_lead2_sens))
+
 qic_gnm_tratados             <- qic_gnm(model_gnm_tratados)
 qic_gnm_tratados_lead1       <- qic_gnm(model_gnm_tratados_lead1)
 qic_gnm_tratados_lead2       <- qic_gnm(model_gnm_tratados_lead2)
@@ -2257,6 +792,7 @@ qic_gnm_controles_lead2      <- qic_gnm(model_gnm_controles_lead2)
 qic_gnm_controles_sens       <- qic_gnm(model_gnm_controles_sens)
 qic_gnm_controles_lead1_sens <- qic_gnm(model_gnm_controles_lead1_sens)
 qic_gnm_controles_lead2_sens <- qic_gnm(model_gnm_controles_lead2_sens)
+
 
 ## ─── 2. Vector with names ───────────────────────────────────────────
 qic_vec <- c(
@@ -2286,7 +822,536 @@ cat(
 
 ```
 
-We make model with interaction terms.
+We made placebo tests with post-exposure.
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: test-association-gnm-placebo
+#| eval: true
+#| results: "hold"
+
+cat("Treated (w/o Sherbrooke), contemporaneous effects\n")
+placebo_model_gnm_tratados <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==TRUE)
+)
+summary(placebo_model_gnm_tratados)
+
+
+cat("Controls (w/o Sherbrooke), contemporaneous effects\n")
+placebo_model_gnm_controles <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==FALSE)
+)
+summary(placebo_model_gnm_controles)
+
+pb1  <- placebo_model_gnm_controles$coefficients[[1]]; pse1 <- sqrt(diag(vcov(placebo_model_gnm_controles)))[[1]]
+pb2  <- placebo_model_gnm_tratados$coefficients[[1]]; pse2 <- sqrt(diag(vcov(placebo_model_gnm_tratados)))[[1]]
+pz   <- (pb1 - pb2) / sqrt(pse1^2 + pse2^2)
+pp   <- 2 * pnorm(-abs(pz))     # 0.32
+cat("Controls vs. Treated (w/o Sherbrooke), contemporaneous effects;  p-values\n")
+pp
+
+log_rrr  <- pb2-pb1
+se_rrr   <- sqrt(pse1^2 + pse2^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_p      <- exp(log_rrr)
+lo95_p     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_p     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_p, lo95_p, hi95_p))
+
+
+cat("Treated (w/o Sherbrooke), effects after 1 day\n")
+placebo_model_gnm_tratados_lead1 <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==TRUE)
+)
+summary(placebo_model_gnm_tratados_lead1)
+
+
+cat("Controls (w/o Sherbrooke), effects after 1 day\n")
+placebo_model_gnm_controles_lead1 <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==FALSE)
+)
+summary(placebo_model_gnm_controles_lead1)
+
+pb1_lead1  <- placebo_model_gnm_controles_lead1$coefficients[[1]]; pse1_lead1 <- sqrt(diag(vcov(placebo_model_gnm_controles_lead1)))[[1]]
+pb2_lead1  <- placebo_model_gnm_tratados_lead1$coefficients[[1]]; pse2_lead1 <- sqrt(diag(vcov(placebo_model_gnm_tratados_lead1)))[[1]]
+pz_lead1   <- (pb1_lead1 - pb2_lead1) / sqrt(pse1_lead1^2 + pse2_lead1^2)
+pp_lead1   <- 2 * pnorm(-abs(z_lead1))     # 0.32
+cat("Controls vs. Treated (w/o Sherbrooke), effects after 1 day;  p-values\n")
+pp_lead1
+
+
+log_rrr  <- pb2_lead1-pb1_lead1 
+se_rrr   <- sqrt(pse1_lead1^2 + pse2_lead1^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_p_lead1      <- exp(log_rrr)
+lo95_p_lead1     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_p_lead1     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_p_lead1, lo95_p_lead1, hi95_p_lead1))
+
+cat("Treated (w/o Sherbrooke), effects after 2 days\n")
+placebo_model_gnm_tratados_lead2 <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==TRUE)
+)
+summary(placebo_model_gnm_tratados_lead2)
+
+
+cat("Controls (w/o Sherbrooke), effects after 2 days\n")
+placebo_model_gnm_controles_lead2 <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==FALSE)
+)
+summary(placebo_model_gnm_controles_lead2)
+
+pb1_lead2  <- placebo_model_gnm_controles_lead2$coefficients[[1]]; pse1_lead2 <- sqrt(diag(vcov(placebo_model_gnm_controles_lead2)))[[1]]
+pb2_lead2  <- placebo_model_gnm_tratados_lead2$coefficients[[1]]; pse2_lead2 <- sqrt(diag(vcov(placebo_model_gnm_tratados_lead2)))[[1]]
+pz_lead2   <- (pb1_lead2 - pb2_lead2) / sqrt(pse1_lead2^2 + pse2_lead2^2)
+pp_lead2   <- 2 * pnorm(-abs(pz_lead2))     # 0.32
+cat("Controls vs. Treated (w/o Sherbrooke), effects after 2 days;  p-values\n")
+pp_lead2
+
+
+
+log_rrr  <- pb2_lead2- pb1_lead2
+se_rrr   <- sqrt(pse1_lead2^2 + pse2_lead2^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_p_lead2      <- exp(log_rrr)
+lo95_p_lead2     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_p_lead2     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_p_lead2, lo95_p_lead2, hi95_p_lead2))
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+cat("With Sherbrooke\n")
+
+cat("Treated (w/ Sherbrooke), contemporaneous effects\n")
+placebo_model_gnm_tratados_sens <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated_sens==TRUE)
+)
+summary(placebo_model_gnm_tratados_sens)
+
+
+cat("Controls (w/ Sherbrooke), contemporaneous effects\n")
+placebo_model_gnm_controles_sens <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated_sens==FALSE)
+)
+summary(placebo_model_gnm_controles_sens)
+
+pb1_sens  <- placebo_model_gnm_controles_sens$coefficients[[1]]; pse1_sens <- sqrt(diag(vcov(placebo_model_gnm_controles_sens)))[[1]]
+pb2_sens  <- placebo_model_gnm_tratados_sens$coefficients[[1]]; pse2_sens <- sqrt(diag(vcov(placebo_model_gnm_tratados_sens)))[[1]]
+pz_sens   <- (pb1_sens - pb2_sens) / sqrt(pse1_sens^2 + pse2_sens^2)
+pp_sens   <- 2 * pnorm(-abs(pz_sens))     # 0.32
+cat("Controls (w/ Sherbrooke) vs. Treated, contemporaneous effects;  p-values\n")
+pp_sens
+
+
+log_rrr  <- pb2_sens-pb1_sens
+se_rrr   <- sqrt(pse1_sens^2 + pse2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_p_sens      <- exp(log_rrr)
+lo95_p_sens     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_p_sens     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_p_sens, lo95_p_sens, hi95_p_sens))
+
+cat("Treated (w/ Sherbrooke), effects after 1 day\n")
+placebo_model_gnm_tratados_lead1_sens <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated_sens==TRUE)
+)
+summary(placebo_model_gnm_tratados_lead1_sens)
+
+
+cat("Controls (w/ Sherbrooke), effects after 1 day\n")
+placebo_model_gnm_controles_lead1_sens <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated_sens==FALSE)
+)
+summary(placebo_model_gnm_controles_lead1_sens)
+
+pb1_lead1_sens  <- placebo_model_gnm_controles_lead1_sens$coefficients[[1]]; pse1_lead1_sens <- sqrt(diag(vcov(placebo_model_gnm_controles_lead1_sens)))[[1]]
+pb2_lead1_sens  <- placebo_model_gnm_tratados_lead1_sens$coefficients[[1]]; pse2_lead1_sens <- sqrt(diag(vcov(placebo_model_gnm_tratados_lead1_sens)))[[1]]
+pz_lead1_sens   <- (pb1_lead1_sens - pb2_lead1_sens) / sqrt(pse1_lead1_sens^2 + pse2_lead1_sens^2)
+pp_lead1_sens   <- 2 * pnorm(-abs(pz_lead1_sens))     # 0.32
+cat("Controls (w/ Sherbrooke) vs. Treated, effects after 1 day;  p-values\n")
+pp_lead1_sens
+
+
+log_rrr  <- pb2_lead1_sens-pb1_lead1_sens
+se_rrr   <- sqrt(pse1_lead1_sens^2 + pse2_lead1_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_p_lead1_sens      <- exp(log_rrr)
+lo95_p_lead1_sens     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_p_lead1_sens     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_p_lead1_sens, lo95_p_lead1_sens, hi95_p_lead1_sens))
+
+cat("Treated (w/ Sherbrooke), effects after 2 days\n")
+placebo_model_gnm_tratados_lead2_sens <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated_sens==TRUE)
+)
+summary(placebo_model_gnm_tratados_lead2_sens)
+
+
+cat("Controls (w/ Sherbrooke), effects after 2 days\n")
+placebo_model_gnm_controles_lead2_sens <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated_sens==FALSE)
+)
+summary(placebo_model_gnm_controles_lead2_sens)
+
+pb1_lead2_sens  <- placebo_model_gnm_controles_lead2_sens$coefficients[[1]]; pse1_lead2_sens <- sqrt(diag(vcov(placebo_model_gnm_controles_lead2_sens)))[[1]]
+pb2_lead2_sens  <- placebo_model_gnm_tratados_lead2_sens$coefficients[[1]]; pse2_lead2_sens <- sqrt(diag(vcov(placebo_model_gnm_tratados_lead2_sens)))[[1]]
+pz_lead2_sens   <- (pb1_lead2_sens - pb2_lead2_sens) / sqrt(pse1_lead2_sens^2 + pse2_lead2_sens^2)
+pp_lead2_sens   <- 2 * pnorm(-abs(pz_lead2_sens))     # 0.32
+cat("Controls (w/ Sherbrooke) vs. Treated, effects after 2 days;  p-values\n")
+pp_lead2_sens
+
+log_rrr  <- pb2_lead2_sens-pb1_lead2_sens
+se_rrr   <- sqrt(pse1_lead2_sens^2 + pse2_lead2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_p_lead2_sens      <- exp(log_rrr)
+lo95_p_lead2_sens     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_p_lead2_sens     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_p_lead2_sens, lo95_p_lead2_sens, hi95_p_lead2_sens))
+
+
+cbind.data.frame(type=c("Main","","", "", "Placebo","","",""),
+rbind.data.frame(
+                tidy_exp_gnm_corr(model_gnm_tratados_sens),
+                tidy_exp_gnm_corr(model_gnm_controles_sens),
+                tidy_exp_gnm_corr(model_gnm_tratados),
+                tidy_exp_gnm_corr(model_gnm_controles),
+                tidy_exp_gnm_corr(placebo_model_gnm_tratados_sens),
+                tidy_exp_gnm_corr(placebo_model_gnm_controles_sens),                 
+                tidy_exp_gnm_corr(placebo_model_gnm_tratados),
+                tidy_exp_gnm_corr(placebo_model_gnm_controles)),
+  sig= round(c(p_sens, NA, p, NA, pp_sens, NA, pp, NA),3),
+  RRR= c(sprintf("%.2f (%.2f–%.2f)\n", RRR_sens, lo95_sens, hi95_sens), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR, lo95, hi95), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_p_sens, lo95_p_sens, hi95_p_sens), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_p, lo95_p, hi95_p), NA))|> 
+  mutate(RR= sprintf("%.2f (%.2f–%.2f)", `exp(Est.)`, `2.5%`, `97.5%`))|>
+  mutate(sig= sprintf("%.3f", sig))|> 
+  rename("p.value"="P")|> 
+  dplyr::select(term, p.value, RR, sig, RRR)|> 
+  knitr::kable("markdown", caption="Main, high-speed collisions, instantaneous effect", digits=3, na= "-")
+
+cbind.data.frame(type=c("Main","","", "", "Placebo","","",""),
+rbind.data.frame(
+                tidy_exp_gnm_corr(model_gnm_tratados_lead1_sens),
+                tidy_exp_gnm_corr(model_gnm_controles_lead1_sens),
+                tidy_exp_gnm_corr(model_gnm_tratados_lead1),
+                tidy_exp_gnm_corr(model_gnm_controles_lead1),
+                tidy_exp_gnm_corr(placebo_model_gnm_tratados_lead1_sens),
+                tidy_exp_gnm_corr(placebo_model_gnm_controles_lead1_sens),
+                tidy_exp_gnm_corr(placebo_model_gnm_tratados_lead1),
+                tidy_exp_gnm_corr(placebo_model_gnm_controles_lead1)),
+sig= round(c(p_lead1_sens, NA, p_lead1, NA, pp_lead1_sens, NA, pp_lead1, NA),3),
+  RRR= c(sprintf("%.2f (%.2f–%.2f)\n", RRR_lead1_sens, lo95_lead1_sens, hi95_lead1_sens), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_lead1, lo95_lead1, hi95_lead1), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_p_lead1_sens, lo95_p_lead1_sens, hi95_p_lead1_sens), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_p_lead1, lo95_p_lead1, hi95_p_lead1), NA))|> 
+  mutate(RR= sprintf("%.2f (%.2f–%.2f)", `exp(Est.)`, `2.5%`, `97.5%`))|>
+  mutate(sig= sprintf("%.3f", sig))|> 
+  rename("p.value"="P")|> 
+  dplyr::select(term, p.value, RR, sig, RRR)|> 
+  knitr::kable("markdown", caption="Main, high-speed collisions after one day", digits=3, na= "-")
+
+cbind.data.frame(type=c("Main","","", "", "Placebo","","",""),
+rbind.data.frame(
+                tidy_exp_gnm_corr(model_gnm_tratados_lead2_sens),
+                tidy_exp_gnm_corr(model_gnm_controles_lead2_sens),
+                tidy_exp_gnm_corr(model_gnm_tratados_lead2),
+                tidy_exp_gnm_corr(model_gnm_controles_lead2),
+                tidy_exp_gnm_corr(placebo_model_gnm_tratados_lead2_sens),
+                tidy_exp_gnm_corr(placebo_model_gnm_controles_lead2_sens),
+                tidy_exp_gnm_corr(placebo_model_gnm_tratados_lead2),
+                tidy_exp_gnm_corr(placebo_model_gnm_controles_lead2)),
+  sig= round(c(p_lead2_sens, NA, p_lead2, NA, pp_lead2_sens, NA, pp_lead2, NA),3),
+  RRR= c(sprintf("%.2f (%.2f–%.2f)", RRR_lead2_sens, lo95_lead2_sens, hi95_lead2_sens), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_lead2, lo95_lead2, hi95_lead2), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_p_lead2_sens, lo95_p_lead2_sens, hi95_p_lead2_sens), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_p_lead2, lo95_p_lead2, hi95_p_lead2), NA))|> 
+  mutate(RR= sprintf("%.2f (%.2f–%.2f)", `exp(Est.)`, `2.5%`, `97.5%`))|>
+  mutate(sig= sprintf("%.3f", sig))|> 
+  rename("p.value"="P")|> 
+  dplyr::select(term, p.value, RR, sig, RRR)|> 
+  knitr::kable("markdown", caption="Main, high-speed collisions after two days", digits=3, na= "-")
+
+pqic_gnm_tratados             <- qic_gnm(placebo_model_gnm_tratados)
+pqic_gnm_tratados_lead1       <- qic_gnm(placebo_model_gnm_tratados_lead1)
+pqic_gnm_tratados_lead2       <- qic_gnm(placebo_model_gnm_tratados_lead2)
+pqic_gnm_tratados_sens        <- qic_gnm(placebo_model_gnm_tratados_sens)
+pqic_gnm_tratados_lead1_sens  <- qic_gnm(placebo_model_gnm_tratados_lead1_sens)
+pqic_gnm_tratados_lead2_sens  <- qic_gnm(placebo_model_gnm_tratados_lead2_sens)
+
+pqic_gnm_controles            <- qic_gnm(placebo_model_gnm_controles)
+pqic_gnm_controles_lead1      <- qic_gnm(placebo_model_gnm_controles_lead1)
+pqic_gnm_controles_lead2      <- qic_gnm(placebo_model_gnm_controles_lead2)
+pqic_gnm_controles_sens       <- qic_gnm(placebo_model_gnm_controles_sens)
+pqic_gnm_controles_lead1_sens <- qic_gnm(placebo_model_gnm_controles_lead1_sens)
+pqic_gnm_controles_lead2_sens <- qic_gnm(placebo_model_gnm_controles_lead2_sens)
+
+## ─── 2. Vector with names ───────────────────────────────────────────
+pqic_vec <- c(
+  "Treated (base)"            = pqic_gnm_tratados,
+  "Treated + lead 1"          = pqic_gnm_tratados_lead1,
+  "Treated + lead 2"          = pqic_gnm_tratados_lead2,
+  "Treated sensitivity (- Sherbrooke)"      = pqic_gnm_tratados_sens,
+  "Treated sens + lead 1"     = pqic_gnm_tratados_lead1_sens,
+  "Treated sens + lead 2"     = pqic_gnm_tratados_lead2_sens,
+  "Controls (base)"           = pqic_gnm_controles,
+  "Controls + lead 1"         = pqic_gnm_controles_lead1,
+  "Controls + lead 2"         = pqic_gnm_controles_lead2,
+  "Controls sensitivity (+ Sherbrooke)"     = pqic_gnm_controles_sens,
+  "Controls sens + lead 1"    = pqic_gnm_controles_lead1_sens,
+  "Controls sens + lead 2"    = pqic_gnm_controles_lead2_sens
+)
+
+## ─── 3. print results ───────────────────────────────────────
+cat(
+  "\n≡ Comparison of models through QIC (quasi‑AIC) ≡",
+  "\n(‑2·ℓ / φ  +  2·k ;  lower ⇒ better)\n\n",
+  paste(names(pqic_vec), sprintf(": %.1f", pqic_vec), collapse = "\n"),
+  "\n\n≡ Ranking (better → worse) ≡\n",
+  paste(names(sort(pqic_vec)), sprintf(": %.1f", sort(pqic_vec)), collapse = "\n"),
+  "\n"
+)
+
+```
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: test-association-gnm-main-vs-placebo
+#| eval: true
+#| results: "hold"
+
+
+z_lead2_placebo_main_h   <- (b2_lead2 - pb2_lead2) / sqrt(se2_lead2^2 + pse2_lead2^2)
+p_lead2_placebo_main_h   <- 2 * pnorm(-abs(z_lead2_placebo_main_h))     # 0.32
+cat("Host MRC-years; Main vs. Placebo (w/o Sherbrooke), effects after 2 days;  p-values\n")
+p_lead2_placebo_main_h
+
+log_rrr_placebo_main_h  <- b2_lead2- pb2_lead2
+se_rrr_placebo_main_h   <- sqrt(se2_lead2^2 + pse2_lead2^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_placebo_main_h      <- exp(log_rrr_placebo_main_h)
+lo95_lead2_placebo_main_h     <- exp(log_rrr_placebo_main_h - 1.96 * se_rrr_placebo_main_h)
+hi95_lead2_placebo_main_h     <- exp(log_rrr_placebo_main_h + 1.96 * se_rrr_placebo_main_h)
+
+cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_h, lo95_lead2_placebo_main_h, hi95_lead2_placebo_main_h, p_lead2_placebo_main_h))
+
+
+z_lead2_placebo_main_nh   <- (b1_lead2 - pb1_lead2) / sqrt(se1_lead2^2 + pse1_lead2^2)
+p_lead2_placebo_main_nh   <- 2 * pnorm(-abs(z_lead2_placebo_main_nh))     # 0.32
+cat("Non-Host MRC-years; Main vs. Placebo (w/o Sherbrooke), effects after 2 days;  p-values\n")
+p_lead2_placebo_main_nh
+
+log_rrr_placebo_main_nh  <- b1_lead2- pb1_lead2
+se_rrr_placebo_main_nh   <- sqrt(se1_lead2^2 + pse1_lead2^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_placebo_main_nh      <- exp(log_rrr_placebo_main_nh)
+lo95_lead2_placebo_main_nh     <- exp(log_rrr_placebo_main_nh - 1.96 * se_rrr_placebo_main_nh)
+hi95_lead2_placebo_main_nh     <- exp(log_rrr_placebo_main_nh + 1.96 * se_rrr_placebo_main_nh)
+
+cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_nh, lo95_lead2_placebo_main_nh, hi95_lead2_placebo_main_nh, p_lead2_placebo_main_nh))
+
+
+
+z_lead2_placebo_main_h_sens   <- (b2_lead2_sens - pb2_lead2_sens) / sqrt(se2_lead2_sens^2 + pse2_lead2_sens^2)
+p_lead2_placebo_main_h_sens   <- 2 * pnorm(-abs(z_lead2_placebo_main_h_sens))     # 0.32
+cat("Host MRC-years; Main vs. Placebo (w/ Sherbrooke as control), effects after 2 days;  p-values\n")
+p_lead2_placebo_main_h_sens
+
+log_rrr_placebo_main_h_sens  <- b2_lead2_sens- pb2_lead2_sens
+se_rrr_placebo_main_h_sens   <- sqrt(se2_lead2_sens^2 + pse2_lead2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_placebo_main_h_sens      <- exp(log_rrr_placebo_main_h_sens)
+lo95_lead2_placebo_main_h_sens     <- exp(log_rrr_placebo_main_h_sens - 1.96 * se_rrr_placebo_main_h_sens)
+hi95_lead2_placebo_main_h_sens     <- exp(log_rrr_placebo_main_h_sens + 1.96 * se_rrr_placebo_main_h_sens)
+
+cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_h_sens, lo95_lead2_placebo_main_h_sens, hi95_lead2_placebo_main_h_sens, p_lead2_placebo_main_h_sens))
+
+
+z_lead2_placebo_main_nh_sens   <- (b1_lead2_sens - pb1_lead2_sens) / sqrt(se1_lead2_sens^2 + pse1_lead2_sens^2)
+p_lead2_placebo_main_nh_sens   <- 2 * pnorm(-abs(z_lead2_placebo_main_nh_sens))     # 0.32
+cat("Non-Host MRC-years; Main vs. Placebo (w/ Sherbrooke as control), effects after 2 days;  p-values\n")
+p_lead2_placebo_main_nh_sens
+
+log_rrr_placebo_main_nh_sens  <- b1_lead2_sens- pb1_lead2_sens
+se_rrr_placebo_main_nh_sens   <- sqrt(se1_lead2_sens^2 + pse1_lead2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_placebo_main_nh_sens      <- exp(log_rrr_placebo_main_nh_sens)
+lo95_lead2_placebo_main_nh_sens     <- exp(log_rrr_placebo_main_nh_sens - 1.96 * se_rrr_placebo_main_nh_sens)
+hi95_lead2_placebo_main_nh_sens     <- exp(log_rrr_placebo_main_nh_sens + 1.96 * se_rrr_placebo_main_nh_sens)
+
+cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_nh_sens, lo95_lead2_placebo_main_nh_sens, hi95_lead2_placebo_main_nh_sens, p_lead2_placebo_main_nh_sens))
+```
+
+We made model with interaction terms.
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: test-association-gnm-int-post-conv
+#| eval: true
+#| results: "hold"
+
+cat("DID (w/ Sherbrooke), effects after 2 days\n")
+model_gnm_lead2_did_sens <- gnm(
+    sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")*treated_sens+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+        offset(off_lic),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window))
+)
+summary(model_gnm_lead2_did_sens)
+cat("DID (w/o Sherbrooke), effects after 2 days\n")
+model_gnm_lead2_did <- gnm(
+    sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")*treated+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+        offset(off_lic),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window))
+)
+summary(model_gnm_lead2_did)
+
+
+cat("PlaceboDID (w/ Sherbrooke), effects after 2 days\n")
+placebo_model_gnm_lead2_did_sens <- gnm(
+    sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")*treated_sens+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+        offset(off_lic),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window))
+)
+summary(placebo_model_gnm_lead2_did_sens)
+
+
+cat("PlaceboDID (w/o Sherbrooke), effects after 2 days\n")
+placebo_model_gnm_lead2_did <- gnm(
+    sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")*treated+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+        offset(off_lic),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) )
+)
+summary(placebo_model_gnm_lead2_did)
+
+
+tidy_exp_gnm <- function(model, conf.level = 0.95, use_t = FALSE) {
+  td <- broom::tidy(model)
+  alpha <- 1 - conf.level
+  crit <- if (use_t) {
+    stats::qt(1 - alpha/2, df = model$df.residual)
+  } else {
+    stats::qnorm(1 - alpha/2)
+  }
+    td %>%
+    mutate(
+      conf.low_log  = estimate - crit * std.error,
+      conf.high_log = estimate + crit * std.error,
+      rate_ratio    = exp(estimate),
+      rr_conf.low   = exp(conf.low_log),
+      rr_conf.high  = exp(conf.high_log)
+    ) %>%
+    dplyr::select(term, rate_ratio, rr_conf.low, rr_conf.high, std.error, p.value) |> 
+    data.frame() |> 
+    dplyr::slice(7)
+}
+
+# tidy_exp_gnm2 <- function(model, conf.level = 0.95) {
+#   # Extrae coeficientes y errores estándar
+#   td <- broom::tidy(model)
+#   
+#   # Z crítico
+#   alpha <- 1 - conf.level
+#   z <- stats::qnorm(1 - alpha/2)
+#   
+#   # Cálculo de IC en escala log y exponenciación
+#   td %>%
+#     mutate(
+#       conf.low_log  = estimate - z * std.error,
+#       conf.high_log = estimate + z * std.error,
+#       rate_ratio    = exp(estimate),
+#       rr_conf.low   = exp(conf.low_log),
+#       rr_conf.high  = exp(conf.high_log)
+#     ) %>%
+#     dplyr::select(term, rate_ratio, rr_conf.low, rr_conf.high, std.error, p.value) |> 
+#     data.frame() |> 
+#     dplyr::slice(7)
+# }
+cbind.data.frame(type=c("Main","","Placebo",""),
+rbind.data.frame(as_tibble(Epi::ci.exp(model_gnm_lead2_did_sens, subset=":", pval=T), rownames = "term"),
+                 as_tibble(Epi::ci.exp(model_gnm_lead2_did, subset=":", pval=T), rownames = "term"),
+                as_tibble(Epi::ci.exp(placebo_model_gnm_lead2_did_sens, subset=":", pval=T), rownames = "term"),
+                as_tibble(Epi::ci.exp(placebo_model_gnm_lead2_did, subset=":", pval=T), rownames = "term")))|> 
+  mutate(RR= sprintf("%.2f (%.2f–%.2f)", `exp(Est.)`, `2.5%`, `97.5%`))|>
+  knitr::kable("markdown", caption="Interaction models, RRRs, high-speed collisions after two days", digits=4)
+```
+
 
 ```{r}
 #| class-output: center-table
@@ -2295,11 +1360,8 @@ We make model with interaction terms.
 #| warning: true
 #| error: true
 #| label: test-association-gnm-int
-#| eval: true
+#| eval: false
 #| results: "hold"
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
 # Model: Main -2,+3 exposure, Quebec only as control
 cat("Instantaneous effect, Main -2,+3 exposure, Quebec only as control\n")
 model_gnm_did <- gnm(
@@ -3055,7 +2117,7 @@ road.main.res_38 <- countSynth(data= subset(collisions_weather_corr_rect_synth_o
                             K=4) #Number of holdout periods for cross-fitting (try changing to 3 for sensitivity analysis) #Splits the pre-period into K blocks //Uses K-1 blocks for training when evaluating each holdout block // Ensures at least one time point remains for predictor calculation
 
 set.seed(2125)
-road.main.res_35_38 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_35_38 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_veh",
                             unit.variable="id",
@@ -3081,7 +2143,7 @@ road.main.res_q_38 <- countSynth(data= subset(collisions_weather_corr_rect_quebe
                             K=4) 
 
 set.seed(2125)
-road.main.res_q_35_38 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_q_35_38 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_veh",
                             unit.variable="id",
@@ -3161,7 +2223,7 @@ road.main.res_381se <- countSynth(data= subset(collisions_weather_corr_rect_synt
                             K=4) #Number of holdout periods for cross-fitting (try changing to 3 for sensitivity analysis) #Splits the pre-period into K blocks //Uses K-1 blocks for training when evaluating each holdout block // Ensures at least one time point remains for predictor calculation
 
 set.seed(2125)
-road.main.res_35_381se <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_35_381se <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_veh",
                             unit.variable="id",
@@ -3187,7 +2249,7 @@ road.main.res_q_381se <- countSynth(data= subset(collisions_weather_corr_rect_qu
                             K=4) 
 
 set.seed(2125)
-road.main.res_q_35_381se <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_q_35_381se <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_veh",
                             unit.variable="id",
@@ -3208,11 +2270,11 @@ cat("0,+7 ; Quebec only as control\n")
 road.main.res_q$ATT
 cat("-2,+7 ; Quebec+Sherbrook as control\n")
 road.main.res_35$ATT
-cat("-2,+3 ; Quebec+Sherbrook as control\n")
+cat("-3,+0 ; Quebec+Sherbrook as control\n")
 road.main.res_35_38$ATT
 cat("0,+3 ; Quebec only as control\n")
 road.main.res_q_38$ATT
-cat("-2,+3 ; Quebec only as control\n")
+cat("-3,+0 ; Quebec only as control\n")
 road.main.res_q_35_38$ATT
 
 cat("Penalized, 0,+7 ; Quebec+Sherbrook as control\n")
@@ -3223,11 +2285,11 @@ cat("Penalized, 0,+7 ; Quebec only as control\n")
 road.main.res_q1se$ATT
 cat("Penalized, -2,+7 ; Quebec+Sherbrook as control\n")
 road.main.res_351se$ATT
-cat("Penalized, -2,+3 ; Quebec+Sherbrook as control\n")
+cat("Penalized, -3,+0 ; Quebec+Sherbrook as control\n")
 road.main.res_35_381se$ATT
 cat("Penalized, 0,+3 ; Quebec only as control\n")
 road.main.res_q_381se$ATT
-cat("Penalized, -2,+3 ; Quebec only as control\n")
+cat("Penalized, -3,+0 ; Quebec only as control\n")
 road.main.res_q_35_381se$ATT
 ```
 
@@ -3248,23 +2310,24 @@ road.main.res_q_35_381se$ATT
 #prepost_rmspe_cntsh(get_covbal_csnth(road.main.res), t_int=38)
 
 result_objects <- list(
-  list(obj = road.main.res, name = "road.main.res", desc = "0,+7 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_35, name = "road.main.res_35", desc = "-2,+7 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_q, name = "road.main.res_q", desc = "0,+7 ; Quebec only as control"),
-  list(obj = road.main.res_35, name = "road.main.res_35_repeat", desc = "-2,+7 ; Quebec+Sherbrook as control (Repeat)"),
-  list(obj = road.main.res_35_38, name = "road.main.res_35_38", desc = "-2,+3 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_q_38, name = "road.main.res_q_38", desc = "0,+3 ; Quebec only as control"),
-  list(obj = road.main.res_q_35_38, name = "road.main.res_q_35_38", desc = "-2,+3 ; Quebec only as control"),
-
-  # Penalized Models
-  list(obj = road.main.res1se, name = "road.main.res1se", desc = "Penalized, 0,+7 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_351se, name = "road.main.res_351se", desc = "Penalized, -2,+7 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_q1se, name = "road.main.res_q1se", desc = "Penalized, 0,+7 ; Quebec only as control"),
-  list(obj = road.main.res_351se, name = "road.main.res_351se_repeat", desc = "Penalized, -2,+7 ; Quebec+Sherbrook as control (Repeat)"),
-  list(obj = road.main.res_35_381se, name = "road.main.res_35_381se", desc = "Penalized, -2,+3 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_q_381se, name = "road.main.res_q_381se", desc = "Penalized, 0,+3 ; Quebec only as control"),
-  list(obj = road.main.res_q_35_381se, name = "road.main.res_q_35_381se", desc = "Penalized, -2,+3 ; Quebec only as control")
+    list(obj = road.main.res, name = "road.main.res", desc = "0,+7 ; Quebec+Sherbrook as control"),
+    list(obj = road.main.res_35, name = "road.main.res_35", desc = "-2,+7 ; Quebec+Sherbrook as control"),
+    list(obj = road.main.res_q, name = "road.main.res_q", desc = "0,+7 ; Quebec only as control"),
+    list(obj = road.main.res_q_35, name = "road.main.res_q_35", desc = "-2,+7 ; Quebec only as control (exRepeat)"),
+    list(obj = road.main.res_35_38, name = "road.main.res_35_38", desc = "-3,+0 ; Quebec+Sherbrook as control"),
+    list(obj = road.main.res_q_38, name = "road.main.res_q_38", desc = "0,+3 ; Quebec only as control"),
+    list(obj = road.main.res_q_35_38, name = "road.main.res_q_35_38", desc = "-3,+0 ; Quebec only as control"),
+    
+    # Penalized Models
+    list(obj = road.main.res1se, name = "road.main.res1se", desc = "Penalized, 0,+7 ; Quebec+Sherbrook as control"),
+    list(obj = road.main.res_351se, name = "road.main.res_351se", desc = "Penalized, -2,+7 ; Quebec+Sherbrook as control"),
+    list(obj = road.main.res_q1se, name = "road.main.res_q1se", desc = "Penalized, 0,+7 ; Quebec only as control"),
+    list(obj = road.main.res_q_351se, name = "road.main.res_q_351se", desc = "Penalized, -2,+7 ; Quebec only as control (exRepeat)"),
+    list(obj = road.main.res_35_381se, name = "road.main.res_35_381se", desc = "Penalized, -3,+0 ; Quebec+Sherbrook as control"),
+    list(obj = road.main.res_q_381se, name = "road.main.res_q_381se", desc = "Penalized, 0,+3 ; Quebec only as control"),
+    list(obj = road.main.res_q_35_381se, name = "road.main.res_q_35_381se", desc = "Penalized, -3,+0 ; Quebec only as control")
 )
+
 
 # --------------------------------------------------------------------------
 # 3. Loop through objects, print ATT, and create/store plots
@@ -3288,7 +2351,7 @@ for (item in result_objects) {
   if (exists(item$name) && !is.null(get(item$name))) {
 
     # Call the plotting function which returns a ggplot object
-    p <- plot_synth_cscm(
+    figcscm <- plot_synth_cscm(
       res_object = item$obj,
       t_int_man = 38,       # Manual intervention time
       max_time = 45,        # Time horizon for the plot
@@ -3297,7 +2360,7 @@ for (item in result_objects) {
     )
 
     # Add the title using ggplot2's labs() function and store it
-    plot_list[[item$name]] <- p + labs(title = item$desc) + theme(plot.title = element_text(size = 13))
+    plot_list[[item$name]] <- figcscm + labs(title = item$desc) + theme(plot.title = element_text(size = 13))
 
   } else {
     cat("Warning: Object", item$name, "not found. Skipping plot generation.\n")
@@ -3315,6 +2378,14 @@ print(plot_grid(plotlist = plot_list[1:4], ncol = 2, nrow = 2))
 print(plot_grid(plotlist = plot_list[5:8], ncol = 2, nrow = 2))
 
 print(plot_grid(plotlist = plot_list[9:12], ncol = 2, nrow = 2))
+
+print(plot_grid(plotlist = plot_list[13:14], ncol = 2, nrow = 2))
+
+cbind.data.frame(
+    pen= c(rep(c("No","Yes"),each=2)),
+    mods= c(rep(c("Quebec+Sherbrooke","Quebec only"),2)),
+    rbind.data.frame(result_objects[[5]]$obj$ATT,result_objects[[7]]$obj$ATT, result_objects[[12]]$obj$ATT, result_objects[[14]]$obj$ATT)
+) |> knitr::kable("markdown", caption="RRs")
 ```
 
 
@@ -3398,7 +2469,7 @@ road.main.res_38_lead1 <- countSynth(data= subset(collisions_weather_corr_rect_s
                             K=4) #Number of holdout periods for cross-fitting (try changing to 3 for sensitivity analysis) #Splits the pre-period into K blocks //Uses K-1 blocks for training when evaluating each holdout block // Ensures at least one time point remains for predictor calculation
 
 set.seed(2125)
-road.main.res_35_38_lead1 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_35_38_lead1 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_lead1_lic",
                             unit.variable="id",
@@ -3424,7 +2495,7 @@ road.main.res_q_38_lead1 <- countSynth(data= subset(collisions_weather_corr_rect
                             K=4) 
 
 set.seed(2125)
-road.main.res_q_35_38_lead1 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_q_35_38_lead1 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_lead1_lic",
                             unit.variable="id",
@@ -3504,7 +2575,7 @@ road.main.res_381se_lead1 <- countSynth(data= subset(collisions_weather_corr_rec
                             K=4) #Number of holdout periods for cross-fitting (try changing to 3 for sensitivity analysis) #Splits the pre-period into K blocks //Uses K-1 blocks for training when evaluating each holdout block // Ensures at least one time point remains for predictor calculation
 
 set.seed(2125)
-road.main.res_35_381se_lead1 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_35_381se_lead1 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_lead1_lic",
                             unit.variable="id",
@@ -3530,7 +2601,7 @@ road.main.res_q_381se_lead1 <- countSynth(data= subset(collisions_weather_corr_r
                             K=4) 
 
 set.seed(2125)
-road.main.res_q_35_381se_lead1 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_q_35_381se_lead1 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_lead1_lic",
                             unit.variable="id",
@@ -3542,36 +2613,6 @@ road.main.res_q_35_381se_lead1 <- countSynth(data= subset(collisions_weather_cor
                             full.model = TRUE,
                             K=4) 
 
-
-cat("0,+7 ; Quebec+Sherbrook as control\n")
-road.main.res_lead1$ATT
-cat("-2,+7 ; Quebec+Sherbrook as control\n")
-road.main.res_35_lead1$ATT
-cat("0,+7 ; Quebec only as control\n")
-road.main.res_q_lead1$ATT
-cat("-2,+7 ; Quebec+Sherbrook as control\n")
-road.main.res_35_lead1$ATT
-cat("-2,+3 ; Quebec+Sherbrook as control\n")
-road.main.res_35_38_lead1$ATT
-cat("0,+3 ; Quebec only as control\n")
-road.main.res_q_38_lead1$ATT
-cat("-2,+3 ; Quebec only as control\n")
-road.main.res_q_35_38_lead1$ATT
-
-cat("Penalized, 0,+7 ; Quebec+Sherbrook as control\n")
-road.main.res1se_lead1$ATT
-cat("Penalized, -2,+7 ; Quebec+Sherbrook as control\n")
-road.main.res_351se_lead1$ATT
-cat("Penalized, 0,+7 ; Quebec only as control\n")
-road.main.res_q1se_lead1$ATT
-cat("Penalized, -2,+7 ; Quebec+Sherbrook as control\n")
-road.main.res_351se_lead1$ATT
-cat("Penalized, -2,+3 ; Quebec+Sherbrook as control\n")
-road.main.res_35_381se_lead1$ATT
-cat("Penalized, 0,+3 ; Quebec only as control\n")
-road.main.res_q_381se_lead1$ATT
-cat("Penalized, -2,+3 ; Quebec only as control\n")
-road.main.res_q_35_381se_lead1$ATT
 ```
 
 
@@ -3592,22 +2633,22 @@ road.main.res_q_35_381se_lead1$ATT
 #prepost_rmspe_cntsh(get_covbal_csnth(road.main.res), t_int=38)
 
 result_objects2 <- list(
-  list(obj = road.main.res_lead1, name = "road.main.res", desc = "0,+7 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_35_lead1, name = "road.main.res_35", desc = "-2,+7 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_q_lead1, name = "road.main.res_q", desc = "0,+7 ; Quebec only as control"),
-  list(obj = road.main.res_35_lead1, name = "road.main.res_35_repeat", desc = "-2,+7 ; Quebec+Sherbrook as control (Repeat)"),
-  list(obj = road.main.res_35_38_lead1, name = "road.main.res_35_38", desc = "-2,+3 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_q_38_lead1, name = "road.main.res_q_38", desc = "0,+3 ; Quebec only as control"),
-  list(obj = road.main.res_q_35_38_lead1, name = "road.main.res_q_35_38", desc = "-2,+3 ; Quebec only as control"),
+  list(obj = road.main.res_lead1, name = "road.main.res_lead1", desc = "0,+7 ; Quebec+Sherbrook as control"),
+  list(obj = road.main.res_35_lead1, name = "road.main.res_35_lead1", desc = "-2,+7 ; Quebec+Sherbrook as control"),
+  list(obj = road.main.res_q_lead1, name = "road.main.res_q_lead1", desc = "0,+7 ; Quebec only as control"),
+  list(obj = road.main.res_q_35_lead1, name = "road.main.res_q_35_lead1", desc = "-2,+7 ; Quebec only as control (exRepeat)"),
+  list(obj = road.main.res_35_38_lead1, name = "road.main.res_35_38_lead1", desc = "-3,+0 ; Quebec+Sherbrook as control"),
+  list(obj = road.main.res_q_38_lead1, name = "road.main.res_q_38_lead1", desc = "0,+3 ; Quebec only as control"),
+  list(obj = road.main.res_q_35_38_lead1, name = "road.main.res_q_35_38_lead1", desc = "-3,+0 ; Quebec only as control"),
 
   # Penalized Models
-  list(obj = road.main.res1se_lead1, name = "road.main.res1se", desc = "Penalized, 0,+7 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_351se_lead1, name = "road.main.res_351se", desc = "Penalized, -2,+7 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_q1se_lead1, name = "road.main.res_q1se", desc = "Penalized, 0,+7 ; Quebec only as control"),
-  list(obj = road.main.res_351se_lead1, name = "road.main.res_351se_repeat", desc = "Penalized, -2,+7 ; Quebec+Sherbrook as control (Repeat)"),
-  list(obj = road.main.res_35_381se_lead1, name = "road.main.res_35_381se", desc = "Penalized, -2,+3 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_q_381se_lead1, name = "road.main.res_q_381se", desc = "Penalized, 0,+3 ; Quebec only as control"),
-  list(obj = road.main.res_q_35_381se_lead1, name = "road.main.res_q_35_381se", desc = "Penalized, -2,+3 ; Quebec only as control")
+  list(obj = road.main.res1se_lead1, name = "road.main.res1se_lead1", desc = "Penalized, 0,+7 ; Quebec+Sherbrook as control"),
+  list(obj = road.main.res_351se_lead1, name = "road.main.res_351se_lead1", desc = "Penalized, -2,+7 ; Quebec+Sherbrook as control"),
+  list(obj = road.main.res_q1se_lead1, name = "road.main.res_q1se_lead1", desc = "Penalized, 0,+7 ; Quebec only as control"),
+  list(obj = road.main.res_q_351se_lead1, name = "road.main.res_q_351se_lead1", desc = "Penalized, -2,+7 ; Quebec only as control (exRepeat)"),
+  list(obj = road.main.res_35_381se_lead1, name = "road.main.res_35_381se_lead1", desc = "Penalized, -3,+0 ; Quebec+Sherbrook as control"),
+  list(obj = road.main.res_q_381se_lead1, name = "road.main.res_q_381se_lead1", desc = "Penalized, 0,+3 ; Quebec only as control"),
+  list(obj = road.main.res_q_35_381se_lead1, name = "road.main.res_q_35_381se_lead1", desc = "Penalized, -3,+0 ; Quebec only as control")
 )
 
 # --------------------------------------------------------------------------
@@ -3632,7 +2673,7 @@ for (item in result_objects2) {
   if (exists(item$name) && !is.null(get(item$name))) {
 
     # Call the plotting function which returns a ggplot object
-    p <- plot_synth_cscm(
+    figcscm <- plot_synth_cscm(
       res_object = item$obj,
       t_int_man = 38,       # Manual intervention time
       max_time = 45,        # Time horizon for the plot
@@ -3641,7 +2682,7 @@ for (item in result_objects2) {
     )
 
     # Add the title using ggplot2's labs() function and store it
-    plot_list2[[item$name]] <- p + labs(title = item$desc) + theme(plot.title = element_text(size = 13))
+    plot_list2[[item$name]] <- figcscm + labs(title = item$desc) + theme(plot.title = element_text(size = 13))
 
   } else {
     cat("Warning: Object", item$name, "not found. Skipping plot generation.\n")
@@ -3659,6 +2700,14 @@ print(plot_grid(plotlist = plot_list2[1:4], ncol = 2, nrow = 2))
 print(plot_grid(plotlist = plot_list2[5:8], ncol = 2, nrow = 2))
 
 print(plot_grid(plotlist = plot_list2[9:12], ncol = 2, nrow = 2))
+
+print(plot_grid(plotlist = plot_list2[13:14], ncol = 2, nrow = 2))
+
+cbind.data.frame(
+    pen= c(rep(c("No","Yes"),each=2)),
+    mods= c(rep(c("Quebec+Sherbrooke","Quebec only"),2)),
+    rbind.data.frame(result_objects2[[5]]$obj$ATT,result_objects2[[7]]$obj$ATT, result_objects2[[12]]$obj$ATT, result_objects2[[14]]$obj$ATT)
+) |> knitr::kable("markdown", caption="RRs")
 ```
 
 
@@ -3729,7 +2778,7 @@ road.main.res_q_35_lead2 <- countSynth(data= subset(collisions_weather_corr_rect
 
 
 set.seed(2125)
-road.main.res_38_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_38_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=max_time),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_lead2_lic",
                             unit.variable="id",
@@ -3742,7 +2791,7 @@ road.main.res_38_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_s
                             K=4) #Number of holdout periods for cross-fitting (try changing to 3 for sensitivity analysis) #Splits the pre-period into K blocks //Uses K-1 blocks for training when evaluating each holdout block // Ensures at least one time point remains for predictor calculation
 
 set.seed(2125)
-road.main.res_35_38_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_35_38_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_lead2_lic",
                             unit.variable="id",
@@ -3755,7 +2804,7 @@ road.main.res_35_38_lead2 <- countSynth(data= subset(collisions_weather_corr_rec
                             K=4) 
 
 set.seed(2125)
-road.main.res_q_38_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_q_38_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=max_time),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_lead2_lic",
                             unit.variable="id",
@@ -3768,7 +2817,7 @@ road.main.res_q_38_lead2 <- countSynth(data= subset(collisions_weather_corr_rect
                             K=4) 
 
 set.seed(2125)
-road.main.res_q_35_38_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_q_35_38_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_lead2_lic",
                             unit.variable="id",
@@ -3835,7 +2884,7 @@ road.main.res_q_351se_lead2 <- countSynth(data= subset(collisions_weather_corr_r
 
 
 set.seed(2125)
-road.main.res_381se_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_381se_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_lead2_lic",
                             unit.variable="id",
@@ -3848,7 +2897,7 @@ road.main.res_381se_lead2 <- countSynth(data= subset(collisions_weather_corr_rec
                             K=4) #Number of holdout periods for cross-fitting (try changing to 3 for sensitivity analysis) #Splits the pre-period into K blocks //Uses K-1 blocks for training when evaluating each holdout block // Ensures at least one time point remains for predictor calculation
 
 set.seed(2125)
-road.main.res_35_381se_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_35_381se_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_lead2_lic",
                             unit.variable="id",
@@ -3861,7 +2910,7 @@ road.main.res_35_381se_lead2 <- countSynth(data= subset(collisions_weather_corr_
                             K=4) 
 
 set.seed(2125)
-road.main.res_q_381se_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_q_381se_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=max_time),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_lead2_lic",
                             unit.variable="id",
@@ -3874,7 +2923,7 @@ road.main.res_q_381se_lead2 <- countSynth(data= subset(collisions_weather_corr_r
                             K=4) 
 
 set.seed(2125)
-road.main.res_q_35_381se_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-4)),
+road.main.res_q_35_381se_lead2 <- countSynth(data= subset(collisions_weather_corr_rect_quebec_synth_one_tr_many_cntrls, yday_corr<=(max_time-7)),
                             predictors=c("mean_min_temp_mean_lin", "mean_max_temp_mean_lin", "mean_median_total_precip_median_lin", "mean_median_lag_2_prec_median_imp"), #Auxiliary covariates can be included here as well (passed to dataprep synth, averaged across pre-period with na.rm=TRUE). Caution: needs to have non-missing values in all holdout samples.
                             dependent="rate_lead2_lic",
                             unit.variable="id",
@@ -3893,13 +2942,13 @@ cat("-2,+7 ; Quebec+Sherbrook as control\n")
 road.main.res_35_lead2$ATT
 cat("0,+7 ; Quebec only as control\n")
 road.main.res_q_lead2$ATT
-cat("-2,+7 ; Quebec+Sherbrook as control\n")
-road.main.res_35_lead2$ATT
-cat("-2,+3 ; Quebec+Sherbrook as control\n")
+cat("-2,+7 ; Quebec only as control\n")
+road.main.res_q_35_lead2$ATT
+cat("-3,+0 ; Quebec+Sherbrook as control\n")
 road.main.res_35_38_lead2$ATT
 cat("0,+3 ; Quebec only as control\n")
 road.main.res_q_38_lead2$ATT
-cat("-2,+3 ; Quebec only as control\n")
+cat("-3,+0 ; Quebec only as control\n")
 road.main.res_q_35_38_lead2$ATT
 
 cat("Penalized, 0,+7 ; Quebec+Sherbrook as control\n")
@@ -3908,14 +2957,18 @@ cat("Penalized, -2,+7 ; Quebec+Sherbrook as control\n")
 road.main.res_351se_lead2$ATT
 cat("Penalized, 0,+7 ; Quebec only as control\n")
 road.main.res_q1se_lead2$ATT
-cat("Penalized, -2,+7 ; Quebec+Sherbrook as control\n")
-road.main.res_351se_lead2$ATT
-cat("Penalized, -2,+3 ; Quebec+Sherbrook as control\n")
+cat("Penalized, -2,+7 ; Quebec only as control\n")
+road.main.res_q_351se_lead2$ATT
+cat("Penalized, -3,+0 ; Quebec+Sherbrook as control\n")
 road.main.res_35_381se_lead2$ATT
 cat("Penalized, 0,+3 ; Quebec only as control\n")
 road.main.res_q_381se_lead2$ATT
-cat("Penalized, -2,+3 ; Quebec only as control\n")
+cat("Penalized, -3,+0 ; Quebec only as control\n")
 road.main.res_q_35_381se_lead2$ATT
+
+
+cat("-2,+7 ; Quebec only as control\n")
+road.main.res_q_35_lead2$ATT
 ```
 
 
@@ -3937,22 +2990,22 @@ road.main.res_q_35_381se_lead2$ATT
 #prepost_rmspe_cntsh(get_covbal_csnth(road.main.res), t_int=38)
 
 result_objects3 <- list(
-  list(obj = road.main.res_lead2, name = "road.main.res", desc = "0,+7 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_35_lead2, name = "road.main.res_35", desc = "-2,+7 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_q_lead2, name = "road.main.res_q", desc = "0,+7 ; Quebec only as control"),
-  list(obj = road.main.res_35_lead2, name = "road.main.res_35_repeat", desc = "-2,+7 ; Quebec+Sherbrook as control (Repeat)"),
-  list(obj = road.main.res_35_38_lead2, name = "road.main.res_35_38", desc = "-2,+3 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_q_38_lead2, name = "road.main.res_q_38", desc = "0,+3 ; Quebec only as control"),
-  list(obj = road.main.res_q_35_38_lead2, name = "road.main.res_q_35_38", desc = "-2,+3 ; Quebec only as control"),
+  list(obj = road.main.res_lead2, name = "road.main.res_lead2", desc = "0,+7 ; Quebec+Sherbrook as control"),
+  list(obj = road.main.res_35_lead2, name = "road.main.res_35_lead2", desc = "-2,+7 ; Quebec+Sherbrook as control"),
+  list(obj = road.main.res_q_lead2, name = "road.main.res_q_lead2", desc = "0,+7 ; Quebec only as control"),
+  list(obj = road.main.res_q_35_lead2, name = "road.main.res_q_35_lead2", desc = "-2,+7 ; Quebec only as control (exRepeat)"),
+  list(obj = road.main.res_35_38_lead2, name = "road.main.res_35_38_lead2", desc = "-3,+0 ; Quebec+Sherbrook as control"),
+  list(obj = road.main.res_q_38_lead2, name = "road.main.res_q_38_lead2", desc = "0,+3 ; Quebec only as control"),
+  list(obj = road.main.res_q_35_38_lead2, name = "road.main.res_q_35_38_lead2", desc = "-3,+0 ; Quebec only as control"),
 
   # Penalized Models
-  list(obj = road.main.res1se_lead2, name = "road.main.res1se", desc = "Penalized, 0,+7 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_351se_lead2, name = "road.main.res_351se", desc = "Penalized, -2,+7 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_q1se_lead2, name = "road.main.res_q1se", desc = "Penalized, 0,+7 ; Quebec only as control"),
-  list(obj = road.main.res_351se_lead2, name = "road.main.res_351se_repeat", desc = "Penalized, -2,+7 ; Quebec+Sherbrook as control (Repeat)"),
-  list(obj = road.main.res_35_381se_lead2, name = "road.main.res_35_381se", desc = "Penalized, -2,+3 ; Quebec+Sherbrook as control"),
-  list(obj = road.main.res_q_381se_lead2, name = "road.main.res_q_381se", desc = "Penalized, 0,+3 ; Quebec only as control"),
-  list(obj = road.main.res_q_35_381se_lead2, name = "road.main.res_q_35_381se", desc = "Penalized, -2,+3 ; Quebec only as control")
+  list(obj = road.main.res1se_lead2, name = "road.main.res1se_lead2", desc = "Penalized, 0,+7 ; Quebec+Sherbrook as control"),
+  list(obj = road.main.res_351se_lead2, name = "road.main.res_351se_lead2", desc = "Penalized, -2,+7 ; Quebec+Sherbrook as control"),
+  list(obj = road.main.res_q1se_lead2, name = "road.main.res_q1se_lead2", desc = "Penalized, 0,+7 ; Quebec only as control"),
+  list(obj = road.main.res_q_351se_lead2, name = "road.main.res_q_351se_lead2", desc = "Penalized, -2,+7 ; Quebec only as control (exRepeat)"),
+  list(obj = road.main.res_35_381se_lead2, name = "road.main.res_35_381se_lead2", desc = "Penalized, -3,+0 ; Quebec+Sherbrook as control"),
+  list(obj = road.main.res_q_381se_lead2, name = "road.main.res_q_381se_lead2", desc = "Penalized, 0,+3 ; Quebec only as control"),
+  list(obj = road.main.res_q_35_381se_lead2, name = "road.main.res_q_35_381se_lead2", desc = "Penalized, -3,+0 ; Quebec only as control")
 )
 
 # --------------------------------------------------------------------------
@@ -3977,16 +3030,16 @@ for (item in result_objects3) {
   if (exists(item$name) && !is.null(get(item$name))) {
 
     # Call the plotting function which returns a ggplot object
-    p <- plot_synth_cscm(
+    figcscm <- plot_synth_cscm(
       res_object = item$obj,
-      t_int_man = 38,       # Manual intervention time
-      max_time = 45,        # Time horizon for the plot
+      t_int_man = 35,       # Manual intervention time
+      max_time = 38,        # Time horizon for the plot
       y_lab = "Crash rate", # Y-axis label
       colors = c("SCM" = "gray60", "CSCM" = "red", "Obs" = "black")
     )
 
     # Add the title using ggplot2's labs() function and store it
-    plot_list3[[item$name]] <- p + labs(title = item$desc) + theme(plot.title = element_text(size = 13))
+    plot_list3[[item$name]] <- figcscm + labs(title = NULL) + theme(plot.title = element_text(size = 13))
 
   } else {
     cat("Warning: Object", item$name, "not found. Skipping plot generation.\n")
@@ -3999,11 +3052,35 @@ for (item in result_objects3) {
 
 # Now, print the combined plots. In a Quarto/Rmd file, this will render
 # the grids directly in the output document.
-print(plot_grid(plotlist = plot_list3[1:4], ncol = 2, nrow = 2))
+png("_figs/supp_mat_cntsynts_3min_0_lead2.png", width = 800*4, height = 600*4, res = 300)
+plot_grid(
+  plotlist = plot_list3[c(5, 7, 12, 14)],
+  ncol      = 2,
+  nrow      = 2,
+  labels    = c("a)", "b)", "c)", "d)"),  # ← aquí van las etiquetas
+  label_size      = 16,      # tamaño del texto
+  label_fontface  = "bold",  # negrita (opcional)
+  label_x = 0.02, label_y = 0.98,  # posición relativa (0-1) dentro del panel
+  hjust    = 0,  vjust    = 1      # alineación izq-arriba
+)
+dev.off()
+#road.main.res_35_38_lead2; road.main.res_q_35_38_lead2; road.main.res_35_381se_lead2; road.main.res_q_35_381se_lead2
+plot_grid(
+  plotlist = plot_list3[c(5, 7, 12, 14)],
+  ncol      = 2,
+  nrow      = 2,
+  labels    = c("a)", "b)", "c)", "d)"),  # ← aquí van las etiquetas
+  label_size      = 16,      # tamaño del texto
+  label_fontface  = "bold",  # negrita (opcional)
+  label_x = 0.02, label_y = 0.98,  # posición relativa (0-1) dentro del panel
+  hjust    = 0,  vjust    = 1      # alineación izq-arriba
+)
 
-print(plot_grid(plotlist = plot_list3[5:8], ncol = 2, nrow = 2))
-
-print(plot_grid(plotlist = plot_list3[9:12], ncol = 2, nrow = 2))
+cbind.data.frame(
+  pen= c(rep(c("No","Yes"),each=2)),
+  mods= c(rep(c("Quebec+Sherbrooke","Quebec only"),2)),
+  rbind.data.frame(result_objects3[[5]]$obj$ATT,result_objects3[[7]]$obj$ATT, result_objects3[[12]]$obj$ATT, result_objects3[[14]]$obj$ATT)
+) |> knitr::kable("markdown", caption="RRs")
 ```
 
 

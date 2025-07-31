@@ -187,10 +187,6 @@ data.table::setDTthreads(threads = num_cores)#restore_after_fork = NULL, throttl
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 options(scipen=2) #display numbers rather scientific number
-
-
-nixtlar::nixtla_client_setup(api_key = readLines(paste0(gsub("f1/","", getwd() ),"/key.txt"))[[2]])
-
 ```
 </div>
 
@@ -243,12 +239,12 @@ collisions_weather_corr_rect_synth <-
     .groups = "drop"
   ) |>
   mutate(                                     # ── aux variables
-    rate_veh = sum_velocidad / exp_veh * 1e6, # not to model
-    rate_lic = sum_velocidad / exp_lic * 1e6, # not to model
-    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
-    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
-    rate_lead2_veh = sum_velocidad_lead2 / exp_veh * 1e6, # not to model
-    rate_lead2_lic = sum_velocidad_lead2 / exp_lic * 1e6, # not to model        
+    rate_veh = (sum_velocidad / exp_veh) * 1e6, # not to model
+    rate_lic = (sum_velocidad / exp_lic) * 1e6, # not to model
+    rate_lead1_veh = (sum_velocidad_lead1 / exp_veh) * 1e6, # not to model
+    rate_lead1_lic = (sum_velocidad_lead1 / exp_lic) * 1e6, # not to model    
+    rate_lead2_veh = (sum_velocidad_lead2 / exp_veh) * 1e6, # not to model
+    rate_lead2_lic = (sum_velocidad_lead2 / exp_lic) * 1e6, # not to model        
     off_veh  = log(exp_veh),                  # offset
     off_lic  = log(exp_lic)
   ) |>
@@ -294,12 +290,12 @@ collisions_weather_corr_rect_synth_tr <-
     .groups = "drop"
   ) %>% 
   mutate(
-    rate_veh = sum_velocidad / exp_veh * 1e6,
-    rate_lic = sum_velocidad / exp_lic * 1e6,
-    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
-    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
-    rate_lead2_veh = sum_velocidad_lead2 / exp_veh * 1e6, # not to model
-    rate_lead2_lic = sum_velocidad_lead2 / exp_lic * 1e6, # not to model     
+    rate_veh = (sum_velocidad / exp_veh) * 1e6,
+    rate_lic = (sum_velocidad / exp_lic) * 1e6,
+    rate_lead1_veh = (sum_velocidad_lead1 / exp_veh) * 1e6, # not to model
+    rate_lead1_lic = (sum_velocidad_lead1 / exp_lic) * 1e6, # not to model    
+    rate_lead2_veh = (sum_velocidad_lead2 / exp_veh) * 1e6, # not to model
+    rate_lead2_lic = (sum_velocidad_lead2 / exp_lic) * 1e6, # not to model     
     off_veh  = log(exp_veh),
     off_lic  = log(exp_lic),
     year.x   = 2000,                       # dummy year / date just to keep structure
@@ -361,12 +357,12 @@ collisions_weather_corr_rect_synth_cntr <-
     .groups = "drop"
   ) %>% 
   mutate(
-    rate_veh = sum_velocidad / exp_veh * 1e6,
-    rate_lic = sum_velocidad / exp_lic * 1e6,
-    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
-    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
-    rate_lead2_veh = sum_velocidad_lead2 / exp_veh * 1e6, # not to model
-    rate_lead2_lic = sum_velocidad_lead2 / exp_lic * 1e6, # not to model       
+    rate_veh = (sum_velocidad / exp_veh) * 1e6,
+    rate_lic = (sum_velocidad / exp_lic) * 1e6,
+    rate_lead1_veh = (sum_velocidad_lead1 / exp_veh) * 1e6, # not to model
+    rate_lead1_lic = (sum_velocidad_lead1 / exp_lic) * 1e6, # not to model    
+    rate_lead2_veh = (sum_velocidad_lead2 / exp_veh) * 1e6, # not to model
+    rate_lead2_lic = (sum_velocidad_lead2 / exp_lic) * 1e6, # not to model       
     off_veh  = log(exp_veh),
     off_lic  = log(exp_lic),
     year.x   = 2000,
@@ -428,12 +424,12 @@ collisions_weather_corr_rect_quebec_synth <-
     .groups = "drop"
   ) |>
   mutate(                                     # ── aux variables
-    rate_veh = sum_velocidad / exp_veh * 1e6, # not to model
-    rate_lic = sum_velocidad / exp_lic * 1e6, # not to model
-    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
-    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
-    rate_lead2_veh = sum_velocidad_lead2 / exp_veh * 1e6, # not to model
-    rate_lead2_lic = sum_velocidad_lead2 / exp_lic * 1e6, # not to model    
+    rate_veh = (sum_velocidad / exp_veh) * 1e6, # not to model
+    rate_lic = (sum_velocidad / exp_lic) * 1e6, # not to model
+    rate_lead1_veh = (sum_velocidad_lead1 / exp_veh) * 1e6, # not to model
+    rate_lead1_lic = (sum_velocidad_lead1 / exp_lic) * 1e6, # not to model    
+    rate_lead2_veh = (sum_velocidad_lead2 / exp_veh) * 1e6, # not to model
+    rate_lead2_lic = (sum_velocidad_lead2 / exp_lic) * 1e6, # not to model    
     off_veh  = log(exp_veh),                  # offset
     off_lic  = log(exp_lic)
   ) |>
@@ -468,12 +464,12 @@ collisions_weather_corr_rect_quebec_synth_tr <-
     .groups = "drop"
   ) %>% 
   mutate(
-    rate_veh = sum_velocidad / exp_veh * 1e6,
-    rate_lic = sum_velocidad / exp_lic * 1e6,
-    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
-    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
-    rate_lead2_veh = sum_velocidad_lead2 / exp_veh * 1e6, # not to model
-    rate_lead2_lic = sum_velocidad_lead2 / exp_lic * 1e6, # not to model    
+    rate_veh = (sum_velocidad / exp_veh) * 1e6,
+    rate_lic = (sum_velocidad / exp_lic) * 1e6,
+    rate_lead1_veh = (sum_velocidad_lead1 / exp_veh) * 1e6, # not to model
+    rate_lead1_lic = (sum_velocidad_lead1 / exp_lic) * 1e6, # not to model    
+    rate_lead2_veh = (sum_velocidad_lead2 / exp_veh) * 1e6, # not to model
+    rate_lead2_lic = (sum_velocidad_lead2 / exp_lic) * 1e6, # not to model    
     off_veh  = log(exp_veh),
     off_lic  = log(exp_lic),
     year.x   = 2000,                       # dummy year / date just to keep structure
@@ -525,12 +521,12 @@ collisions_weather_corr_rect_quebec_synth_cntr <-
     .groups = "drop"
   ) %>% 
   mutate(
-    rate_veh = sum_velocidad / exp_veh * 1e6,
-    rate_lic = sum_velocidad / exp_lic * 1e6,
-    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
-    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
-    rate_lead2_veh = sum_velocidad_lead2 / exp_veh * 1e6, # not to model
-    rate_lead2_lic = sum_velocidad_lead2 / exp_lic * 1e6, # not to model        
+    rate_veh = (sum_velocidad / exp_veh) * 1e6,
+    rate_lic = (sum_velocidad / exp_lic) * 1e6,
+    rate_lead1_veh = (sum_velocidad_lead1 / exp_veh) * 1e6, # not to model
+    rate_lead1_lic = (sum_velocidad_lead1 / exp_lic) * 1e6, # not to model    
+    rate_lead2_veh = (sum_velocidad_lead2 / exp_veh) * 1e6, # not to model
+    rate_lead2_lic = (sum_velocidad_lead2 / exp_lic) * 1e6, # not to model        
     off_veh  = log(exp_veh),
     off_lic  = log(exp_lic),
     year.x   = 2000,
@@ -553,7 +549,7 @@ collisions_weather_corr_rect_quebec_synth_cntr_tr <-
 ```
 
 
-After the second meeting with Ignacio, we decided to compare exclusivelly one week with the race. So we selected 
+After the second meeting with Ignacio, we decided to compare exclusivelly one week with the race. So we selected thursday to sunday dates.
 
 ```{r}
 #| class-output: center-table
@@ -564,25 +560,21 @@ After the second meeting with Ignacio, we decided to compare exclusivelly one we
 #| label: filtered-db-mega-collapsed
 #| results: "hold"
 
-collisions_weather_corr_rect_pre_post |> 
-    filter(pre_exposure_post_conv==1) |> 
-    group_by(cluster) |> 
-    summarise(min=min(date), max= max(date))
 
 collisions_weather_corr_rect_pre_post <-
   collisions_weather_corr_rect |>
   #4 days , 2 weeks before
     mutate(
     pre_exposure_post_conv = coalesce(
-      as.integer(dplyr::between(date, race_date - days((14+3)),
-                                 race_date - days((14-0)))), 0L),
+      as.integer(dplyr::between(date, race_date_rec - days((14+3)),
+                                 race_date_rec - days((14-0)))), 0L),
       exposure_post_conv = coalesce(
-      as.integer(dplyr::between(date, race_date - days(3),
-                                 race_date + days(0))), 0L),
+      as.integer(dplyr::between(date, race_date_rec - days(3),
+                                 race_date_rec + days(0))), 0L),
     #4 days , 2 weeks after
     neg_exposure_post_conv = coalesce(
-      as.integer(dplyr::between(date, race_date + days(14-3),
-                                 race_date + days(14+0))), 0L),
+      as.integer(dplyr::between(date, race_date_rec + days(14-3),
+                                 race_date_rec + days(14+0))), 0L),
     exposure_window= case_when(pre_exposure_post_conv==1~ "Pre-exposure",
                                exposure_post_conv==1~ "Exposure",
                                neg_exposure_post_conv==1~ "Post-exposure"))|>
@@ -606,12 +598,12 @@ collisions_weather_corr_rect_pre_post <-
     .groups = "drop"
   ) |>
   mutate(                                     # ── aux variables
-    rate_veh = sum_velocidad / exp_veh * 1e6, # not to model
-    rate_lic = sum_velocidad / exp_lic * 1e6, # not to model
-    rate_lead1_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
-    rate_lead1_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model    
-    rate_lead2_veh = sum_velocidad_lead1 / exp_veh * 1e6, # not to model
-    rate_lead2_lic = sum_velocidad_lead1 / exp_lic * 1e6, # not to model        
+    rate_veh = (sum_velocidad / exp_veh) * 1e6, # not to model
+    rate_lic = (sum_velocidad / exp_lic) * 1e6, # not to model
+    rate_lead1_veh = (sum_velocidad_lead1 / exp_veh) * 1e6, # not to model
+    rate_lead1_lic = (sum_velocidad_lead1 / exp_lic) * 1e6, # not to model    
+    rate_lead2_veh = (sum_velocidad_lead2 / exp_veh) * 1e6, # not to model
+    rate_lead2_lic = (sum_velocidad_lead2 / exp_lic) * 1e6, # not to model        
     off_veh  = log(exp_veh),                  # offset
     off_lic  = log(exp_lic)
   ) |> 
@@ -628,24 +620,29 @@ collisions_weather_corr_rect_pre_post <-
   )
 
 
+# collisions_weather_corr_rect_pre_post |> 
+    # filter(pre_exposure_post_conv==1) |> 
+    # group_by(cluster) |> 
+    # summarise(min=min(date), max= max(date))
+
 collisions_weather_corr_rect_pre_post_full <-
   collisions_weather_corr_rect |>
   #4 days , 2 weeks before
     mutate(
     pre_exposure_post_conv = coalesce(
-      as.integer(dplyr::between(date, race_date - days((14+3)),
-                                 race_date - days((14-1)))), 0L),
+      as.integer(dplyr::between(date, race_date_rec - days((14+3)),
+                                 race_date_rec - days((14-0)))), 0L),
       exposure_post_conv = coalesce(
-      as.integer(dplyr::between(date, race_date - days(3),
-                                 race_date + days(1))), 0L),
+      as.integer(dplyr::between(date, race_date_rec - days(3),
+                                 race_date_rec + days(0))), 0L),
     #4 days , 2 weeks after
     neg_exposure_post_conv = coalesce(
-      as.integer(dplyr::between(date, race_date + days(14-3),
-                                 race_date + days(14+1))), 0L),
+      as.integer(dplyr::between(date, race_date_rec + days(14-3),
+                                 race_date_rec + days(14+0))), 0L),
     exposure_window= case_when(pre_exposure_post_conv==1~ "Pre-exposure",
                                exposure_post_conv==1~ "Exposure",
                                neg_exposure_post_conv==1~ "Post-exposure"))|>
-  filter(!is.na(exposure_window)) |> 
+  filter(!is.na(exposure_window))|> 
   mutate(
     treated = !grepl("\\.(23)$", cluster) &
               grepl(paste0("^(", paste(as.character(setdiff(2000:2022, c(2009, 2020, 2021))), collapse="|"), ")"), cluster)
@@ -657,6 +654,10 @@ collisions_weather_corr_rect_pre_post_full <-
   D_sens= paste0(exposure_window, ".", treated_sens)
   )
 
+rbind.data.frame(
+head(collisions_weather_corr_rect_pre_post_full |> dplyr::select(yday_corr, date, race_date_rec, pre_exposure_post_conv, exposure_post_conv, neg_exposure_post_conv) |> mutate(wd=weekdays(date)), 13),
+tail(collisions_weather_corr_rect_pre_post_full |> dplyr::select(yday_corr, date, race_date_rec, pre_exposure_post_conv, exposure_post_conv, neg_exposure_post_conv) |> mutate(wd=weekdays(date)), 13)
+)|> knitr::kable("markdown", caption= "First and last 13 days of the database with different exposure windows")
 
 # ── 1.  load package ------------------------------------------
 library(tableone)
@@ -691,21 +692,52 @@ tab1 <- CreateTableOne(vars      = vars,
 print(tab1, smd = TRUE, nonnormal= nonnormal, quote = TRUE, noSpaces = TRUE)           # console
 # write.csv(print(tab1), "table1.csv")   # if you want a CSV
 
-tab1_exp <- CreateTableOne(vars      = vars,
-                       strata    = "D",
-                       data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Exposure",exposure_window)),
+tab1_df <- print(
+  x            = tab1,
+  smd = TRUE, 
+  nonnormal= nonnormal,
+  quote        = FALSE,   # sin comillas
+  noSpaces     = TRUE,    # sin espacios extra
+  printToggle  = FALSE    # devuelve lo que imprime en vez de cat()
+) |>
+  as.data.frame(stringsAsFactors = FALSE) |>
+  rownames_to_column(var = "Term")        # pasa rownames a columna
+names(tab1_df[c(1:4,6)]) <- c("Term", "Non-host MRC-years", "Host MRCs-years", "Sig.", "SMD")
+tab1_df[,4:5]<-NULL
+
+tab1_sens <- CreateTableOne(vars      = vars,
+                       strata    = "D_sens",
+                       data      = subset(collisions_weather_corr_rect_pre_post, grepl("Pre",exposure_window)),
                        test      = TRUE)
 
-# ── 5.  print / export -----------------------------------------
-print(tab1_exp, smd = TRUE, nonnormal= nonnormal, quote = TRUE, noSpaces = TRUE)           # console# write.csv(print(tab1), "table1.csv")   # if you want a CSV
 
-tab1_post <- CreateTableOne(vars      = vars,
-                       strata    = "D",
-                       data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Exposure",exposure_window)),
-                       test      = TRUE)
+tab1_sens_df <- print(
+  x            = tab1_sens,
+  smd = TRUE, 
+  nonnormal= nonnormal,
+  quote        = FALSE,   # sin comillas
+  noSpaces     = TRUE,    # sin espacios extra
+  printToggle  = FALSE    # devuelve lo que imprime en vez de cat()
+) |>
+  as.data.frame(stringsAsFactors = FALSE) |>
+  rownames_to_column(var = "Term")        # pasa rownames a columna
+names(tab1_sens_df[c(1:4,6)]) <- c("Term", "Non-host MRC-years", "Host MRCs-years", "Sig.", "SMD")
+tab1_sens_df[,4:5]<-NULL
 
-# ── 5.  print / export -----------------------------------------
-print(tab1_post, smd = TRUE, nonnormal= nonnormal, quote = TRUE, noSpaces = TRUE)           # console# write.csv(print(tab1), "table1.csv")   # if you want a CSV
+
+cbind.data.frame(type=c("Controls: Quebec only", rep("", 14),"Controls: Quebec+Sherbrooke", rep("", 14)),
+                 rbind.data.frame(
+                   tab1_df,
+                   tab1_sens_df
+                 )
+                 ) |> 
+  knitr::kable("markdown", caption="Pre-exposure, MRCs-years affected by the race vs. non-host or in years 2009,2020, 2021")
+# cbind.data.frame(type=c("Controls: Quebec only", rep("", 14),"Controls: Quebec+Sherbrooke", rep("", 14)),
+#                  rbind.data.frame(
+#                    tab1_df,
+#                    tab1_sens_df
+#                  )
+#                  ) |> filter(!grepl("_veh",Term)) |> rio::export("clipboard")
 ```
 
 

@@ -1,0 +1,1491 @@
+---
+title: "Fast followers?/Speed contagion: assessing the impact of Montreal F1 Grand Prix on high-speed ticketing rates (2000-2022)"
+description: |
+  Step 3. Check analytical strategies (part 2)
+lang: en
+date: last-modified #date-format: "D [d]e MMM, YYYY"
+bibliography: [_lit/refs.bib]
+csl: "_lit/american-medical-association.csl" # (Opcional: estilo de citas, p.ej., APA)
+author: "Andrés González Santa Cruz"
+format: 
+  html:
+    css: [_lib/styles.scss]
+    code-fold: true
+    embed-resources: true
+    fig-cap-location: top
+lightbox: auto
+toc: true
+toc-depth: 5
+toc-location: left
+toc-float: true
+editor: source
+---
+
+<style>
+.scrollable-content {
+  max-height: 350px;
+  overflow-y: auto;
+}
+</style>
+<style>
+pre.scrollable-code {
+  max-height: 350px;
+  overflow-y: auto;
+}
+</style>
+
+```{r}
+#| message: true
+#| include: true
+#| warning: true
+
+# remove objects and memory
+rm(list=ls());gc()
+
+#remove images
+while(!dev.cur())dev.off()
+cat("\014")
+load(paste0(getwd(),"/_data/step2.RData"))
+```
+
+# Load libraries and data
+
+<div class="scrollable-content">
+```{r}
+#| label: setup
+#| message: true
+#| warning: true
+#| class-output: center-table
+#| include: true
+#| results: "hold"
+
+#borrar caché
+#system("fc-cache -f -v")
+
+#check R version
+if(Sys.info()["sysname"]=="Windows"){
+if (getRversion() != "4.4.1") { stop("Requiere versión de R 4.4.1. Actual: ", getRversion()) }
+}
+if(Sys.info()["sysname"]=="Linux"){
+if (getRversion() != "4.4.1") { stop("Requiere versión de R 4.4.1. Actual: ", getRversion()) }
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+# install.packages(c("dplyr", #for data
+#                    "tidyr", #for data
+#                    "lubridate",  #for dates
+#                    "openxlsx", #for excel files
+#                    "rio", #for importing and exporting data
+#                    "purrr", #for iterating in databases
+#                    "devtools", #for external packages
+#                    "DiagrammeR", #para visualizar DAG
+#                    "dagitty",
+#                    "ggdag",
+#                    "ggplot2" #for graphics
+#                    "kableExtra", #pretty tables
+#                    "quarto", #for documents
+#                    "geosphere" #for coordinates and classifying
+#                    "geepack", #for regression
+#                    "glmmTMB", #For GLMMs
+#                    "DHARMa", #For residual diagnostics
+#                    "car", #For hypothesis testing
+#                    "brms", #Bayesian model
+#                    "bayesplot",
+#                    "loo",
+#                    "Synth", #for synthetic control method
+#                    "weathercan",#for weather data
+#                    "sandwich", #cluster robust intervals
+#                    "emmeans", #for predictions
+#                    "gnm", #Conditional gaussian models
+#                    "splines", #nonlinearity 
+#                    "geeM", #negative binomial and more flexible GEE models
+#                    "PanelMatch", #Matching technique with panel data
+#                    "scpi" #control sintético
+#                    "nixtlar", #for time series analysis and prediction
+#                    "CausalImpact" #for time series causal impact
+#                    "forecast" #for time series analysis prediction and decomposition
+#                    ))
+library(dplyr); library(lubridate); library(tidyverse); library(openxlsx); library(rio); library(purrr); library(dagitty); library(ggdag); library(kableExtra); library(geosphere); library(geepack); library(lme4); library(glmmTMB); library(DHARMa); library(car); library(brms); library(bayesplot); library(loo); library(Synth);  library(weathercan); library(sandwich); library(emmeans); library(gnm); library(splines); library(geeM); library(plm); library(PanelMatch); library(scpi); library(fect); library(nixtlar); library(CausalImpact); library(forecast)
+
+#special repository indicated or the package
+if(!require(weathercan)){
+   install.packages("weathercan", 
+                  repos = c("https://ropensci.r-universe.dev", "https://cloud.r-project.org")); library(weathercan)
+  }
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+if(!require(bpmn)){devtools::install_github("bergant/bpmn")}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+sum_dates <- function(x){
+ 
+  cbind.data.frame(
+	min= as.Date(min(unclass(as.Date(x)), na.rm=T), origin = "1970-01-01"),
+	p001= as.Date(quantile(unclass(as.Date(x)), .001, na.rm=T), origin = "1970-01-01"),
+	p005= as.Date(quantile(unclass(as.Date(x)), .005, na.rm=T), origin = "1970-01-01"),
+	p025= as.Date(quantile(unclass(as.Date(x)), .025, na.rm=T), origin = "1970-01-01"),
+	p25= as.Date(quantile(unclass(as.Date(x)), .25, na.rm=T), origin = "1970-01-01"),
+	p50= as.Date(quantile(unclass(as.Date(x)), .5, na.rm=T), origin = "1970-01-01"),
+	p75= as.Date(quantile(unclass(as.Date(x)), .75, na.rm=T), origin = "1970-01-01"),
+	p975= as.Date(quantile(unclass(as.Date(x)), .975, na.rm=T), origin = "1970-01-01"),
+	p995= as.Date(quantile(unclass(as.Date(x)), .995, na.rm=T), origin = "1970-01-01"),
+	p999= as.Date(quantile(unclass(as.Date(x)), .999, na.rm=T), origin = "1970-01-01"),
+	max= as.Date(max(unclass(as.Date(x)), na.rm=T), origin = "1970-01-01")
+  )
+}
+smd_bin <- function(x,y){
+  z <- x*(1-x)
+  t <- y*(1-y)
+  k <- sum(z,t)
+  l <- k/2
+  
+  return((x-y)/sqrt(l))
+  
+}
+
+theme_custom_sjplot2 <- function(base_size = 12, base_family = "") {
+  theme_minimal(base_size = base_size, base_family = base_family) +
+    theme(
+      # Text elements
+      text = element_text(size = base_size, family = base_family),
+      plot.title = element_text(face = "bold", hjust = 0.5, size = base_size * 1.2),
+      plot.subtitle = element_text(hjust = 0.5, margin = margin(b = 10)),
+      axis.title = element_text(size = base_size, face = "bold"),
+      axis.text = element_text(size = base_size * 0.8),
+      axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5),
+      axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5),
+      axis.title.x = element_text(margin = margin(t = 10)),
+      axis.title.y = element_text(margin = margin(r = 10)),
+      
+      # Plot layout
+      plot.margin = margin(t = 20, r = 20, b = 20, l = 20),
+      panel.grid.major = element_line(color = "grey80"),
+      panel.grid.minor = element_blank(),
+      legend.position = "right",
+      legend.text = element_text(size = base_size * 0.8),
+      legend.title = element_text(size = base_size, face = "bold"),
+      legend.background = element_rect(fill = "white", colour = NA),
+      legend.box.background = element_rect(colour = "grey80", linetype = "solid"),
+      legend.key = element_rect(fill = "white", colour = "white")
+    )
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+num_cores <- parallel::detectCores() -1
+data.table::setDTthreads(threads = num_cores)#restore_after_fork = NULL, throttle = NULL)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#CONFIG #######################################################################
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+options(scipen=2) #display numbers rather scientific number
+
+
+nixtlar::nixtla_client_setup(api_key = readLines(paste0(gsub("f1/","", getwd() ),"/key_alt.txt"))[[1]])
+
+```
+
+
+</div>
+
+### Matrix-completion method
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: false
+#| label: gsynth-mc
+#| eval: true
+#| result: "hold"
+#| fig.cap: "Prediciton on the treated (adjusting on min max temperature and lagged precipitiation (2 days) and lagged rates"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+df <- subset(
+  collisions_weather_corr_rect_synth,
+  yday_corr <= (max_time - 7)            # mismo recorte temporal que en countSynth
+)
+df$treat_unit <- df$tr_contrl_corr
+df$post_treat <- ifelse(df$yday_corr >= 35, 1, 0)
+df$D          <- df$tr_contrl_corr * df$post_treat   # interacción exposición x tiempo
+
+df$log_rate <- log(df$sum_velocidad_lead2) - log(df$exp_lic)     # log(count) – log(exposure)
+
+#table(collisions_weather_corr_rect_synth$id_lab,collisions_weather_corr_rect_synth$tr_contrl_corr)
+
+library(fect)
+set.seed(2125)
+
+road.main.gsynth <- fect::fect(
+  formula = rate_lead2_lic ~ D + mean_min_temp_mean_lin + mean_max_temp_mean_lin +#rate_lead2_lic
+    median_total_precip_median_lin + median_lag_2_prec_median_imp,
+  data    = df,
+  index   = c("id", "yday_corr"),      # unit.variable y time.variable
+  force   = "two-way",                 # fijamos efectos fijos unitarios y temporales
+  CV      = TRUE,                      # selección automática de r con cross‑validation
+  r       = 1:4,                       # ≈ K = 4 en tu modelo original
+  se      = TRUE,                      # errores estándar por bootstrap
+  nboots  = 1000,                      # ajusta según tu tolerancia de tiempo/precisión
+  parallel= F,                       # usa varios hilos si tu máquina lo permite
+  method= "mc"
+)
+# ATT:
+#                             ATT   S.E. CI.lower CI.upper p.value
+# Tr obs equally weighted   0.223 0.1645 -0.09942   0.5455  0.1752
+# Tr units equally weighted 0.223 0.1645 -0.09942   0.5455  0.1752
+road.main.gsynth
+
+plot(road.main.gsynth, main="-3 pre to +0, Quebec+Sherbrooke")
+
+df2 <- subset(
+  collisions_weather_corr_rect_quebec_synth,
+  yday_corr <= (max_time - 7)            # mismo recorte temporal que en countSynth
+)
+df2$treat_unit <- df2$tr_contrl_corr
+df2$post_treat <- ifelse(df2$yday_corr >= 35, 1, 0)
+df2$D          <- df2$tr_contrl_corr * df2$post_treat   # interacción exposición x tiempo
+
+
+road.main.gsynth2 <- fect::fect(
+  formula = rate_lead2_lic ~ D + mean_min_temp_mean_lin + mean_max_temp_mean_lin +
+    median_total_precip_median_lin + median_lag_2_prec_median_imp,
+  data    = df2,
+  index   = c("id", "yday_corr"),      # unit.variable y time.variable
+  force   = "two-way",                 # fijamos efectos fijos unitarios y temporales
+  CV      = TRUE,                      # selección automática de r con cross‑validation
+  r       = 1:4,                       # ≈ K = 4 en tu modelo original
+  se      = TRUE,                      # errores estándar por bootstrap
+  nboots  = 1000,                      # ajusta según tu tolerancia de tiempo/precisión
+  parallel= F,                       # usa varios hilos si tu máquina lo permite
+  method= "mc"
+)
+cat("Quebec only as controls\n")
+road.main.gsynth2
+# ATT:
+#                              ATT   S.E. CI.lower CI.upper p.value
+# Tr obs equally weighted   0.2647 0.1803 -0.08866   0.6181   0.142
+# Tr units equally weighted 0.2647 0.1803 -0.08866   0.6181   0.142
+
+plot(road.main.gsynth2, main="-3 pre to +0, Quebec only")
+```
+
+
+
+### Forecast with Time GPT
+
+
+We defined databases for `(t_int_man)` = `r (t_int_man)` days (df35) as pre-intervention period and a more restrictive `(t_int_man-3)` = `r (t_int_man-3)` (df33).
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: timegpt
+#| eval: true
+#| result: "hold"
+#| fig.cap: "Prediciton on the treated (adjusting on min max temperature and lagged precipitiation (2 days) and lagged rates"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+#https://cran.r-project.org/web/packages/nixtlar/vignettes/prediction-intervals.html
+#https://cran.r-project.org/web/packages/nixtlar/vignettes/exogenous-variables.html
+#https://cran.r-project.org/web/packages/nixtlar/vignettes/cross-validation.html
+#https://cran.r-project.org/web/packages/nixtlar/vignettes/anomaly-detection.html
+
+collisions_weather_corr_rect_synth_tr$Y_lag10 <- 
+collisions_weather_corr_rect_synth_tr|> 
+    mutate(Y_lag10 = dplyr::lag(rate_veh, 10, order_by = yday_corr))|>
+    mutate(Y_lag10 = dplyr::lag(rate_veh, 10, order_by = yday_corr))|> 
+    ungroup()|>
+    pull(Y_lag10) 
+
+collisions_weather_corr_rect_synth_tr$Y_lag10 <- 
+collisions_weather_corr_rect_synth_tr|>
+    mutate(
+        third_value = nth(na.omit(Y_lag10), 1),
+        Y_lag10 = ifelse(is.na(Y_lag10), third_value, Y_lag10)
+    )|>
+    dplyr::select(Y_lag10)|>
+    ungroup()|>
+    pull(Y_lag10)
+
+
+df33 <- collisions_weather_corr_rect_synth_tr|> 
+  arrange(year.x, yday_corr)|>                # 1,2,3… days relative to race
+  filter(yday_corr<(t_int_man-3)) |> 
+  transmute(
+    unique_id = "treated",             # exactly this name
+    ds        = as.POSIXct(as.Date("2019-05-19") + (yday_corr - 1)),
+    y         = rate_veh,
+    mean_median_lag_2_prec_median_imp         = mean_median_lag_2_prec_median_imp,
+    mean_median_total_precip_median_lin= mean_median_total_precip_median_lin,
+    mean_min_temp_mean_lin=  mean_min_temp_mean_lin,
+    mean_max_temp_mean_lin= mean_max_temp_mean_lin,
+    rate_lead1_lic= rate_lead1_lic,
+    rate_lead2_lic= rate_lead2_lic,   
+    sum_velocidad= sum_velocidad,
+    sum_velocidad_lead1= sum_velocidad_lead1,
+    sum_velocidad_lead2= sum_velocidad_lead2,
+    exp_lic= exp_lic,    
+    Y_lag10= Y_lag10
+  )
+
+
+df33c <- collisions_weather_corr_rect_synth_cntr|> 
+  arrange(year.x, yday_corr)|>                # 1,2,3… days relative to race
+  filter(yday_corr<(t_int_man-3)) |> 
+  transmute(
+    unique_id = "control",             # exactly this name
+    ds        = as.POSIXct(as.Date("2019-05-19") + (yday_corr - 1)),
+    y         = rate_veh,
+    mean_median_lag_2_prec_median_imp         = mean_median_lag_2_prec_median_imp,
+    mean_median_total_precip_median_lin= mean_median_total_precip_median_lin,
+    mean_min_temp_mean_lin=  mean_min_temp_mean_lin,
+    mean_max_temp_mean_lin= mean_max_temp_mean_lin,
+    rate_lead1_lic= rate_lead1_lic,
+    rate_lead2_lic= rate_lead2_lic,   
+    sum_velocidad= sum_velocidad,
+    sum_velocidad_lead1= sum_velocidad_lead1,
+    sum_velocidad_lead2= sum_velocidad_lead2,
+    exp_lic= exp_lic
+  )
+
+df33_post <- collisions_weather_corr_rect_synth_tr|> 
+  arrange(year.x, yday_corr)|>                # 1,2,3… days relative to race
+  filter(yday_corr>=(t_int_man-3), yday_corr<=max_time) |>                     # take the first 30
+  transmute(
+    unique_id = "treated",             # exactly this name
+    ds        = as.POSIXct(as.Date("2019-05-19") + (yday_corr - 1)),
+    y         = rate_veh,
+    mean_median_lag_2_prec_median_imp         = mean_median_lag_2_prec_median_imp,
+    mean_median_total_precip_median_lin= mean_median_total_precip_median_lin,
+    mean_min_temp_mean_lin=  mean_min_temp_mean_lin,
+    mean_max_temp_mean_lin= mean_max_temp_mean_lin,
+    rate_lead1_lic= rate_lead1_lic,
+    rate_lead2_lic= rate_lead2_lic,
+    sum_velocidad= sum_velocidad,
+    sum_velocidad_lead1= sum_velocidad_lead1,
+    sum_velocidad_lead2= sum_velocidad_lead2,
+    exp_lic= exp_lic,    
+    Y_lag10= Y_lag10
+  )
+
+df33c_post <- collisions_weather_corr_rect_synth_cntr|> 
+  arrange(year.x, yday_corr)|>                # 1,2,3… days relative to race
+  filter(yday_corr>=(t_int_man-3), yday_corr<=max_time) |>                     # take the first 30
+  transmute(
+    unique_id = "control",             # exactly this name
+    ds        = as.POSIXct(as.Date("2019-05-19") + (yday_corr - 1)),
+    y         = rate_veh,
+    mean_median_lag_2_prec_median_imp         = mean_median_lag_2_prec_median_imp,
+    mean_median_total_precip_median_lin= mean_median_total_precip_median_lin,
+    mean_min_temp_mean_lin=  mean_min_temp_mean_lin,
+    mean_max_temp_mean_lin= mean_max_temp_mean_lin,
+    rate_lead1_lic= rate_lead1_lic,
+    rate_lead2_lic= rate_lead2_lic,
+    sum_velocidad= sum_velocidad,
+    sum_velocidad_lead1= sum_velocidad_lead1,
+    sum_velocidad_lead2= sum_velocidad_lead2,
+    exp_lic= exp_lic
+  )
+
+fc33 <- nixtla_client_forecast(
+  rbind(mutate(df33[1:1,], ds=ds-1), df33),
+  h     = 7,
+  level = c(95),
+  freq  = "D",          # <— this fixes the infer_frequency error
+  finetune_steps = 10, #Number of steps used to finetune 'TimeGPT' in the new data.
+  finetune_loss ="rmse"
+)
+
+
+p33 <- nixtla_client_plot(rbind(mutate(df33[1:1,], ds=ds-1), df33, df33_post), fc33,
+                        max_insample_length = 100)
+
+
+p33$layers[[1]]$aes_params$fill  <- "#eb8f8f"  # verde semitransparente
+p33$layers[[1]]$aes_params$alpha <- 0.5
+
+
+# 1) Banda de CI (layer 1)
+p33$layers[[1]]$geom_params$fill  <- "#FFC10740"  # amarillo semitransparente
+p33$layers[[1]]$geom_params$alpha <- 0.4
+
+# 2) Línea histórica y pronóstico (layer 2)
+# p$layers[[2]]$aes_params$colour  <- "steelblue"
+p33$layers[[2]]$aes_params$linewidth <- 1.0
+
+
+p33$layers[[1]]$aes_params$fill  <- "#eb8f8f"  # verde semitransparente
+p33$layers[[1]]$aes_params$alpha <- 0.5
+
+t0_33 <- min(p33$data$ds)
+t0_33_posix <- min(p33$data$ds)
+xint35   <- t0_33_posix + days((t_int_man-3))
+t0_33 <- as.Date(min(p33$data$ds))
+
+p33+
+    scale_color_manual(
+        values = c(
+            # y        = "#FFD600",   # amarillo intenso
+            TimeGPT  = "red"    # violeta (DarkOrchid / BlueViolet)
+        ), 
+        labels= c( TimeGPT = "Prediction (95% IC in gray area)" )
+    ) +
+    scale_x_datetime(
+        name   = "Days of follow-up (33 days before race,\n7 days after the race)",
+        limits = c(min(p33$data$ds), max(p33$data$ds)), 
+        breaks = seq(min(p33$data$ds), max(p33$data$ds), by = "7 days"),
+        labels = function(x) {
+            # convierto POSIXct a Date y resto t0
+            as.integer(as.Date(x) - t0_33 + 1)
+        }
+    ) +
+    theme_classic(base_size = 13) +
+    theme(
+        strip.text   = element_blank(),   # quita el label de faceta
+        strip.background = element_blank(),
+        legend.position= "bottom"
+    )+
+    geom_vline(
+        xintercept = xint35-days(2),
+        linetype   = "dashed",
+        color      = "black",
+        linewidth       = 1
+    ) +
+    labs(y="Highspeed collisions per 1M license holders")
+```
+
+#### Only Quebec as controls
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: timegpt_qc33
+#| eval: true
+#| fig.cap: "Prediction on the treated (-2 days before race, 7 days after — Québec)"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+
+## ── Conjuntos 33 días pre-intervención y 7 post ───────────────────────────────
+df33_qc <- collisions_weather_corr_rect_quebec_synth_tr|> 
+  arrange(year.x, yday_corr)|> 
+  filter(yday_corr < (t_int_man-3))|> 
+  transmute(
+    unique_id = "treated",
+    ds        = as.POSIXct(as.Date("2019-05-19") + (yday_corr - 1)),
+    y         = rate_veh,
+    mean_median_lag_2_prec_median_imp,
+    mean_median_total_precip_median_lin,
+    mean_min_temp_mean_lin,
+    mean_max_temp_mean_lin,
+    rate_lead1_lic,
+    rate_lead2_lic,
+    sum_velocidad= sum_velocidad,
+    sum_velocidad_lead1= sum_velocidad_lead1,
+    sum_velocidad_lead2= sum_velocidad_lead2,
+    exp_lic= exp_lic
+  )
+df33c_qc <- collisions_weather_corr_rect_quebec_synth_cntr|> 
+  arrange(year.x, yday_corr)|> 
+  filter(yday_corr < (t_int_man-3))|> 
+  transmute(
+    unique_id = "control",
+    ds        = as.POSIXct(as.Date("2019-05-19") + (yday_corr - 1)),
+    y         = rate_veh,
+    mean_median_lag_2_prec_median_imp,
+    mean_median_total_precip_median_lin,
+    mean_min_temp_mean_lin,
+    mean_max_temp_mean_lin,
+    rate_lead1_lic,
+    rate_lead2_lic,
+    sum_velocidad= sum_velocidad,
+    sum_velocidad_lead1= sum_velocidad_lead1,
+    sum_velocidad_lead2= sum_velocidad_lead2,
+    exp_lic= exp_lic
+  )
+
+df33_post_qc <- collisions_weather_corr_rect_quebec_synth_tr|> 
+  arrange(year.x, yday_corr)|> 
+  filter(yday_corr >= (t_int_man-3), yday_corr <= max_time)|> 
+  transmute(
+    unique_id = "treated",
+    ds        = as.POSIXct(as.Date("2019-05-19") + (yday_corr - 1)),
+    y         = rate_veh,
+    mean_median_lag_2_prec_median_imp,
+    mean_median_total_precip_median_lin,
+    mean_min_temp_mean_lin,
+    mean_max_temp_mean_lin,
+    rate_lead1_lic,
+    rate_lead2_lic,
+    sum_velocidad= sum_velocidad,
+    sum_velocidad_lead1= sum_velocidad_lead1,
+    sum_velocidad_lead2= sum_velocidad_lead2,
+    exp_lic= exp_lic
+  )
+
+df33c_post_qc <- collisions_weather_corr_rect_quebec_synth_cntr|> 
+  arrange(year.x, yday_corr)|> 
+  filter(yday_corr >= (t_int_man-3), yday_corr <= max_time)|> 
+  transmute(
+    unique_id = "control",
+    ds        = as.POSIXct(as.Date("2019-05-19") + (yday_corr - 1)),
+    y         = rate_veh,
+    mean_median_lag_2_prec_median_imp,
+    mean_median_total_precip_median_lin,
+    mean_min_temp_mean_lin,
+    mean_max_temp_mean_lin,
+    rate_lead1_lic,
+    rate_lead2_lic,
+    sum_velocidad= sum_velocidad,
+    sum_velocidad_lead1= sum_velocidad_lead1,
+    sum_velocidad_lead2= sum_velocidad_lead2,
+    exp_lic= exp_lic
+  )
+
+## ── TimeGPT ───────────────────────────────────────────────────────────────────
+fc33_qc <- nixtla_client_forecast(
+  rbind(mutate(df33_qc[1:1,], ds = ds - 1), df33_qc),
+  h     = 7,
+  level = c(95),
+  freq  = "D",
+  finetune_steps = 10,
+  finetune_loss  = "rmse"
+)
+
+p33_qc <- nixtla_client_plot(
+  rbind(mutate(df33_qc[1:1,], ds = ds - 1),
+        df33_qc,
+        df33_post_qc),
+  fc33_qc,
+  max_insample_length = 100
+)
+
+## ── Estética idéntica a tu original ───────────────────────────────────────────
+p33_qc$layers[[1]]$geom_params$fill   <- "#FFC10740"
+p33_qc$layers[[1]]$geom_params$alpha  <- 0.4
+p33_qc$layers[[2]]$aes_params$linewidth <- 1.0
+
+t0_33_qc  <- as.Date(min(p33_qc$data$ds))
+xint33_qc <- min(p33_qc$data$ds) + lubridate::days((t_int_man-3))
+
+p33_qc +
+  scale_color_manual(
+    values = c(TimeGPT = "red"),
+    labels = c(TimeGPT = "Prediction (95% IC in gray area)")
+  ) +
+  scale_x_datetime(
+    name   = "Days of follow-up (33 before, 7 after)",
+    limits = c(min(p33_qc$data$ds), max(p33_qc$data$ds)),
+    breaks = seq(min(p33_qc$data$ds), max(p33_qc$data$ds), by = "7 days"),
+    labels = function(x) as.integer(as.Date(x) - t0_33_qc + 1)
+  ) +
+  theme_classic(base_size = 13) +
+  theme(
+    strip.text       = element_blank(),
+    strip.background = element_blank(),
+    legend.position  = "bottom"
+  ) +
+  geom_vline(
+    xintercept = xint33_qc,
+    linetype   = "dashed",
+    color      = "black",
+    linewidth  = 1
+  ) +
+  labs(y = "High-speed collisions per 1 M license holders")
+```
+
+
+## Causal impact
+
+We used the CausalImpact package, useful for time series data, inferring a counterfactual post race period based on pre-intervention components  [@Brodersen2015]. Given that the offset was constant, we used the sum of the high-speed collisions instead of rates.
+
+### Quebec + Sherbrooke
+
+#### -3 days pre
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: causalimpact4
+#| eval: true
+#| fig.cap: "Causal impact (Local linear trend, -3 days race)"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+
+library(bsts)
+
+
+# Add external regressors explicitly (e.g., temperatures, precipitation)
+covariates33 <- cbind(
+ # y = as.numeric(df35$y),
+  mean_min_temp_mean_lin = df33$mean_min_temp_mean_lin,
+  mean_max_temp_mean_lin = df33$mean_max_temp_mean_lin,
+  mean_median_lag_2_prec_median_imp = df33$mean_median_lag_2_prec_median_imp,
+  mean_median_total_precip_median_lin= df33$mean_median_total_precip_median_lin#,
+  #Y_lag10 = df33$Y_lag10
+)
+# Ensure names explicitly
+colnames(covariates33) <- c(#"y",
+                          "mean_min_temp_mean_lin",
+                          "mean_max_temp_mean_lin",
+                          "mean_median_lag_2_prec_median_imp",
+                          "mean_median_total_precip_median_lin"#,#"Y_lag10")
+                          )
+covariates33<- as.data.frame(covariates33)
+
+covariates_future33 <- as.matrix(df33_post[1:7, c("mean_min_temp_mean_lin",
+                                             "mean_max_temp_mean_lin",
+                                             "mean_median_lag_2_prec_median_imp",
+                                             "mean_median_total_precip_median_lin"#,
+                                             #"Y_lag10"
+                                             )])
+
+covariates_full33 <- rbind(covariates33, covariates_future33)
+
+lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33$sum_velocidad_lead2), lower = -2, upper = 2)
+y_bc <- BoxCox(as.numeric(df33$sum_velocidad_lead2), lambda_opt)
+
+y33b <- c(as.numeric(df33$sum_velocidad_lead2), rep(NA, 7)) # respuesta escalada por 100 millones
+
+y33b <- log(y33b)
+
+y33b <- c(y_bc, rep(NA, 7)) # respuesta escalada por 100 millones
+
+ss2b <- list()
+ss2b <- AddLocalLinearTrend(ss2b, y33b)
+ss2b <- AddSeasonal(ss2b, y33b, nseasons = 7, season.duration = 1)
+#ss2b <- AddAutoAr(ss2b, y33b, lags = 1)
+
+
+ss2b <- AddDynamicRegression(ss2b, covariates_full33)
+
+set.seed(2125)
+model33b <- bsts(y33b, state.specification = ss2b, seed=2125,
+              niter = 4e4, family = "gaussian")
+
+#plot(model, "components", burn = 2000)
+
+impact3d_ratio_resp2 <- CausalImpact(bsts.model = model33b,model.args = list(prior.level.sd=.1, dynamic.regression=T),
+              post.period.response = as.numeric(BoxCox(as.numeric(df33_post$sum_velocidad_lead2[1:7]), lambda_opt)))
+                #log(df33_post$sum_velocidad_lead2[1:7]))
+#plot(impact3d, "original") 
+
+summary(impact3d_ratio_resp2)
+
+plot(impact3d_ratio_resp2)
+
+
+
+err_ci_00 <- impact3d_ratio_resp2$series$response - impact3d_ratio_resp2$series$point.pred
+rmse_ci_00 <- sqrt(mean(err_ci_00[1:35]^2))
+mean_pre_00 <- mean(df33$sum_velocidad_lead2[1:35]) 
+sd_pre_00 <- sd(df33$sum_velocidad_lead2[1:35])
+nrmse_00 <- rmse_ci_00 / mean_pre_00 # RMSE relativo; 
+sd_ratio_00 <- rmse_ci_00 / sd_pre_00 # RMSE relativo a la variabilidad natural
+
+cat(sprintf("RMSE on 35 post-period points: %.2f (average absolute forecast error)\n", rmse_ci_00))
+cat(sprintf("NRMSE: %.2f (RMSE relative to pre-period mean, %.1f)\n", nrmse_00, mean_pre_00))
+cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_ratio_00, sd_pre_00))
+
+# Benchmark naïve (random walk de un paso):
+naive_rmse_00 <- sqrt(mean((df33$sum_velocidad_lead2[2:35] - df33$sum_velocidad_lead2[1:34])^2))
+improvement_00 <- 1 - rmse_ci_00 / naive_rmse_00  # >0 = mejora sobre el naïve
+
+```
+
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: causalimpact4-c
+#| eval: true
+#| fig.cap: "Causal impact (Local linear trend, -3 days race), on Controls (Sherbrook+Quebec)"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+
+# Add external regressors explicitly (e.g., temperatures, precipitation)
+covariates33c <- cbind(
+ # y = as.numeric(df35$y),
+  mean_min_temp_mean_lin = df33c$mean_min_temp_mean_lin,
+  mean_max_temp_mean_lin = df33c$mean_max_temp_mean_lin,
+  mean_median_lag_2_prec_median_imp = df33c$mean_median_lag_2_prec_median_imp,
+  mean_median_total_precip_median_lin= df33c$mean_median_total_precip_median_lin#,
+  #Y_lag10 = df33$Y_lag10
+)
+# Ensure names explicitly
+colnames(covariates33c) <- c(#"y",
+                          "mean_min_temp_mean_lin",
+                          "mean_max_temp_mean_lin",
+                          "mean_median_lag_2_prec_median_imp",
+                          "mean_median_total_precip_median_lin"#,#"Y_lag10")
+                          )
+covariates33c<- as.data.frame(covariates33c)
+
+covariates_future33c <- as.matrix(df33c_post[1:7, c("mean_min_temp_mean_lin",
+                                             "mean_max_temp_mean_lin",
+                                             "mean_median_lag_2_prec_median_imp",
+                                             "mean_median_total_precip_median_lin"#,
+                                             #"Y_lag10"
+                                             )])
+
+covariates_full33c <- rbind(covariates33c, covariates_future33c)
+
+# y33cb <- c(as.numeric(df33c$sum_velocidad_lead2), rep(NA, 7)) # respuesta escalada por 100 millones
+# y33cb <- log(y33cb)
+
+lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33c$sum_velocidad_lead2), lower = -2, upper = 2)
+y_bc <- BoxCox(as.numeric(df33c$sum_velocidad_lead2), lambda_opt)
+y33cb <- c(y_bc, rep(NA, 7)) # respuesta escalada por 100 millones
+
+
+ss2cb <- list()
+ss2cb <- AddLocalLinearTrend(ss2cb, y33cb)
+ss2cb <- AddSeasonal(ss2cb, y33cb, nseasons = 7, season.duration = 1)
+#ss2b <- AddAutoAr(ss2b, y33cb, lags = 1)
+
+
+ss2cb <- AddDynamicRegression(ss2cb, covariates_full33c)
+
+set.seed(2125)
+model33cb <- bsts(y33cb, state.specification = ss2cb, seed=2125,
+              niter = 4e4, family = "gaussian")
+
+#plot(model, "components", burn = 2000)
+
+impact3d_ratio_resp2_c <- CausalImpact(bsts.model = model33cb,model.args = list(prior.level.sd=.1, dynamic.regression=T),
+              post.period.response = as.numeric(BoxCox(as.numeric(df33c_post$sum_velocidad_lead2[1:7]), lambda_opt)))
+                #log(df33c_post$sum_velocidad_lead2[1:7]))
+#plot(impact3d, "original") 
+
+summary(impact3d_ratio_resp2_c)
+
+plot(impact3d_ratio_resp2_c)
+
+
+
+
+err_ci_0c <- impact3d_ratio_resp2_c$series$response - impact3d_ratio_resp2_c$series$point.pred
+rmse_ci_0c <- sqrt(mean(err_ci_0c[1:35]^2))
+mean_pre_0c <- mean(df33c$sum_velocidad_lead2[1:35]) 
+sd_pre_0c <- sd(df33c$sum_velocidad_lead2[1:35])
+nrmse_0c <- rmse_ci_0c / mean_pre_0c # RMSE relativo; 
+sd_ratio_0c <- rmse_ci_0c / sd_pre_0c # RMSE relativo a la variabilidad natural
+
+cat(sprintf("RMSE on 35 post-period points: %.2f (average absolute forecast error)\n", rmse_ci_0c))
+cat(sprintf("NRMSE: %.2f (RMSE relative to pre-period mean, %.1f)\n", nrmse_0c, mean_pre_0c))
+cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_ratio_0c, sd_pre_0c))
+
+# Benchmark naïve (random walk de un paso):
+naive_rmse_0c <- sqrt(mean((df33c$sum_velocidad_lead2[2:35] - df33c$sum_velocidad_lead2[1:34])^2))
+improvement_0c <- 1 - rmse_ci_0c / naive_rmse_0c  # >0 = mejora sobre el naïve
+
+```
+
+
+#### -3 days pre, +0
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: causalimpact3b
+#| eval: true
+#| fig.cap: "Causal impact (Main, -3 days race, +0 days post)"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+
+# yss2ab<- c(as.numeric(df33$sum_velocidad_lead2), rep(NA,3))
+# yss2ab<- log(yss2ab)
+lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33$sum_velocidad_lead2), lower = -2, upper = 2)
+y_bc <- BoxCox(as.numeric(df33$sum_velocidad_lead2), lambda_opt)
+yss2ab <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+
+# Model 2
+ss2ab <- list()
+# Local trend, weekly-seasonal #https://qastack.mx/stats/209426/predictions-from-bsts-model-in-r-are-failing-completely - PUSE UN GENERALIZED LOCAL TREND
+ss2ab <- AddLocalLevel(ss2ab, yss2ab) #
+# Add weekly seasonal
+ss2ab <- AddSeasonal(ss2ab, yss2ab, 
+                    nseasons=7, season.duration = 1) #weeks OJO, ESTOS NO SON WEEKS VERDADEROS. PORQUE TENGO MAS DE EUN AÑO
+#ss2ab <- AddAutoAr(ss2ab, y = c(as.numeric(df33$rate_lead2_lic), rep(NA,3)), lags = 10) #NO PUEDO AREGAR AR1 CON gaussian
+# For example, to add a day-of-week component to data with daily granularity, use model.args = list(nseasons = 7, season.duration = 1). To add a day-of-week component to data with hourly granularity, set model.args = list(nseasons = 7, season.duration = 24).
+
+covariates_future33b <- as.matrix(df33_post[1:3, c("mean_min_temp_mean_lin",
+                                             "mean_max_temp_mean_lin",
+                                             "mean_median_lag_2_prec_median_imp",
+                                             "mean_median_total_precip_median_lin"#,
+                                             #"Y_lag10"
+                                             )])
+
+covariates_full33b <- rbind(covariates33, covariates_future33b)
+
+# Include regression terms
+ss2ab <- AddDynamicRegression(ss2ab, covariates_full33b)
+
+model2ab_ratio <- bsts(yss2ab,
+               state.specification = ss2ab, #A list with elements created by AddLocalLinearTrend, AddSeasonal, and similar functions for adding components of state. See the help page for state.specification.
+               family ="gaussian", #A Bayesian Analysis of Time-Series Event Count Data
+               niter = 4e4, 
+               #burn = 2000, #http://finzi.psych.upenn.edu/library/bsts/html/SuggestBurn.html Suggest the size of an MCMC burn in sample as a proportion of the total run.
+               seed= 2125)
+
+## Since we have predictor variables in the model, we need to explicitly
+# make their coefficients time-varying using AddDynamicRegression().
+
+impact3ab_ratio_resp <- CausalImpact(bsts.model = model2ab_ratio,model.args = list(prior.level.sd=.1, dynamic.regression=T),
+                                                   post.period.response = as.numeric(BoxCox(as.numeric(df33_post$sum_velocidad_lead2[1:3]), lambda_opt)))
+              #post.period.response = log(df33_post$sum_velocidad_lead2[1:3]))
+
+summary(impact3ab_ratio_resp)
+plot(impact3ab_ratio_resp)
+
+err_ci <- impact3ab_ratio_resp$series$response - impact3ab_ratio_resp$series$point.pred
+rmse_ci <- sqrt(mean(err_ci[1:34]^2))
+mean_pre <- mean(df33$sum_velocidad_lead2[1:34]) 
+sd_pre <- sd(df33$sum_velocidad_lead2[1:34])
+nrmse <- rmse_ci / mean_pre # RMSE relativo; 
+sd_ratio <- rmse_ci / sd_pre # RMSE relativo a la variabilidad natural
+
+cat(sprintf("RMSE on 35 post-period points: %.2f (average absolute forecast error)\n", rmse_ci))
+cat(sprintf("NRMSE: %.2f (RMSE relative to pre-period mean, %.1f)\n", nrmse, mean_pre))
+cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_ratio, sd_pre))
+
+# Benchmark naïve (random walk de un paso):
+naive_rmse <- sqrt(mean((df33$sum_velocidad_lead2[2:34] - df33$sum_velocidad_lead2[1:33])^2))
+improvement <- 1 - rmse_ci / naive_rmse  # >0 = mejora sobre el naïve
+
+```
+
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: causalimpact3b-c
+#| eval: true
+#| fig.cap: "Causal impact (Main, -3 days race, +0 days post)"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+
+
+# yss2cab <- c(as.numeric(df33c$sum_velocidad_lead2), rep(NA,3))
+# yss2cab <- log(yss2cab)
+lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33c$sum_velocidad_lead2), lower = -2, upper = 2)
+y_bc <- BoxCox(as.numeric(df33c$sum_velocidad_lead2), lambda_opt)
+yss2cab <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+
+# Model 2
+ss2cab <- list()
+# Local trend, weekly-seasonal #https://qastack.mx/stats/209426/predictions-from-bsts-model-in-r-are-failing-completely - PUSE UN GENERALIZED LOCAL TREND
+ss2cab <- AddLocalLevel(ss2cab, yss2cab) #
+# Add weekly seasonal
+ss2cab <- AddSeasonal(ss2cab, yss2cab, 
+                    nseasons=7, season.duration = 1) #weeks OJO, ESTOS NO SON WEEKS VERDADEROS. PORQUE TENGO MAS DE EUN AÑO
+#ss2ab <- AddAutoAr(ss2ab, y = c(as.numeric(df33$rate_lead2_lic), rep(NA,3)), lags = 10) #NO PUEDO AREGAR AR1 CON gaussian
+# For example, to add a day-of-week component to data with daily granularity, use model.args = list(nseasons = 7, season.duration = 1). To add a day-of-week component to data with hourly granularity, set model.args = list(nseasons = 7, season.duration = 24).
+
+covariates_future33cb <- as.matrix(df33c_post[1:3, c("mean_min_temp_mean_lin",
+                                             "mean_max_temp_mean_lin",
+                                             "mean_median_lag_2_prec_median_imp",
+                                             "mean_median_total_precip_median_lin"#,
+                                             #"Y_lag10"
+                                             )])
+
+covariates_full33cb <- rbind(covariates33c, covariates_future33cb)
+
+# Include regression terms
+ss2cab <- AddDynamicRegression(ss2cab, covariates_full33cb)
+
+model2cab_ratio <- bsts(yss2cab,
+               state.specification = ss2cab, #A list with elements created by AddLocalLinearTrend, AddSeasonal, and similar functions for adding components of state. See the help page for state.specification.
+               family ="gaussian", #A Bayesian Analysis of Time-Series Event Count Data
+               niter = 4e4, 
+               #burn = 2000, #http://finzi.psych.upenn.edu/library/bsts/html/SuggestBurn.html Suggest the size of an MCMC burn in sample as a proportion of the total run.
+               seed= 2125)
+
+## Since we have predictor variables in the model, we need to explicitly
+# make their coefficients time-varying using AddDynamicRegression().
+
+impact3cab_ratio_resp <- CausalImpact(bsts.model = model2cab_ratio,model.args = list(prior.level.sd=.1, dynamic.regression=T),
+              #post.period.response = log(df33c_post$sum_velocidad_lead2[1:3]))
+              post.period.response = as.numeric(BoxCox(as.numeric(df33c_post$sum_velocidad_lead2[1:3]), lambda_opt)))
+
+summary(impact3cab_ratio_resp)
+plot(impact3cab_ratio_resp)
+
+err_ci_c <- impact3cab_ratio_resp$series$response - impact3cab_ratio_resp$series$point.pred
+rmse_ci_c <- sqrt(mean(err_ci_c[1:34]^2))
+mean_pre_c <- mean(df33c$sum_velocidad_lead2[1:34]) 
+sd_pre_c <- sd(df33c$sum_velocidad_lead2[1:34])
+nrmse_c <- rmse_ci_c / mean_pre_c # RMSE relativo; 
+sd_ratio_c <- rmse_ci_c / sd_pre_c # RMSE relativo a la variabilidad natural
+
+cat(sprintf("RMSE on 35 post-period points: %.2f (average absolute forecast error)\n", rmse_ci_c))
+cat(sprintf("NRMSE: %.2f (RMSE relative to pre-period mean, %.1f)\n", nrmse_c, mean_pre_c))
+cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_ratio_c, sd_pre_c))
+
+# Benchmark naïve (random walk de un paso):
+naive_rmse_c <- sqrt(mean((df33c$sum_velocidad_lead2[2:34] - df33c$sum_velocidad_lead2[1:33])^2))
+improvement_c <- 1 - rmse_ci_c / naive_rmse_c  # >0 = mejora sobre el naïve
+
+```
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: causalimpact4b
+#| eval: true
+#| fig.cap: "Causal impact (Local linear trend, -3 days race, 0)"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+
+# y33b <- c(as.numeric(df33$sum_velocidad_lead2), rep(NA, 3)) # respuesta escalada por 100 millones
+# y33b <- log(y33b)
+lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33$sum_velocidad_lead2), lower = -2, upper = 2)
+y_bc <- BoxCox(as.numeric(df33$sum_velocidad_lead2), lambda_opt)
+y33b <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+
+
+ss2b <- list()
+ss2b <- AddLocalLinearTrend(ss2b, y33b)
+ss2b <- AddSeasonal(ss2b, y33b, nseasons = 7, season.duration = 1)
+#ss2b <- AddAutoAr(ss2b, y33b, lags = 1)
+
+
+ss2b <- AddDynamicRegression(ss2b, covariates_full33b)
+
+set.seed(2125)
+model33b <- bsts(y33b, state.specification = ss2b, seed=2125,
+              niter = 4e4, family = "gaussian")
+
+#plot(model, "components", burn = 2000)
+
+impact3db_ratio_resp2 <- CausalImpact(bsts.model = model33b, model.args = list(prior.level.sd=.1, dynamic.regression=T),
+              #post.period.response = log(df33_post$sum_velocidad_lead2[1:3]))
+              post.period.response = as.numeric(BoxCox(as.numeric(df33_post$sum_velocidad_lead2[1:3]), lambda_opt)))
+
+summary(impact3db_ratio_resp2)
+
+plot(impact3db_ratio_resp2)
+
+
+err_ci_corr <- impact3db_ratio_resp2$series$response - impact3db_ratio_resp2$series$point.pred
+rmse_ci_corr <- sqrt(mean(err_ci_corr[1:34]^2))
+mean_pre_corr <- mean(df33$sum_velocidad_lead2[1:34]) 
+sd_pre_corr <- sd(df33$sum_velocidad_lead2[1:34])
+nrmse_corr <- rmse_ci_corr / mean_pre_corr # RMSE relativo; 
+sd_ratio_corr <- rmse_ci_corr / sd_pre_corr # RMSE relativo a la variabilidad natural
+
+cat(sprintf("RMSE on 35 post-period points: %.2f (average absolute forecast error)\n", rmse_ci_corr))
+cat(sprintf("NRMSE: %.2f (RMSE relative to pre-period mean, %.1f)\n", nrmse_corr, mean_pre_corr))
+cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_ratio_corr, sd_pre_corr))
+```
+
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: causalimpact4b-c
+#| eval: true
+#| fig.cap: "Causal impact (Local linear trend, -3 days race, 0), controls"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+
+# y33b_c <- c(as.numeric(df33c$sum_velocidad_lead2), rep(NA, 3)) # respuesta escalada por 100 millones
+# y33b_c <- log(y33b_c)
+lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33c$sum_velocidad_lead2), lower = -2, upper = 2)
+y_bc <- BoxCox(as.numeric(df33c$sum_velocidad_lead2), lambda_opt)
+y33b_c <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+
+
+ss2b_c <- list()
+ss2b_c <- AddLocalLinearTrend(ss2b_c, y33b_c)
+ss2b_c <- AddSeasonal(ss2b_c, y33b_c, nseasons = 7, season.duration = 1)
+#ss2b <- AddAutoAr(ss2b, y33b, lags = 1)
+
+
+covariates_future33c2 <- as.matrix(df33c_post[1:3, c("mean_min_temp_mean_lin",
+                                             "mean_max_temp_mean_lin",
+                                             "mean_median_lag_2_prec_median_imp",
+                                             "mean_median_total_precip_median_lin"#,
+                                             #"Y_lag10"
+                                             )])
+
+covariates_full33c2 <- rbind(covariates33c, covariates_future33c2)
+
+ss2b_c <- AddDynamicRegression(ss2b_c, covariates_full33c2)
+
+set.seed(2125)
+model33b_c <- bsts(y33b_c, state.specification = ss2b_c, seed=2125,
+              niter = 4e4, family = "gaussian")
+
+#plot(model, "components", burn = 2000)
+
+impact3db_ratio_resp2_c <- CausalImpact(bsts.model = model33b_c, model.args = list(prior.level.sd=.1, dynamic.regression=T),
+              #post.period.response = log(df33c_post$sum_velocidad_lead2[1:3]))
+              post.period.response = as.numeric(BoxCox(as.numeric(df33c_post$sum_velocidad_lead2[1:3]), lambda_opt)))
+
+summary(impact3db_ratio_resp2_c)
+
+plot(impact3db_ratio_resp2_c)
+
+
+err_ci_c_corr <- impact3db_ratio_resp2_c$series$response - impact3db_ratio_resp2_c$series$point.pred
+rmse_ci_c_corr <- sqrt(mean(err_ci_c_corr[1:34]^2))
+mean_pre_c_corr <- mean(df33c$sum_velocidad_lead2[1:34]) 
+sd_pre_c_corr <- sd(df33c$sum_velocidad_lead2[1:34])
+nrmse_c_corr <- rmse_ci_c_corr / mean_pre_c_corr # RMSE relativo; 
+sd_ratio_c_corr <- rmse_ci_c_corr / sd_pre_c_corr # RMSE relativo a la variabilidad natural
+
+cat(sprintf("RMSE on 35 post-period points: %.2f (average absolute forecast error)\n", rmse_ci_c_corr))
+cat(sprintf("NRMSE: %.2f (RMSE relative to pre-period mean, %.1f)\n", nrmse_c_corr, mean_pre_c_corr))
+cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_ratio_c_corr, sd_pre_c_corr))
+```
+
+
+### Only Quebec as controls
+
+
+#### -3 days pre
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: causalimpact_qc33
+#| eval: true
+#| fig.cap: "Causal impact (Québec only -3 days pre, model w/ local level)"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+#| 
+## ── Vector de respuesta ───────────────────────────────────────────────────────
+# y33_qc <- c(as.numeric(df33_qc$sum_velocidad_lead2), rep(NA, 3))  # 7 post-días + 2 de ajuste
+# y33_qc <- log(y33_qc)
+lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33_qc$sum_velocidad_lead2), lower = -2, upper = 2)
+y_bc <- BoxCox(as.numeric(df33_qc$sum_velocidad_lead2), lambda_opt)
+y33_qc <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+
+
+## ── Covariables (data.frame) ─────────────────────────────────────────────────
+covariates33_qc <- df33_qc |> dplyr::select(
+  mean_min_temp_mean_lin,
+  mean_max_temp_mean_lin,
+  mean_median_lag_2_prec_median_imp,
+  mean_median_total_precip_median_lin#,
+  #Y_lag10
+)
+
+covariates_future33_qc <- df33_post_qc |> dplyr::select(
+  mean_min_temp_mean_lin,
+  mean_max_temp_mean_lin,
+  mean_median_lag_2_prec_median_imp,
+  mean_median_total_precip_median_lin#,
+  #Y_lag10
+)
+
+covariates_full33_qc <- dplyr::bind_rows(covariates33_qc, covariates_future33_qc[1:7,])
+covariates_full33_qc2 <- dplyr::bind_rows(covariates33_qc, covariates_future33_qc[1:3,])
+
+```
+
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: causalimpact_qc33-c
+#| eval: true
+#| fig.cap: "Causal impact (Québec only -3 days pre, model w/ local level)"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+#| 
+## ── Vector de respuesta ───────────────────────────────────────────────────────
+# y33_qc_c <- c(as.numeric(df33c_qc$sum_velocidad_lead2), rep(NA, 3))  # 7 post-días + 2 de ajuste
+# y33_qc_c <- log(y33_qc_c)
+lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33c_qc$sum_velocidad_lead2), lower = -2, upper = 2)
+y_bc <- BoxCox(as.numeric(df33c_qc$sum_velocidad_lead2), lambda_opt)
+y33_qc_c <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+
+## ── Covariables (data.frame) ─────────────────────────────────────────────────
+covariates33_qc_c <- df33c_qc |> dplyr::select(
+  mean_min_temp_mean_lin,
+  mean_max_temp_mean_lin,
+  mean_median_lag_2_prec_median_imp,
+  mean_median_total_precip_median_lin#,
+  #Y_lag10
+)
+
+covariates_future33_qc_c <- df33c_post_qc |> dplyr::select(
+  mean_min_temp_mean_lin,
+  mean_max_temp_mean_lin,
+  mean_median_lag_2_prec_median_imp,
+  mean_median_total_precip_median_lin#,
+  #Y_lag10
+)
+
+covariates_full33_qc_c <- dplyr::bind_rows(covariates33_qc_c, covariates_future33_qc_c[1:7,])
+covariates_full33_qc_c2 <- dplyr::bind_rows(covariates33_qc_c, covariates_future33_qc_c[1:3,])
+
+```
+
+#### -3 days pre, +0
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: causalimpact_qc33b
+#| eval: true
+#| fig.cap: "Causal impact (Québec only -3 days pre, 0 days post, model w/ local level)"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+
+## ── Vector de respuesta ───────────────────────────────────────────────────────
+# y33b_qc <- c(as.numeric(df33_qc$sum_velocidad_lead2), rep(NA, 3))  # 7 post-días + 2 de ajuste
+# y33b_qc <- log(y33b_qc)
+lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33_qc$sum_velocidad_lead2), lower = -2, upper = 2)
+y_bc <- forecast::BoxCox(as.numeric(df33_qc$sum_velocidad_lead2), lambda_opt)
+y33b_qc <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+
+covariates_full33b_qc <- dplyr::bind_rows(covariates33_qc, covariates_future33_qc[1:3,])
+
+## ── Especificación del estado: nivel local ───────────────────────────────────
+ss2ab_qc <- list()
+ss2ab_qc <- AddLocalLevel(ss2ab_qc, y33b_qc)
+ss2ab_qc <- AddSeasonal(ss2ab_qc, y33b_qc, nseasons = 7, season.duration = 1)
+#ss2ab_qc <- AddAutoAr   (ss2ab_qc, y33b_qc, lags = 10)
+ss2ab_qc <- AddDynamicRegression(ss2ab_qc, covariates_full33b_qc)
+
+## ── Ajuste BSTS y CausalImpact ───────────────────────────────────────────────
+model2ab_qc <- bsts(
+  y33b_qc,
+  state.specification = ss2ab_qc,
+  family = "gaussian",
+  niter  = 4e4,
+  seed   = 2125
+)
+
+impact33b_qc <- CausalImpact(
+  bsts.model           = model2ab_qc,
+  model.args           = list(prior.level.sd = .1, dynamic.regression = TRUE),
+  #post.period.response = log(df33_post_qc$sum_velocidad_lead2[1:3])
+  post.period.response = as.numeric(forecast::BoxCox(as.numeric(df33_post_qc$sum_velocidad_lead2[1:3]), lambda_opt))
+)
+
+summary(impact33b_qc)
+
+
+err_ci_qb_corr <- impact33b_qc$series$response - impact33b_qc$series$point.pred
+rmse_ci_qb_corr <- sqrt(mean(err_ci_qb_corr[1:35]^2))
+mean_pre_qb_corr <- mean(df33_qc$sum_velocidad_lead2[1:35], na.rm=T) 
+sd_pre_qb_corr <- sd(df33_qc$sum_velocidad_lead2[1:35], na.rm=T)
+nrmse_qb_corr <- rmse_ci_qb_corr / mean_pre_qb_corr # RMSE relativo; 
+sd_ratio_qb_corr <- rmse_ci_qb_corr / sd_pre_qb_corr # RMSE relativo a la variabilidad natural
+
+cat(sprintf("RMSE on 35 post-period points: %.2f (average absolute forecast error)\n", rmse_ci_qb_corr))
+cat(sprintf("NRMSE: %.2f (RMSE relative to pre-period mean, %.1f)\n", nrmse_qb_corr, mean_pre_qb_corr))
+cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_ratio_qb_corr, sd_pre_qb_corr))
+
+
+plot(impact33b_qc)
+```
+
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: causalimpact_qc33b-c
+#| eval: true
+#| fig.cap: "Causal impact (Québec only -3 days pre, 0 days post, model w/ local level)"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+#| 
+## ── Vector de respuesta ───────────────────────────────────────────────────────
+# y33b_qc_c <- c(as.numeric(df33c_qc$sum_velocidad_lead2), rep(NA, 3))  # 7 post-días + 2 de ajuste
+# y33b_qc_c <- log(y33b_qc_c)
+lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33c_qc$sum_velocidad_lead2), lower = -2, upper = 2)
+y33b_qc_c <- BoxCox(as.numeric(df33c_qc$sum_velocidad_lead2), lambda_opt)
+y33b_qc_c <- c(as.numeric(y33b_qc_c), rep(NA, 3)) 
+
+## ── Especificación del estado: nivel local ───────────────────────────────────
+ss2ab_qc_c <- list()
+ss2ab_qc_c <- AddLocalLevel(ss2ab_qc_c, y33b_qc_c)
+ss2ab_qc_c <- AddSeasonal(ss2ab_qc_c, y33b_qc_c, nseasons = 7, season.duration = 1)
+#ss2ab_qc <- AddAutoAr   (ss2ab_qc, y33b_qc, lags = 10)
+ss2ab_qc_c <- AddDynamicRegression(ss2ab_qc_c, covariates_full33_qc_c2)
+
+## ── Ajuste BSTS y CausalImpact ───────────────────────────────────────────────
+model2ab_qc_c <- bsts(
+  y33b_qc_c,
+  state.specification = ss2ab_qc_c,
+  family = "gaussian",
+  niter  = 4e4,
+  seed   = 2125
+)
+
+impact33ab_qc_c <- CausalImpact(
+  bsts.model           = model2ab_qc_c,
+  model.args           = list(prior.level.sd = .1, dynamic.regression = TRUE),
+  #post.period.response = log(df33c_post_qc$sum_velocidad_lead2[1:3])
+  post.period.response = as.numeric(BoxCox(as.numeric(df33c_post_qc$sum_velocidad_lead2[1:3]), lambda_opt))
+)
+
+
+summary(impact33ab_qc_c)
+
+err_ci_c_qb_corr <- impact33ab_qc_c$series$response - impact33ab_qc_c$series$point.pred
+rmse_ci_c_qb_corr <- sqrt(mean(err_ci_c_qb_corr[1:34]^2))
+mean_pre_c_qb_corr <- mean(df33c_qc$sum_velocidad_lead2[1:34], na.rm=T) 
+sd_pre_c_qb_corr <- sd(df33c_qc$sum_velocidad_lead2[1:34], na.rm=T)
+nrmse_c_qb_corr <- rmse_ci_c_qb_corr / mean_pre_c_qb_corr # RMSE relativo; 
+sd_ratio_c_qb_corr <- rmse_ci_c_qb_corr / sd_pre_c_qb_corr # RMSE relativo a la variabilidad natural
+
+cat(sprintf("RMSE on 35 post-period points: %.2f (average absolute forecast error)\n", rmse_ci_c_qb_corr))
+cat(sprintf("NRMSE: %.2f (RMSE relative to pre-period mean, %.1f)\n", nrmse_c_qb_corr, mean_pre_c_qb_corr))
+cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_ratio_c_qb_corr, sd_pre_c_qb_corr))
+
+plot(impact33ab_qc_c)
+```
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: causalimpact2_qc33b
+#| eval: true
+#| fig.cap: "Causal impact (Québec only,-3 days pre, local linear trend)"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+
+## ── Vector de respuesta ───────────────────────────────────────────────────────
+# y33b_lin_qc <- c(as.numeric(df33_qc$sum_velocidad_lead2), rep(NA, 3))
+# y33b_lin_qc <- log(y33b_lin_qc)
+lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33_qc$sum_velocidad_lead2), lower = -2, upper = 2)
+y33b_lin_qc <- BoxCox(as.numeric(df33_qc$sum_velocidad_lead2), lambda_opt)
+y33b_lin_qc <- c(as.numeric(y33b_lin_qc), rep(NA, 3))
+
+## ── Covariables (data.frame) ─────────────────────────────────────────────────
+covariates_full33b_qc <- dplyr::bind_rows(covariates33_qc, covariates_future33_qc)
+
+## ── Estado: tendencia local lineal ───────────────────────────────────────────
+ss2bb_qc <- list()
+ss2bb_qc <- AddLocalLinearTrend(ss2bb_qc, y33b_lin_qc)
+ss2bb_qc <- AddSeasonal        (ss2bb_qc, y33b_lin_qc, nseasons = 7, season.duration = 1)
+#ss2bb_qc <- AddAutoAr          (ss2bb_qc, y33b_lin_qc, lags = 1)
+ss2bb_qc <- AddDynamicRegression(ss2bb_qc, covariates_full33b_qc)
+
+## ── Ajuste BSTS y CausalImpact ───────────────────────────────────────────────
+model33b_qc2 <- bsts(
+  y33b_lin_qc,
+  state.specification = ss2bb_qc,
+  family = "gaussian",
+  niter  = 4e4,
+  seed   = 2125
+)
+
+impact2_33b_qc2 <- CausalImpact(
+  bsts.model           = model33b_qc2,
+  model.args           = list(prior.level.sd = .1, dynamic.regression = TRUE),
+  #post.period.response = log(df33_post_qc$sum_velocidad_lead2[1:3]),
+  post.period.response = as.numeric(forecast::BoxCox(as.numeric(df33_post_qc$sum_velocidad_lead2[1:3]), lambda_opt))
+)
+
+summary(impact2_33b_qc2)
+
+err_ci_qb_corr2 <- impact2_33b_qc2$series$response - impact2_33b_qc2$series$point.pred
+rmse_ci_qb_corr2 <- sqrt(mean(err_ci_qb_corr2[1:34]^2))
+mean_pre_qb_corr2 <- mean(df33_qc$sum_velocidad_lead2[1:34], na.rm=T) 
+sd_pre_qb_corr2 <- sd(df33_qc$sum_velocidad_lead2[1:34], na.rm=T)
+nrmse_qb_corr2 <- rmse_ci_qb_corr2 / mean_pre_qb_corr2 # RMSE relativo; 
+sd_ratio_qb_corr2 <- rmse_ci_qb_corr2 / sd_pre_qb_corr2 # RMSE relativo a la variabilidad natural
+
+cat(sprintf("RMSE on 35 post-period points: %.2f (average absolute forecast error)\n", rmse_ci_qb_corr2))
+cat(sprintf("NRMSE: %.2f (RMSE relative to pre-period mean, %.1f)\n", nrmse_qb_corr2, mean_pre_qb_corr2))
+cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_ratio_qb_corr2, sd_pre_qb_corr2))
+
+plot(impact2_33b_qc2)
+
+```
+
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: causalimpact2_qc33b-c
+#| eval: true
+#| fig.cap: "Causal impact (Québec only,-3 days pre, local linear trend), controls"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| results: "hold"
+
+## ── Vector de respuesta ───────────────────────────────────────────────────────
+# y33b_lin_qc_c <- c(as.numeric(df33c_qc$sum_velocidad_lead2), rep(NA, 3))
+# y33b_lin_qc_c <- log(y33b_lin_qc_c)
+lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33c_qc$sum_velocidad_lead2), lower = -2, upper = 2)
+y33b_lin_qc_c <- BoxCox(as.numeric(df33c_qc$sum_velocidad_lead2), lambda_opt)
+y33b_lin_qc_c <- c(as.numeric(y33b_lin_qc_c), rep(NA, 3))
+
+## ── Estado: tendencia local lineal ───────────────────────────────────────────
+ss2bb_qc_c <- list()
+ss2bb_qc_c <- AddLocalLinearTrend(ss2bb_qc_c, y33b_lin_qc_c)
+ss2bb_qc_c <- AddSeasonal        (ss2bb_qc_c, y33b_lin_qc_c, nseasons = 7, season.duration = 1)
+#ss2bb_qc <- AddAutoAr          (ss2bb_qc, y33b_lin_qc, lags = 1)
+ss2bb_qc_c <- AddDynamicRegression(ss2bb_qc_c, covariates_full33b_qc)
+
+## ── Ajuste BSTS y CausalImpact ───────────────────────────────────────────────
+model33b_qc_c <- bsts(
+  y33b_lin_qc_c,
+  state.specification = ss2bb_qc_c,
+  family = "gaussian",
+  niter  = 4e4,
+  seed   = 2125
+)
+
+impact2_33b_qc_c <- CausalImpact(
+  bsts.model           = model33b_qc_c,
+  model.args           = list(prior.level.sd = .1, dynamic.regression = TRUE),
+  #post.period.response = log(df33c_post_qc$sum_velocidad_lead2[1:3])
+  post.period.response = as.numeric(BoxCox(as.numeric(df33c_post_qc$sum_velocidad_lead2[1:3]), lambda_opt))
+)
+
+summary(impact2_33b_qc_c)
+
+
+err_ci_c_qb_corr2 <- impact2_33b_qc_c$series$response - impact2_33b_qc_c$series$point.pred
+rmse_ci_c_qb_corr2 <- sqrt(mean(err_ci_c_qb_corr2[1:34]^2))
+mean_pre_c_qb_corr2 <- mean(df33c_qc$sum_velocidad_lead2[1:34], na.rm=T) 
+sd_pre_c_qb_corr2 <- sd(df33c_qc$sum_velocidad_lead2[1:34], na.rm=T)
+nrmse_c_qb_corr2 <- rmse_ci_c_qb_corr2 / mean_pre_c_qb_corr2 # RMSE relativo; 
+sd_ratio_c_qb_corr2 <- rmse_ci_c_qb_corr2 / sd_pre_c_qb_corr2 # RMSE relativo a la variabilidad natural
+
+cat(sprintf("RMSE on 35 post-period points: %.2f (average absolute forecast error)\n", rmse_ci_c_qb_corr2))
+cat(sprintf("NRMSE: %.2f (RMSE relative to pre-period mean, %.1f)\n", nrmse_c_qb_corr2, mean_pre_c_qb_corr2))
+cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_ratio_c_qb_corr2, sd_pre_c_qb_corr2))
+
+plot(impact2_33b_qc_c)
+```
+
+
+
+<br>
+
+# Session info
+
+```{r session-info, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+cat(paste0("R library: ", Sys.getenv("R_LIBS_USER")))
+cat(paste0("Date: ",withr::with_locale(new = c('LC_TIME' = 'C'), code =Sys.time())))
+cat(paste0("Editor context: ", getwd()))
+cat("quarto version: "); system("quarto --version") 
+
+quarto::quarto_version()
+
+save.image("_data/step3.RData")
+```
+
+```{r session-info-r, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+#| class-output: center-table
+
+sesion_info <- devtools::session_info()
+dplyr::select(
+  tibble::as_tibble(sesion_info$packages),
+  c(package, loadedversion, source)
+) |> 
+ knitr::kable(caption = "R packages", format = "html",
+      col.names = c("Row number", "Package", "Version"),
+    row.names = FALSE,
+      align = c("c", "l", "r")) |> 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)|> 
+  kableExtra::scroll_box(width = "100%", height = "375px")  
+```
+
+```{r session-info-python, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+#| class-output: center-table
+
+reticulate::py_list_packages()%>% 
+ knitr::kable(caption = "Python packages", format = "html",
+      col.names = c("Package", "Version", "Requirement"),
+    row.names = FALSE,
+      align = c("c", "l", "r", "r"))%>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)|>
+  kableExtra::scroll_box(width = "100%", height = "375px")  
+```
+
+
+# References

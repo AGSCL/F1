@@ -186,10 +186,6 @@ data.table::setDTthreads(threads = num_cores)#restore_after_fork = NULL, throttl
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 options(scipen=2) #display numbers rather scientific number
-
-
-nixtlar::nixtla_client_setup(api_key = readLines(paste0(gsub("f1/","", getwd() ),"/key.txt"))[[2]])
-
 ```
 </div>
 
@@ -943,7 +939,8 @@ collisions |>
     D_off              = ifelse(tr_contr == "treatment" & exposure_off == 1, 1, 0),
     D_sens_off         = ifelse(tr_contr_sens == "treatment" & exposure_off == 1, 1, 0),
     D7_off             = ifelse(tr_contr == "treatment" & exposure_alt7_off == 1, 1, 0),
-    D7_sens_off        = ifelse(tr_contr_sens == "treatment" & exposure_alt7_off == 1, 1, 0)
+    D7_sens_off        = ifelse(tr_contr_sens == "treatment" & exposure_alt7_off == 1, 1, 0),
+    D_post_conv_sens = ifelse(tr_contr_sens == "treatment" & exposure_post_conv == 1, 1, 0)
   )|>
   group_by(mrc, year)|>
    arrange(date, .by_group = TRUE)|>
@@ -1203,8 +1200,11 @@ We formatted the data recatangularily by subsetting `r abs(min_value)` days befo
 
 collisions_weather_corr_rect <- 
   collisions_weather_corr|>
-  mutate(race_date_rec= ifelse(is.na(race_date), as.Date(as.Date(paste0(as.character(year),"-01-01"))+ days(days_impute_race)), race_date))|> 
-  mutate(race_date_rec= as.Date(race_date_rec)) |> 
+  mutate(race_date_rec= case_when(is.na(race_date) & year== 2009~ as.Date(as.Date(paste0(as.character(year),"-01-01"))+ days(days_impute_race)+ days(1)),
+                                  is.na(race_date) & year== 2020~ as.Date(as.Date(paste0(as.character(year),"-01-01"))+ days(days_impute_race)+ days(2)),
+                                  is.na(race_date) & year== 2021~ as.Date(as.Date(paste0(as.character(year),"-01-01"))+ days(days_impute_race)+ days(0)),
+    T~ race_date))|>
+  mutate(race_date_rec= as.Date(race_date_rec))|> 
   group_by(cluster)|>
   mutate(day_diff = as.numeric(difftime(date, race_date_rec, units = "days")))|> # Calculate difference in days
   mutate(race_window = dplyr::between(day_diff, min_value, 30))|> # Check if difference is within min_value to 30 days
