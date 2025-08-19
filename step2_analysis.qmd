@@ -822,6 +822,8 @@ cat(
 
 ```
 
+#### Placebo
+
 We made placebo tests with post-exposure.
 
 ```{r}
@@ -1181,6 +1183,40 @@ cat(
 #| eval: true
 #| results: "hold"
 
+z_lead2_placebo_main_h_sens   <- (b2_lead2_sens - pb2_lead2_sens) / sqrt(se2_lead2_sens^2 + pse2_lead2_sens^2)
+p_lead2_placebo_main_h_sens   <- 2 * pnorm(-abs(z_lead2_placebo_main_h_sens))     # 0.32
+cat("Host MRC-years; Main vs. Placebo (w/ Sherbrooke as control), effects after 2 days;  p-values\n")
+p_lead2_placebo_main_h_sens
+
+log_rrr_placebo_main_h_sens  <- b2_lead2_sens- pb2_lead2_sens
+se_rrr_placebo_main_h_sens   <- sqrt(se2_lead2_sens^2 + pse2_lead2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_placebo_main_h_sens      <- exp(log_rrr_placebo_main_h_sens)
+lo95_lead2_placebo_main_h_sens     <- exp(log_rrr_placebo_main_h_sens - 1.96 * se_rrr_placebo_main_h_sens)
+hi95_lead2_placebo_main_h_sens     <- exp(log_rrr_placebo_main_h_sens + 1.96 * se_rrr_placebo_main_h_sens)
+
+cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_h_sens, lo95_lead2_placebo_main_h_sens, hi95_lead2_placebo_main_h_sens, p_lead2_placebo_main_h_sens))
+
+
+z_lead2_placebo_main_nh_sens   <- (b1_lead2_sens - pb1_lead2_sens) / sqrt(se1_lead2_sens^2 + pse1_lead2_sens^2)
+p_lead2_placebo_main_nh_sens   <- 2 * pnorm(-abs(z_lead2_placebo_main_nh_sens))     # 0.32
+cat("Non-Host MRC-years; Main vs. Placebo (w/ Sherbrooke as control), effects after 2 days;  p-values\n")
+p_lead2_placebo_main_nh_sens
+
+log_rrr_placebo_main_nh_sens  <- b1_lead2_sens- pb1_lead2_sens
+se_rrr_placebo_main_nh_sens   <- sqrt(se1_lead2_sens^2 + pse1_lead2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_placebo_main_nh_sens      <- exp(log_rrr_placebo_main_nh_sens)
+lo95_lead2_placebo_main_nh_sens     <- exp(log_rrr_placebo_main_nh_sens - 1.96 * se_rrr_placebo_main_nh_sens)
+hi95_lead2_placebo_main_nh_sens     <- exp(log_rrr_placebo_main_nh_sens + 1.96 * se_rrr_placebo_main_nh_sens)
+
+cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_nh_sens, lo95_lead2_placebo_main_nh_sens, hi95_lead2_placebo_main_nh_sens, p_lead2_placebo_main_nh_sens))
+
+
+
+
 
 z_lead2_placebo_main_h   <- (b2_lead2 - pb2_lead2) / sqrt(se2_lead2^2 + pse2_lead2^2)
 p_lead2_placebo_main_h   <- 2 * pnorm(-abs(z_lead2_placebo_main_h))     # 0.32
@@ -1213,43 +1249,396 @@ hi95_lead2_placebo_main_nh     <- exp(log_rrr_placebo_main_nh + 1.96 * se_rrr_pl
 
 cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_nh, lo95_lead2_placebo_main_nh, hi95_lead2_placebo_main_nh, p_lead2_placebo_main_nh))
 
-
-
-z_lead2_placebo_main_h_sens   <- (b2_lead2_sens - pb2_lead2_sens) / sqrt(se2_lead2_sens^2 + pse2_lead2_sens^2)
-p_lead2_placebo_main_h_sens   <- 2 * pnorm(-abs(z_lead2_placebo_main_h_sens))     # 0.32
-cat("Host MRC-years; Main vs. Placebo (w/ Sherbrooke as control), effects after 2 days;  p-values\n")
-p_lead2_placebo_main_h_sens
-
-log_rrr_placebo_main_h_sens  <- b2_lead2_sens- pb2_lead2_sens
-se_rrr_placebo_main_h_sens   <- sqrt(se2_lead2_sens^2 + pse2_lead2_sens^2)   # var(Δ) = var1 + var2
-
-## RRR y IC 95 %
-RRR_lead2_placebo_main_h_sens      <- exp(log_rrr_placebo_main_h_sens)
-lo95_lead2_placebo_main_h_sens     <- exp(log_rrr_placebo_main_h_sens - 1.96 * se_rrr_placebo_main_h_sens)
-hi95_lead2_placebo_main_h_sens     <- exp(log_rrr_placebo_main_h_sens + 1.96 * se_rrr_placebo_main_h_sens)
-
-cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_h_sens, lo95_lead2_placebo_main_h_sens, hi95_lead2_placebo_main_h_sens, p_lead2_placebo_main_h_sens))
-
-
-z_lead2_placebo_main_nh_sens   <- (b1_lead2_sens - pb1_lead2_sens) / sqrt(se1_lead2_sens^2 + pse1_lead2_sens^2)
-p_lead2_placebo_main_nh_sens   <- 2 * pnorm(-abs(z_lead2_placebo_main_nh_sens))     # 0.32
-cat("Non-Host MRC-years; Main vs. Placebo (w/ Sherbrooke as control), effects after 2 days;  p-values\n")
-p_lead2_placebo_main_nh_sens
-
-log_rrr_placebo_main_nh_sens  <- b1_lead2_sens- pb1_lead2_sens
-se_rrr_placebo_main_nh_sens   <- sqrt(se1_lead2_sens^2 + pse1_lead2_sens^2)   # var(Δ) = var1 + var2
-
-## RRR y IC 95 %
-RRR_lead2_placebo_main_nh_sens      <- exp(log_rrr_placebo_main_nh_sens)
-lo95_lead2_placebo_main_nh_sens     <- exp(log_rrr_placebo_main_nh_sens - 1.96 * se_rrr_placebo_main_nh_sens)
-hi95_lead2_placebo_main_nh_sens     <- exp(log_rrr_placebo_main_nh_sens + 1.96 * se_rrr_placebo_main_nh_sens)
-
-cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_nh_sens, lo95_lead2_placebo_main_nh_sens, hi95_lead2_placebo_main_nh_sens, p_lead2_placebo_main_nh_sens))
 ```
+
+
+#### Absolute changes
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: test-association-gnm-abs-increases
+#| eval: true
+#| results: "hold"
+
+
+fit_gnm <- gnm(
+    sum_velocidad_lead2 ~ exposure_window +
+        mean_min_temp_mean_lin + mean_max_temp_mean_lin +
+        median_total_precip_median_lin + median_lag_2_prec_median_imp +
+        offset(off_lic),
+    eliminate = cluster,
+    family = quasipoisson("log"),
+    data = subset(collisions_weather_corr_rect_pre_post,
+                  grepl("^Pre|^Exp", exposure_window) & treated_sens==TRUE) |> 
+      mutate(exposure_window= relevel(factor(exposure_window), ref="Pre-exposure"))
+)
+
+tidy(fit_gnm, exponentiate=T, conf.int=T)[1,]
+#1 exposure_windowExposure           1.37     0.105      3.02  0.00387    1.12       1.69
+
+
+p_dev <- pchisq(deviance(fit_gnm), df.residual(fit_gnm), lower.tail = FALSE)
+pear  <- sum(residuals(fit_gnm, type="pearson")^2)
+p_pear<- pchisq(pear, df.residual(fit_gnm), lower.tail = FALSE)
+phi   <- pear / df.residual(fit_gnm)
+c(p_dev = p_dev, p_pear = p_pear, phi = phi)
+cat("No evidence of maladjustment and mild subdispersion")
+
+par(mfrow=c(1,2))
+plot(fitted(fit_gnm), residuals(fit_gnm, type="deviance"),
+     xlab="Fitted", ylab="Deviance resid"); abline(h=0, lty=2)
+qqnorm(residuals(fit_gnm, type="pearson")); qqline(residuals(fit_gnm, type="pearson"))
+par(mfrow=c(1,1))
+
+
+mf <- model.frame(fit_gnm)                       # exact rows used
+mf$off_lic <- mf[["offset(off_lic)"]]            # make offset available
+
+levs   <- levels(mf$exposure_window)
+pre_mf <- within(mf, exposure_window <- factor("Pre-exposure", levels = levs))
+exp_mf <- within(mf, exposure_window <- factor("Exposure",     levels = levs))
+
+mu0 <- predict(fit_gnm, newdata = pre_mf, type = "response")  # counts
+mu1 <- predict(fit_gnm, newdata = exp_mf, type = "response")
+
+extra_total        <- sum(mu1 - mu0)             # total extra collisions
+extra_per_window   <- mean(mu1 - mu0)            # average extra per 4-day row
+RR_hat <- exp(coef(fit_gnm)[["exposure_windowExposure"]])
+
+# Identity check:
+stopifnot(all.equal(extra_total, (RR_hat - 1) * sum(mu0), tol = 1e-8))
+c(extra_total = extra_total, extra_per_window = extra_per_window, RR_hat = RR_hat)
+# extra_total extra_per_window           RR_hat 
+# 154.492510         1.287438         1.373920 
+```
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: test-association-gnm-abs-increases-boot
+#| eval: true
+#| results: "hold"
+
+# boot_extra_counts <- function(fit, B = 2000, seed = 2125){
+#   set.seed(seed)
+#   base_mf <- model.frame(fit); base_mf$off_lic <- base_mf[["offset(off_lic)"]]
+#   cl_ids  <- levels(factor(base_mf$cluster))
+#   K <- length(cl_ids)
+# 
+#   extra <- numeric(B); ok <- 0L
+#   avg_ex <- numeric(B)
+# 
+#   for (b in seq_len(B)){
+#     samp <- sample(cl_ids, K, replace = TRUE)
+#     idx  <- unlist(lapply(samp, function(id) which(base_mf$cluster == id)))
+#     mb   <- base_mf[idx, , drop = FALSE]
+#     mb$cluster <- factor(mb$cluster)
+# 
+#     fit_b <- try(update(fit, data = mb), silent = TRUE)
+#     if (inherits(fit_b, "try-error")) next
+# 
+#     mm <- model.frame(fit_b); mm$off_lic <- mm[["offset(off_lic)"]]
+#     levs <- levels(mm$exposure_window)
+#     pre_b <- within(mm, exposure_window <- factor("Pre-exposure", levels = levs))
+#     exp_b <- within(mm, exposure_window <- factor("Exposure",     levels = levs))
+# 
+#     mu0_b <- try(predict(fit_b, newdata = pre_b, type = "response"), silent = TRUE) #mu0_b is the expected count if that same row were labelled “Pre-exposure”.
+#     mu1_b <- try(predict(fit_b, newdata = exp_b, type = "response"), silent = TRUE) #mu1_b is the expected count if that same row were labelled “Exposure”.
+#     if (inherits(mu0_b, "try-error") || inherits(mu1_b, "try-error")) next
+# 
+#     ok <- ok + 1L
+#     #diffs <- mu1_b - mu0_b
+#     exp_rows <- mb$exposure_window == "Exposure"  # Identify exposure rows
+#     diffs <- mu1_b[exp_rows] - mu0_b[exp_rows]    # Differences ONLY for event days
+#     #extra[ok]  <- sum(diffs)           # total extra collisions
+#     extra[ok] <- sum(diffs)                        # Sum over exposure rows
+#     avg_ex[ok] <- mean(diffs)          # average extra per 4-day row
+#   }
+# 
+#   extra  <- extra [seq_len(ok)]
+#   avg_ex <- avg_ex[seq_len(ok)]
+# 
+#   q <- function(x) quantile(x, c(.025, .5, .975), na.rm = TRUE)
+# 
+#   list(
+#     B_success = ok,
+#     point = c(
+#       extra_total      = sum(mu1 - mu0),
+#       extra_per_window = mean(mu1 - mu0)
+#     ),
+#     ci = list(
+#       extra_total      = unname(q(extra)),
+#       extra_per_window = unname(q(avg_ex))
+#     ),
+#     draws = list(extra_total = extra, extra_per_window = avg_ex)
+#   )
+# }
+# 
+# boot_res <- boot_extra_counts(fit_gnm, B = 2000, seed = 2125)
+# 
+# boot_res$point
+# boot_res$ci
+# boot_res$B_success
+
+
+# > boot_res$point
+#      extra_total extra_per_window 
+#       154.492510         1.287438 
+# > boot_res$ci
+# $extra_total
+# [1]  75.33439 157.87028 264.21457
+# 
+# $extra_per_window
+# [1] 0.6277866 1.3155857 2.2017881
+
+# average extra per 4-day row
+# extra collisions per 4-day window
+
+#Uncertainty via cluster bootstrap. To obtain confidence intervals for derived quantities (total extra collisions and population-pooled rate/ratio), we used a nonparametric cluster (block) bootstrap at the level of the analysis clusters (year×municipality). In each of 2,000 replicates we sampled clusters with replacement, refit the quasi-Poisson log-link model with the same specification (including cluster fixed effects via eliminate and a log exposure offset equal to the sum of license-days over each 4-day window), and computed model-based predicted counts for every stratum under both states—Pre-exposure and Exposure—holding covariates and the offset at their observed values. We then formed (i) the total extra collisions as ∑𝑖(𝜇1𝑖−𝜇0𝑖) and (ii) the population-pooled rate ratio and rate difference using exposure-weighted pooling. We report percentile 95% CIs from the empirical bootstrap distribution (for rate ratios, percentiles were taken on the log scale and back-transformed). This procedure preserves within-cluster correlation and does not rely on parametric variance formulas for these nonlinear functionals.
+
+
+boot_extra_counts <- function(fit, B = 2000, seed = 2125) {
+    set.seed(seed)
+    base_mf <- model.frame(fit)
+    base_mf$off_lic <- base_mf[["offset(off_lic)"]]
+    
+    # 1. CALCULATE POINT ESTIMATES PROPERLY
+    exp_rows <- base_mf$exposure_window == "Exposure"
+    pre_data <- transform(base_mf[exp_rows, ], exposure_window = "Pre-exposure")
+    exp_data <- base_mf[exp_rows, ]
+    
+    mu0 <- predict(fit, newdata = pre_data, type = "response")
+    mu1 <- predict(fit, newdata = exp_data, type = "response")
+    
+    point_extra_total <- sum(mu1 - mu0)
+    point_extra_avg <- mean(mu1 - mu0)
+    
+    # 2. BOOTSTRAP SETUP
+    cl_ids <- levels(factor(base_mf$cluster))
+    K <- length(cl_ids)
+    extra <- numeric(B)
+    avg_ex <- numeric(B)
+    ok <- 0L
+    
+    for (b in seq_len(B)) {
+        samp <- sample(cl_ids, K, replace = TRUE)
+        idx <- unlist(lapply(samp, function(id) which(base_mf$cluster == id)))
+        mb <- base_mf[idx, , drop = FALSE]
+        mb$cluster <- factor(mb$cluster)
+        
+        fit_b <- try(update(fit, data = mb), silent = TRUE)
+        if (inherits(fit_b, "try-error")) next
+        
+        # 3. EFFICIENT PREDICTION - ONLY EXPOSURE ROWS
+        exp_rows_b <- mb$exposure_window == "Exposure"
+        mb_exp <- mb[exp_rows_b, ]
+        
+        pre_b <- transform(mb_exp, exposure_window = "Pre-exposure")
+        exp_b <- mb_exp
+        
+        mu0_b <- try(predict(fit_b, newdata = pre_b, type = "response"), silent = TRUE)#expected count if that same row were labelled “Pre-exposure”.
+        mu1_b <- try(predict(fit_b, newdata = exp_b, type = "response"), silent = TRUE)#expected count if that same row were labelled “Exposure”.
+        
+        if (inherits(mu0_b, "try-error") || inherits(mu1_b, "try-error")) next
+        
+        ok <- ok + 1L
+        diffs <- mu1_b - mu0_b #mu1_b - mu0_b you obtain the extra collisions attributable to the race-weekend status for that specific 4-day row
+        extra[ok] <- sum(diffs)
+        avg_ex[ok] <- mean(diffs)
+    }
+    
+    extra <- extra[seq_len(ok)]
+    avg_ex <- avg_ex[seq_len(ok)]
+    
+    q <- function(x) quantile(x, c(0.025, 0.5, 0.975), na.rm = TRUE)
+    
+    list(
+        B_success = ok,
+        point = c(
+            extra_total = point_extra_total,
+            extra_per_window = point_extra_avg
+        ),
+        ci = list(
+            extra_total = unname(q(extra)),
+            extra_per_window = unname(q(avg_ex))
+        ),
+        draws = list(
+            extra_total = extra,
+            extra_per_window = avg_ex
+        )
+    )
+}
+
+
+boot_res <- boot_extra_counts(fit_gnm, B=2000)
+boot_res$point
+#extra_total extra_per_window 
+#       80.830236         1.347171 
+
+boot_res$ci
+# $extra_total
+# [1]  39.75588  81.73735 133.42849
+# 
+# $extra_per_window
+# [1] 0.6625979 1.3622892 2.2238082
+```
+
+#### Full (t's inside)
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: test-association-gnm-full
+#| eval: true
+#| results: "hold"
+
+cat("with sherbrooke as control\n")
+
+model_gnm_tratados_lead2_sens_full <- gnm(
+    velocidad_lead2_post_conv_imp ~ relevel(factor(exposure_window), ref="Pre-exposure")+ min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +# spline cúbico (suaviza)
+        offset(log(license_holders_sex_age)),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post_full, grepl("^Pre|^Exp",exposure_window) & treated_sens==TRUE)
+)
+
+summary(model_gnm_tratados_lead2_sens_full)
+
+
+model_gnm_controles_lead2_sens_full <- gnm(
+    velocidad_lead2_post_conv_imp ~ relevel(factor(exposure_window), ref="Pre-exposure")+ min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +# spline cúbico (suaviza)
+        offset(log(license_holders_sex_age)),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post_full, grepl("^Pre|^Exp",exposure_window) & treated_sens==FALSE)
+)
+summary(model_gnm_controles_lead2_sens_full)
+#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:
+cat("Quebec only as control\n")
+
+model_gnm_tratados_lead2_full <- gnm(
+    velocidad_lead2_post_conv_imp ~ relevel(factor(exposure_window), ref="Pre-exposure")+ min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +# spline cúbico (suaviza)
+        offset(log(license_holders_sex_age)),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post_full, grepl("^Pre|^Exp",exposure_window) & treated_sens==TRUE)
+)
+
+summary(model_gnm_tratados_lead2_full)
+
+
+model_gnm_controles_lead2_full <- gnm(
+    velocidad_lead2_post_conv_imp ~ relevel(factor(exposure_window), ref="Pre-exposure")+ min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +# spline cúbico (suaviza)
+        offset(log(license_holders_sex_age)),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post_full, grepl("^Pre|^Exp",exposure_window) & treated_sens==FALSE)
+)
+summary(model_gnm_controles_lead2_full)
+
+#broom::tidy(model_gnm_tratados_lead2_sens_full , exponentiate=T, conf.int=T)[1,]
+#broom::tidy(model_gnm_controles_lead2_sens_full , exponentiate=T, conf.int=T)[1,]
+cat("RR Tratados \n")
+tidy_exp_gnm_corr(model_gnm_tratados_lead2_full)
+cat("RR Controles \n")
+tidy_exp_gnm_corr(model_gnm_controles_lead2_full)
+
+b1_lead2_sens_full  <- model_gnm_controles_lead2_sens_full$coefficients[[1]]; se1_lead2_sens_full <- sqrt(diag(vcov(model_gnm_controles_lead2_sens_full)))[[1]]
+b2_lead2_sens_full  <- model_gnm_tratados_lead2_sens_full$coefficients[[1]]; se2_lead2_sens_full <- sqrt(diag(vcov(model_gnm_tratados_lead2_sens_full)))[[1]]
+z_lead2_sens_full   <- (b1_lead2_sens_full - b2_lead2_sens_full) / sqrt(se1_lead2_sens_full^2 + se2_lead2_sens_full^2)
+p_lead2_sens_full   <- 2 * pnorm(-abs(z_lead2_sens_full))     # 0.32
+cat("Controls (w/ Sherbrooke as control) vs. Treated, effects after 2 days;  p-values\n")
+p_lead2_sens_full
+
+log_rrr_sens_full  <- b2_lead2_sens_full- b1_lead2_sens_full
+se_rrr_sens_full   <- sqrt(se1_lead2_sens_full^2 + se2_lead2_sens_full^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_sens_full      <- exp(log_rrr_sens_full)
+lo95_lead2_sens_full     <- exp(log_rrr_sens_full - 1.96 * se_rrr_sens_full)
+hi95_lead2_sens_full     <- exp(log_rrr_sens_full + 1.96 * se_rrr_sens_full)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_lead2_sens_full, lo95_lead2_sens_full, hi95_lead2_sens_full))
+
+
+#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:
+cat("Quebec only as control\n")
+
+cat("RR Tratados \n")
+tidy_exp_gnm_corr(model_gnm_tratados_lead2_full)
+cat("RR Controles \n")
+tidy_exp_gnm_corr(model_gnm_controles_lead2_full)
+
+b1_lead2_full  <- model_gnm_controles_lead2_full$coefficients[[1]]; se1_lead2_full <- sqrt(diag(vcov(model_gnm_controles_lead2_full)))[[1]]
+b2_lead2_full  <- model_gnm_tratados_lead2_full$coefficients[[1]]; se2_lead2_full <- sqrt(diag(vcov(model_gnm_tratados_lead2_full)))[[1]]
+z_lead2_full   <- (b1_lead2_full - b2_lead2_full) / sqrt(se1_lead2_full^2 + se2_lead2_full^2)
+p_lead2_full   <- 2 * pnorm(-abs(z_lead2_full))     # 0.32
+cat("Controls (w/o Sherbrooke as control) vs. Treated, effects after 2 days;  p-values\n")
+p_lead2_full
+
+log_rrr_full  <- b2_lead2_full- b1_lead2_full
+se_rrr_full   <- sqrt(se1_lead2_full^2 + se2_lead2_full^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_full      <- exp(log_rrr_full)
+lo95_lead2_full     <- exp(log_rrr_full - 1.96 * se_rrr_full)
+hi95_lead2_full     <- exp(log_rrr_full + 1.96 * se_rrr_full)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_lead2_full, lo95_lead2_full, hi95_lead2_full))
+```
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: test-association-gnm-full-boot
+#| eval: true
+#| results: "hold"
+fit_gnm_full <- gnm(
+    velocidad_lead2_post_conv_imp ~ exposure_window+ min_temp_mean_lin + max_temp_mean_lin + total_precip_median_lin + lag_2_prec_median_lin_imp +# spline cúbico (suaviza)
+        offset(off_lic),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post_full, grepl("^Pre|^Exp",exposure_window) & treated_sens==TRUE) |> 
+      mutate(exposure_window= relevel(factor(exposure_window), ref="Pre-exposure"), off_lic= log(license_holders_sex_age))
+)
+boot_full<- 
+boot_extra_counts(fit_gnm_full, B=2000)
+
+boot_full$point
+
+boot_full$ci$extra_total
+
+boot_full$ci$extra_per_window
+
+cat("For four days\n")
+boot_full$point[[2]]*4 #for four days
+boot_full$ci$extra_per_window*4
+
+
+```
+
+#### Interaction
 
 We made model with interaction terms.
 
 ```{r}
+
 #| class-output: center-table
 #| message: true
 #| include: true
@@ -3046,35 +3435,99 @@ for (item in result_objects3) {
   }
 }
 
+# Initialize an empty list to store the generated ggplot objects.
+plot_list3_exp <- list()
+
+# This loop iterates over each item in the `result_objects` list.
+for (item in result_objects3) {
+
+  # --- Print the ATT Value ---
+  cat("--------------------------------------------------\n")
+  cat("Processing:", item$name, "\n")
+  cat(item$desc, "\n")
+  print(item$obj$ATT)
+  cat("\n")
+
+  # --- Generate and Store the Plot ---
+  # Check if the object exists to prevent errors
+  if (exists(item$name) && !is.null(get(item$name))) {
+
+    # Call the plotting function which returns a ggplot object
+    figcscm <- plot_synth_cscm(
+      res_object = item$obj,
+      t_int_man = 35,       # Manual intervention time
+      max_time = 38,        # Time horizon for the plot
+      y_lab = NULL, # Y-axis label
+      colors = c("SCM" = "gray60", "CSCM" = "red", "Obs" = "black")
+    )
+
+    # Add the title using ggplot2's labs() function and store it
+    plot_list3_exp[[item$name]] <- figcscm%+% subset(figcscm$data, Method != "SCM") + labs(title = NULL, x=NULL) + theme(plot.title = element_text(size = 13))+ theme(legend.margin = margin(t = -5))
+
+  } else {
+    cat("Warning: Object", item$name, "not found. Skipping plot generation.\n")
+  }
+}
+
 # --------------------------------------------------------------------------
 # 4. Arrange and display the plots in 2x2 grids using cowplot
 # --------------------------------------------------------------------------
 
-# Now, print the combined plots. In a Quarto/Rmd file, this will render
-# the grids directly in the output document.
-png("_figs/supp_mat_cntsynts_3min_0_lead2.png", width = 800*4, height = 600*4, res = 300)
-plot_grid(
-  plotlist = plot_list3[c(5, 7, 12, 14)],
-  ncol      = 2,
-  nrow      = 2,
-  labels    = c("a)", "b)", "c)", "d)"),  # ← aquí van las etiquetas
-  label_size      = 16,      # tamaño del texto
-  label_fontface  = "bold",  # negrita (opcional)
-  label_x = 0.02, label_y = 0.98,  # posición relativa (0-1) dentro del panel
-  hjust    = 0,  vjust    = 1      # alineación izq-arriba
+# 1) Build a tiny plot whose ONLY purpose is to show the legend you want
+legend_methods <- c("Obs", "CSCM")
+
+legend_plot <- ggplot(
+  data.frame(x = c(0,1,0,1), y = 0, Method = rep(c("Obs","CSCM"), each = 2)),
+  aes(x, y, colour = Method, linetype = Method)
+) +
+  geom_line(linewidth = 1.1, alpha = 0, show.legend = TRUE) +  # hide dummy line
+  scale_colour_manual(name = "Method",
+                      limits = c("Obs","CSCM"),
+                      values = c(Obs = "black", CSCM = "red")) +
+  scale_linetype_manual(name = "Method",
+                        limits = c("Obs","CSCM"),
+                        values = c(Obs = "solid", CSCM = "dashed")) +
+  guides(
+    colour   = guide_legend(override.aes = list(alpha = 1)),
+    linetype = guide_legend(override.aes = list(alpha = 1))
+  ) +
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    legend.text  = element_text(size = 14),  # ⬅️ text size
+    legend.title = element_text(size = 15, face = "bold") # ⬅️ title size
+  )
+
+# 2) Remove legends from the panels
+plots_noleg <- lapply(
+    plot_list3_exp[c(5, 7, 12, 14)],
+    function(p) p + theme(legend.position = "none")
 )
-dev.off()
+
+# 3) Assemble 2x2 + legend below (use the ggplot legend directly)
+pgrid <- plot_grid(
+    plotlist = plots_noleg,
+    ncol = 2, nrow = 2,
+    labels = c("A)", "B)", "C)", "D)"),
+    label_size = 14, label_fontface = "bold",
+    label_x = 0.02, label_y = 1.07, hjust = 0#, vjust = 1.5
+)
+#no sacará nada, me sirve para dejarle cielo
+legend_grob <- cowplot::get_legend(legend_plot)
+
+final <- plot_grid(
+    legend_grob, pgrid, legend_plot,        # <- use legend_plot (not get_legend)
+    ncol = 1, rel_heights = c(.03, 1, 0.05),  # sube este 0.18 si se ve muy apretado
+    scale= c(1, .93, 1)
+)
+
+final +
+    draw_label("Days until race date (38th day)",
+               x = 0.5, y = 0.03, vjust = -1, size = 14) +
+    draw_label("Crash rate (per 1MM licensed drivers)",
+               x = 0.0, y = 0.5, angle = 90, vjust = 1.5, size = 14)
+ggsave("_figs/cscm.png", width = 1.2*8, height = 1.2*6, limitsize = FALSE, dpi=500)
 #road.main.res_35_38_lead2; road.main.res_q_35_38_lead2; road.main.res_35_381se_lead2; road.main.res_q_35_381se_lead2
-plot_grid(
-  plotlist = plot_list3[c(5, 7, 12, 14)],
-  ncol      = 2,
-  nrow      = 2,
-  labels    = c("a)", "b)", "c)", "d)"),  # ← aquí van las etiquetas
-  label_size      = 16,      # tamaño del texto
-  label_fontface  = "bold",  # negrita (opcional)
-  label_x = 0.02, label_y = 0.98,  # posición relativa (0-1) dentro del panel
-  hjust    = 0,  vjust    = 1      # alineación izq-arriba
-)
 
 cbind.data.frame(
   pen= c(rep(c("No","Yes"),each=2)),

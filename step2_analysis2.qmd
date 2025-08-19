@@ -1,0 +1,1402 @@
+---
+title: "Fast followers?/Speed contagion: assessing the impact of Montreal F1 Grand Prix on high-speed ticketing rates (2000-2022)"
+description: |
+  Step 2. Check analytical strategies
+lang: en
+date: last-modified #date-format: "D [d]e MMM, YYYY"
+bibliography: [_lit/refs.bib]
+csl: "_lit/american-medical-association.csl" # (Opcional: estilo de citas, p.ej., APA)
+author: "Andrés González Santa Cruz"
+format: 
+  html:
+    css: [_lib/styles.scss]
+    code-fold: true
+    embed-resources: true
+    fig-cap-location: top
+lightbox: auto
+toc: true
+toc-depth: 5
+toc-location: left
+toc-float: true
+editor: source
+---
+
+<style>
+.scrollable-content {
+  max-height: 350px;
+  overflow-y: auto;
+}
+</style>
+<style>
+pre.scrollable-code {
+  max-height: 350px;
+  overflow-y: auto;
+}
+</style>
+
+```{r}
+#| message: true
+#| include: true
+#| warning: true
+
+# remove objects and memory
+rm(list=ls());gc()
+
+#remove images
+while(!dev.cur())dev.off()
+cat("\014")
+load(paste0(getwd(),"/_data/step12_2.RData"))
+```
+
+# Load libraries and data
+
+<div class="scrollable-content">
+```{r}
+#| label: setup
+#| message: true
+#| warning: true
+#| class-output: center-table
+#| include: true
+#| results: "hold"
+
+#borrar caché
+#system("fc-cache -f -v")
+
+#check R version
+if(Sys.info()["sysname"]=="Windows"){
+if (getRversion() != "4.4.1") { stop("Requiere versión de R 4.4.1. Actual: ", getRversion()) }
+}
+if(Sys.info()["sysname"]=="Linux"){
+if (getRversion() != "4.4.1") { stop("Requiere versión de R 4.4.1. Actual: ", getRversion()) }
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+# install.packages(c("dplyr", #for data
+#                    "tidyr", #for data
+#                    "lubridate",  #for dates
+#                    "openxlsx", #for excel files
+#                    "rio", #for importing and exporting data
+#                    "purrr", #for iterating in databases
+#                    "devtools", #for external packages
+#                    "DiagrammeR", #para visualizar DAG
+#                    "dagitty",
+#                    "ggdag",
+#                    "ggplot2" #for graphics
+#                    "kableExtra", #pretty tables
+#                    "quarto", #for documents
+#                    "geosphere" #for coordinates and classifying
+#                    "geepack", #for regression
+#                    "glmmTMB", #For GLMMs
+#                    "DHARMa", #For residual diagnostics
+#                    "car", #For hypothesis testing
+#                    "brms", #Bayesian model
+#                    "bayesplot",
+#                    "loo",
+#                    "Synth", #for synthetic control method
+#                    "weathercan",#for weather data
+#                    "sandwich", #cluster robust intervals
+#                    "emmeans", #for predictions
+#                    "gnm", #Conditional Poisson models
+#                    "splines", #nonlinearity 
+#                    "geeM", #negative binomial and more flexible GEE models
+#                    "PanelMatch", #Matching technique with panel data
+#                    "scpi" #control sintético
+#                    "nixtlar", #for time series analysis and prediction
+#                    "CausalImpact" #for time series causal impact
+#                    "forecast" #for time series analysis prediction and decomposition
+#                    ))
+library(dplyr); library(lubridate); library(tidyverse); library(openxlsx); library(rio); library(purrr); library(dagitty); library(ggdag); library(kableExtra); library(geosphere); library(geepack); library(lme4); library(glmmTMB); library(DHARMa); library(car); library(brms); library(bayesplot); library(loo); library(Synth); library(sandwich); library(emmeans); library(gnm); library(splines); library(geeM); library(plm); library(forecast); library(cowplot); library(bbmle)
+
+#special repository indicated or the package
+if(!require(weathercan)){
+   install.packages("weathercan", 
+                  repos = c("https://ropensci.r-universe.dev", "https://cloud.r-project.org")); library(weathercan)
+  }
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+if(!require(bpmn)){devtools::install_github("bergant/bpmn")}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+sum_dates <- function(x){
+ 
+  cbind.data.frame(
+	min= as.Date(min(unclass(as.Date(x)), na.rm=T), origin = "1970-01-01"),
+	p001= as.Date(quantile(unclass(as.Date(x)), .001, na.rm=T), origin = "1970-01-01"),
+	p005= as.Date(quantile(unclass(as.Date(x)), .005, na.rm=T), origin = "1970-01-01"),
+	p025= as.Date(quantile(unclass(as.Date(x)), .025, na.rm=T), origin = "1970-01-01"),
+	p25= as.Date(quantile(unclass(as.Date(x)), .25, na.rm=T), origin = "1970-01-01"),
+	p50= as.Date(quantile(unclass(as.Date(x)), .5, na.rm=T), origin = "1970-01-01"),
+	p75= as.Date(quantile(unclass(as.Date(x)), .75, na.rm=T), origin = "1970-01-01"),
+	p975= as.Date(quantile(unclass(as.Date(x)), .975, na.rm=T), origin = "1970-01-01"),
+	p995= as.Date(quantile(unclass(as.Date(x)), .995, na.rm=T), origin = "1970-01-01"),
+	p999= as.Date(quantile(unclass(as.Date(x)), .999, na.rm=T), origin = "1970-01-01"),
+	max= as.Date(max(unclass(as.Date(x)), na.rm=T), origin = "1970-01-01")
+  )
+}
+smd_bin <- function(x,y){
+  z <- x*(1-x)
+  t <- y*(1-y)
+  k <- sum(z,t)
+  l <- k/2
+  
+  return((x-y)/sqrt(l))
+  
+}
+
+theme_custom_sjplot2 <- function(base_size = 12, base_family = "") {
+  theme_minimal(base_size = base_size, base_family = base_family) +
+    theme(
+      # Text elements
+      text = element_text(size = base_size, family = base_family),
+      plot.title = element_text(face = "bold", hjust = 0.5, size = base_size * 1.2),
+      plot.subtitle = element_text(hjust = 0.5, margin = margin(b = 10)),
+      axis.title = element_text(size = base_size, face = "bold"),
+      axis.text = element_text(size = base_size * 0.8),
+      axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5),
+      axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5),
+      axis.title.x = element_text(margin = margin(t = 10)),
+      axis.title.y = element_text(margin = margin(r = 10)),
+      
+      # Plot layout
+      plot.margin = margin(t = 20, r = 20, b = 20, l = 20),
+      panel.grid.major = element_line(color = "grey80"),
+      panel.grid.minor = element_blank(),
+      legend.position = "right",
+      legend.text = element_text(size = base_size * 0.8),
+      legend.title = element_text(size = base_size, face = "bold"),
+      legend.background = element_rect(fill = "white", colour = NA),
+      legend.box.background = element_rect(colour = "grey80", linetype = "solid"),
+      legend.key = element_rect(fill = "white", colour = "white")
+    )
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+num_cores <- parallel::detectCores() -1
+data.table::setDTthreads(threads = num_cores)#restore_after_fork = NULL, throttle = NULL)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#CONFIG #######################################################################
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+options(scipen=2) #display numbers rather scientific number
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#CountSynth functions
+get_covbal_csnth<- function(countsynth){
+  res <- countsynth            # pick any run
+  
+  dp       <- res$dataprep.main    # Synth-style 'dataprep' object
+  W        <- res$unit.weight.full.sample  # CSCM weights (full sample)
+  W.scm    <- res$unit.weight.SCM          # Classic SCM weights
+  cf.ts    <- res$Estimates                # time-series of fits
+  
+return(list(
+  dataprep = dp,
+  W = W,
+  W.scm = W.scm,
+  cf.ts = cf.ts,
+  ATT = res$ATT,
+  ATT.scm = res$ATT.scm,
+  unit.weight.SCM = res$unit.weight.SCM,
+  unit.weight.full.sample = res$unit.weight.full.sample,
+  covtab = data.frame(
+    variable = rownames(dp$X1),
+    treated = as.numeric(dp$X1),
+    synthetic = as.numeric(dp$X0 %*% W),
+    abs.diff = abs(dp$X1 - dp$X0 %*% W)) |>
+    dplyr::mutate(
+    ratio = sprintf("%1.2f", treated / synthetic),
+    gap_pct_ctrl = sprintf("%1.2f", abs(100 * (treated - synthetic) / synthetic)),
+    treated= sprintf("%1.2f", treated),
+    synthetic= sprintf("%1.2f", synthetic),
+  )
+))
+}
+
+prepost_rmspe_cntsh<- function(covbal_csnth,t_int){
+  # Extract the results from the countSynth object
+  cf.ts    <- covbal_csnth$cf.ts
+  t_int    <- t_int
+  
+  # Calculate pre- and post-treatment RMSPE
+  max_time <- max(cf.ts$time)
+  
+  # Create logical vectors for pre- and post-treatment periods
+  pre    <- cf.ts$time <  t_int
+  post   <- cf.ts$time >= t_int
+
+  rmspe <- function(a,b) sqrt(mean((a-b)^2))
+  
+  pre.rmspe  <- rmspe(cf.ts$observed[pre], cf.ts$est.counterfactual[pre])
+  post.rmspe <- rmspe(cf.ts$observed[post], cf.ts$est.counterfactual[post])
+  ratio      <- post.rmspe / pre.rmspe
+  return(
+    list(
+      pre_post_ratio= c(pre=pre.rmspe, post=post.rmspe, ratio=ratio)
+      )
+  )
+}
+plot_synth_cscm <- function(res_object, 
+                            max_time = NULL, 
+                            t_int_man,
+                            y_lab = "High-speed rate",
+                            colors = c("SCM" = "black", "CSCM" = "red", "Obs" = "gray60")) {
+  
+  # Validate inputs
+  if (!inherits(res_object, "list")) stop("res_object must be a list")
+  if (!all(c("dataprep.main", "unit.weight.SCM", "unit.weight.full.sample") %in% names(res_object))) {
+    stop("res_object missing required components")
+  }
+  if (is.null(max_time)) max_time <- nrow(res_object$dataprep.main$Y0plot)
+  
+  # Calculate counterfactuals
+  synth.orig <- res_object$dataprep.main$Y0plot %*% as.numeric(res_object$unit.weight.SCM)
+  cscm.cf <- res_object$dataprep.main$Y0plot %*% as.numeric(res_object$unit.weight.full.sample)
+  year <- 1:max_time
+  
+  # Create data frames
+  adf <- data.frame(Year = year, Y = synth.orig[1:max_time], Method = "SCM")
+  bdf <- data.frame(Year = year, Y = cscm.cf[1:max_time], Method = "CSCM")
+  cdf <- data.frame(Year = year, Y = res_object$dataprep.main$Y1plot[1:max_time], Method = "Obs")
+  
+  # Combine data
+  cfdf <- rbind(adf, bdf, cdf)
+  
+  # Create plot
+  ggplot(cfdf, aes(y = Y, x = Year, group = Method, linetype = Method, color = Method)) + 
+    geom_vline(xintercept = t_int_man, linetype = "dashed") +
+    geom_line(linewidth = 1.2) +
+    scale_color_manual(values = colors) +
+    theme_bw() +
+    labs(y = y_lab, x = "") +
+    theme(
+      text = element_text(size = 15),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.line = element_line(colour = "black"),
+      legend.position = "bottom"
+    # Ensure linetype scale if needed (uncomment if necessary)
+    # scale_linetype_manual(values = c("SCM" = "solid", "CSCM" = "solid", "Observed" = "solid"))
+    )
+}
+
+
+tidy_exp_gnm <- function(model, conf.level = 0.95, use_t = FALSE) {
+  td <- broom::tidy(model)
+  alpha <- 1 - conf.level
+  crit <- if (use_t) {
+    stats::qt(1 - alpha/2, df = model$df.residual)
+  } else {
+    stats::qnorm(1 - alpha/2)
+  }
+    td %>%
+    mutate(
+      conf.low_log  = estimate - crit * std.error,
+      conf.high_log = estimate + crit * std.error,
+      rate_ratio    = exp(estimate),
+      rr_conf.low   = exp(conf.low_log),
+      rr_conf.high  = exp(conf.high_log)
+    ) %>%
+    dplyr::select(term, rate_ratio, rr_conf.low, rr_conf.high, std.error, p.value) |> 
+    data.frame() |> 
+    dplyr::slice(1)
+}
+
+tidy_exp_gnm_corr <- function(modelo) {
+    as_tibble(Epi::ci.exp(modelo, subset = 1, pval = TRUE),
+              rownames = "term")
+}
+```
+
+
+</div>
+
+  
+```{r}
+#| message: true
+#| include: true
+#| warning: false
+#| error: false
+#| eval: false
+#| fig.show: "hold"
+#| fig.align: "center"
+#| paged.print: true
+#| fig.cap: "Directed acyclic graph"
+#| results: "hold"
+#| fig-width: 9.5
+#| fig-height: 5.5
+#| fig-dpi: 600
+#| label: dag
+#| fig-show: hide
+
+#-- Fórmula 1 – ventana de riesgo
+#-- Accidentes por exceso de velocidad
+#--Weather (temperatura, lluvia…)
+#-- Day-of-week / season / calendario
+#-- Rasgos fijos de la comuna (infraestructura, cultura vial)
+dag <- dagitty('
+dag {
+  F1   [exposure,   pos="-2.000,  0.000"]
+  Y    [outcome,    pos=" 2.000,  0.000"]
+  W    [adjusted,   pos="-1.000,  3.250"]
+  DOW  [adjusted,   pos="-1.000, -3.250"]
+  U    [unobserved, pos=" -3.000,  2.000"]
+
+  F1  -> Y
+  W   -> F1
+  W   -> Y
+  DOW -> F1
+  DOW -> Y
+  U   -> Y
+}
+')
+# coords <- data.frame(
+#   x = c(-2,  2, -1, -1,  3),   # ← exactly the positions you want
+#   y = c( 0,  0,  3, -3,  0),
+#   row.names = c("F1", "Y", "W", "DOW", "U")
+# )
+# 
+# coordinates(dag) <- coords     # fix positions inside dagitty
+
+# data
+tidy  <- tidy_dagitty(dag)
+
+edges <- tidy %>%                      # sólo flechas →
+  filter(direction == "->") %>%
+  mutate(
+    edge_colour    = if_else(name == "U", "grey60", "black"),
+    edge_linetype  = if_else(name == "U", "dashed",  "solid"),
+    edge_linewidth = 0.9                               # grosor
+  )
+
+nodes <- tidy %>% data.frame() |>  distinct(name, x, y) %>%             # nodos
+  mutate(shape = if_else(name %in% c("W","DOW"),
+                         "square", "circle"))
+
+## 3 · Plot -------------------------------------------------------------
+ggplot() +
+  geom_dag_edges_link(                     # ← solo flechas →
+    data = edges,
+    aes(x = x, y = y, xend = xend, yend = yend,
+        edge_colour    = edge_colour,
+        edge_linetype  = edge_linetype,
+        edge_linewidth = edge_linewidth)
+  ) +
+  geom_dag_node(
+    data = nodes,
+    aes(x = x, y = y, shape = shape),
+    fill   = "white", colour = "black", size = 18
+  ) +
+  geom_dag_text(data = nodes, aes(x = x, y = y, label = name)) +
+  scale_shape_manual(values = c(square = 15, circle = 16)) + 
+  #scale_edge_colour_identity() +
+  #scale_edge_linetype_identity() +
+  #edge_width_identity() +   # usa edge_width_identity() si tu ggraph ≤ 2.0
+  theme_void()+
+  theme(legend.position = "none")
+
+```
+
+<br>
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: test-association-autorregressive
+#| eval: false
+#| results: "hold"
+library(DHARMa)
+#simulationOutput <- simulateResiduals(fittedModel = model_did1, plot = TRUE)
+
+cities <- unique(collisions_weather_corr$cluster)
+for (c in cities) {
+  cat("\nEvaluando autocorrelación para cluster:", c, "\n")
+  
+  city_data <- collisions_weather_corr %>% filter(cluster == c) %>% arrange(iso_yday)
+  
+  indices <- which(collisions_weather_corr$cluster == c)
+  city_residuals <- simulationOutput$scaledResiduals[indices]
+  
+  # Verificar que city_data y city_residuals tengan la misma longitud
+  if(length(city_residuals) != nrow(city_data)) {
+    cat("Error: longitud de residuos y datos no coincide para cluster:", c, "\n")
+    next
+  }
+  
+  # Verificar que no haya NA en residuos ni en fechas
+  if(any(is.na(city_residuals)) || any(is.na(city_data$date))) {
+    cat("Error: NA en residuos o fechas para cluster:", c, "\n")
+    next
+  }
+  
+  # Ordenar residuos según fechas
+  order_idx <- order(city_data$iso_yday)
+  city_data <- city_data[order_idx, ]
+  city_residuals <- city_residuals[order_idx]
+  
+  print(paste("Length residuos:", length(city_residuals)))
+  print(paste("Length fechas:", length(city_data$date)))
+  print(paste("Duplicados fechas:", any(duplicated(city_data$date))))
+  print(paste("NA en residuos:", sum(is.na(city_residuals))))
+  
+  # Verificar que fechas estén ordenadas y sin duplicados
+  if(any(duplicated(city_data$date))) {
+    cat("Error: fechas duplicadas para cluster:", c, "\n")
+    next
+  }
+  
+  # Finalmente, llamar a la función
+  tryCatch({
+    testTemporalAutocorrelation(city_residuals, time = city_data$date)
+    mtext(text = paste("Autocorr, cluster:", c), side = 3, line = 3, cex = 1.2, font = 2)
+  }, error = function(e) {
+    cat("Error en testTemporalAutocorrelation para cluster:", c, "\n", e$message, "\n")
+  })
+}
+
+invisible("No hay evidencia significativa de autocorrelación temporal en los residuos del modelo para ninguna de las ciudades.")
+
+
+# simulationOutput <- simulateResiduals(fittedModel = model_final, plot = TRUE)
+# testDispersion(simulationOutput)
+# testZeroInflation(simulationOutput)
+```
+
+
+### GNM
+
+
+```{r}
+# Case-crossover design
+# 
+# Methods:
+# Only cases: cardiovascular defects 3870
+# 
+# Exposure:
+# Case window: trimethoprim use any time during the second
+# 	and third months after the last menstrual period,
+# Reference window: use in 2 months prior to last menstrual
+# 	period within mothers of case infants.
+# Secondary reference windows: and 2 months prior and 2
+# 	months after the primary reference window
+# 
+# Analysis:
+# 
+
+#https://docs.google.com/document/d/1shhxi_PEkgc8N4riqV4lOowPcGPo2mdj4-PGA779oUk/edit?tab=t.0
+#https://drive.google.com/drive/u/0/folders/1gwdKKOVZd2JEHmb0oXt34FSpvea1oH7G no aplica tanto potque el análisis es por persona, es Conditional logistic regression y ve mortalidad. se busca para esa misma persona variables como días de tiempo
+
+#https://docs.google.com/presentation/d/1Khvb5C8ZTaw3HKfvx3oAKD7fBZHPcd_v/edit?slide=id.p42#slide=id.p42
+#https://docs.google.com/spreadsheets/d/1znDbWVXO2A5uSKiVazQwFJKZcrrH-VZXnQsG-INBQ-w/edit?gid=0#gid=0
+#https://drive.google.com/drive/u/0/folders/1TuEbUzsFeLtQtiuP3a6uSw3DulIq-_LV #tópicos avanzados en Epi
+
+```
+
+We stratify by control states, according to the **meeting** with José Ignacio.
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: test-association-gnm
+#| eval: true
+#| results: "hold"
+#Factor variable that identifies each case-control block
+#Ej.: interaction(ciudad, mes, día_semana) o id_persona en estudios de eventos agudos.
+
+## ── Helper para φ  (sobre‑dispersión) ──────────────────────────────────────────
+get_phi <- function(mod) {
+  max( sum(residuals(mod, type = "pearson")^2) / df.residual(mod), 1 )  # ≤1 ⇒ 1
+}
+
+## ── Función QIC para modelos gnm quasi‑Poisson ────────────────────────────────
+qic_gnm <- function(mod_quasi) {
+  ## 1)  φ desde el quasi
+  phi <- get_phi(mod_quasi)
+
+  ## 2)  refit Poisson (mismo call)  → logLik disponible
+  mod_pois <- update(mod_quasi, family = poisson)
+
+  ## 3)  qAIC = -2·logLik/φ + 2·k    (bbmle lo hace por ti)
+  bbmle::qAIC(mod_pois, dispersion = phi)
+}
+
+
+
+cat("Treated (w/o Sherbrooke), contemporaneous effects\n")
+model_gnm_tratados <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==TRUE)
+)
+summary(model_gnm_tratados)
+
+
+cat("Controls (w/o Sherbrooke), contemporaneous effects\n")
+model_gnm_controles <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==FALSE)
+)
+summary(model_gnm_controles)
+
+b1  <- model_gnm_controles$coefficients[[1]]; se1 <- sqrt(diag(vcov(model_gnm_controles)))[[1]]
+b2  <- model_gnm_tratados$coefficients[[1]]; se2 <- sqrt(diag(vcov(model_gnm_tratados)))[[1]]
+z   <- (b1 - b2) / sqrt(se1^2 + se2^2)
+p   <- 2 * pnorm(-abs(z))     # 0.32
+cat("Controls vs. Treated (w/o Sherbrooke), contemporaneous effects;  p-values\n")
+p
+
+
+log_rrr  <- b2- b1
+se_rrr   <- sqrt(se1^2 + se2^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR      <- exp(log_rrr)
+lo95     <- exp(log_rrr - 1.96 * se_rrr)
+hi95     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR, lo95, hi95))
+
+
+
+cat("Treated (w/o Sherbrooke), effects after 1 day\n")
+model_gnm_tratados_lead1 <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated==TRUE)
+)
+summary(model_gnm_tratados_lead1)
+
+
+cat("Controls (w/o Sherbrooke), effects after 1 day\n")
+model_gnm_controles_lead1 <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated==FALSE)
+)
+summary(model_gnm_controles_lead1)
+
+b1_lead1  <- model_gnm_controles_lead1$coefficients[[1]]; se1_lead1 <- sqrt(diag(vcov(model_gnm_controles_lead1)))[[1]]
+b2_lead1  <- model_gnm_tratados_lead1$coefficients[[1]]; se2_lead1 <- sqrt(diag(vcov(model_gnm_tratados_lead1)))[[1]]
+z_lead1   <- (b1_lead1 - b2_lead1) / sqrt(se1_lead1^2 + se2_lead1^2)
+p_lead1   <- 2 * pnorm(-abs(z_lead1))     # 0.32
+cat("Controls vs. Treated (w/o Sherbrooke), effects after 1 day;  p-values\n")
+p_lead1
+
+
+log_rrr  <- b2_lead1- b1_lead1
+se_rrr   <- sqrt(se1_lead1^2 + se2_lead1^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead1      <- exp(log_rrr)
+lo95_lead1     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_lead1     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_lead1, lo95_lead1, hi95_lead1))
+
+
+
+cat("Treated (w/o Sherbrooke), effects after 2 days\n")
+model_gnm_tratados_lead2 <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated==TRUE)
+)
+summary(model_gnm_tratados_lead2)
+
+
+cat("Controls (w/o Sherbrooke), effects after 2 days\n")
+model_gnm_controles_lead2 <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated==FALSE)
+)
+summary(model_gnm_controles_lead2)
+
+b1_lead2  <- model_gnm_controles_lead2$coefficients[[1]]; se1_lead2 <- sqrt(diag(vcov(model_gnm_controles_lead2)))[[1]]
+b2_lead2  <- model_gnm_tratados_lead2$coefficients[[1]]; se2_lead2 <- sqrt(diag(vcov(model_gnm_tratados_lead2)))[[1]]
+z_lead2   <- (b1_lead2 - b2_lead2) / sqrt(se1_lead2^2 + se2_lead2^2)
+p_lead2   <- 2 * pnorm(-abs(z_lead2))     # 0.32
+cat("Controls vs. Treated (w/o Sherbrooke), effects after 2 days;  p-values\n")
+p_lead2
+
+
+log_rrr  <- b2_lead2- b1_lead2
+se_rrr   <- sqrt(se1_lead2^2 + se2_lead2^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2      <- exp(log_rrr)
+lo95_lead2     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_lead2     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_lead2, lo95_lead2, hi95_lead2))
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+cat("With Sherbrooke\n")
+
+cat("Treated (w/ Sherbrooke), contemporaneous effects\n")
+model_gnm_tratados_sens <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated_sens==TRUE)
+)
+summary(model_gnm_tratados_sens)
+
+
+cat("Controls (w/ Sherbrooke), contemporaneous effects\n")
+model_gnm_controles_sens <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated_sens==FALSE)
+)
+summary(model_gnm_controles_sens)
+
+b1_sens  <- model_gnm_controles_sens$coefficients[[1]]; se1_sens <- sqrt(diag(vcov(model_gnm_controles_sens)))[[1]]
+b2_sens  <- model_gnm_tratados_sens$coefficients[[1]]; se2_sens <- sqrt(diag(vcov(model_gnm_tratados_sens)))[[1]]
+z_sens   <- (b1_sens - b2_sens) / sqrt(se1_sens^2 + se2_sens^2)
+p_sens   <- 2 * pnorm(-abs(z_sens))     # 0.32
+cat("Controls (w/ Sherbrooke) vs. Treated, contemporaneous effects;  p-values\n")
+p_sens
+
+
+log_rrr  <- b2_sens- b1_sens 
+se_rrr   <- sqrt(se1_sens^2 + se2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_sens      <- exp(log_rrr)
+lo95_sens     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_sens     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_sens, lo95_sens, hi95_sens))
+
+
+cat("Treated (w/ Sherbrooke), effects after 1 day\n")
+model_gnm_tratados_lead1_sens <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated_sens==TRUE)
+)
+summary(model_gnm_tratados_lead1_sens)
+
+
+cat("Controls (w/ Sherbrooke), effects after 1 day\n")
+model_gnm_controles_lead1_sens <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated_sens==FALSE)
+)
+summary(model_gnm_controles_lead1_sens)
+
+b1_lead1_sens  <- model_gnm_controles_lead1_sens$coefficients[[1]]; se1_lead1_sens <- sqrt(diag(vcov(model_gnm_controles_lead1_sens)))[[1]]
+b2_lead1_sens  <- model_gnm_tratados_lead1_sens$coefficients[[1]]; se2_lead1_sens <- sqrt(diag(vcov(model_gnm_tratados_lead1_sens)))[[1]]
+z_lead1_sens   <- (b1_lead1_sens - b2_lead1_sens) / sqrt(se1_lead1_sens^2 + se2_lead1_sens^2)
+p_lead1_sens   <- 2 * pnorm(-abs(z_lead1_sens))     # 0.32
+cat("Controls (w/ Sherbrooke) vs. Treated, effects after 1 day;  p-values\n")
+p_lead1_sens
+
+log_rrr  <- b2_lead1_sens- b1_lead1_sens
+se_rrr   <- sqrt(se1_lead1_sens^2 + se2_lead1_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead1_sens      <- exp(log_rrr)
+lo95_lead1_sens     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_lead1_sens     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_lead1_sens, lo95_lead1_sens, hi95_lead1_sens))
+
+
+cat("Treated (w/ Sherbrooke), effects after 2 days\n")
+model_gnm_tratados_lead2_sens <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated_sens==TRUE)
+)
+summary(model_gnm_tratados_lead2_sens)
+
+
+cat("Controls (w/ Sherbrooke), effects after 2 days\n")
+model_gnm_controles_lead2_sens <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated_sens==FALSE)
+)
+summary(model_gnm_controles_lead2_sens)
+
+b1_lead2_sens  <- model_gnm_controles_lead2_sens$coefficients[[1]]; se1_lead2_sens <- sqrt(diag(vcov(model_gnm_controles_lead2_sens)))[[1]]
+b2_lead2_sens  <- model_gnm_tratados_lead2_sens$coefficients[[1]]; se2_lead2_sens <- sqrt(diag(vcov(model_gnm_tratados_lead2_sens)))[[1]]
+z_lead2_sens   <- (b1_lead2_sens - b2_lead2_sens) / sqrt(se1_lead2_sens^2 + se2_lead2_sens^2)
+p_lead2_sens   <- 2 * pnorm(-abs(z_lead2_sens))     # 0.32
+cat("Controls (w/ Sherbrooke) vs. Treated, effects after 2 days;  p-values\n")
+p_lead2_sens
+
+
+log_rrr  <- b2_lead2_sens-b1_lead2_sens
+se_rrr   <- sqrt(se1_lead2_sens^2 + se2_lead2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_sens      <- exp(log_rrr)
+lo95_lead2_sens     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_lead2_sens     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_lead2_sens, lo95_lead2_sens, hi95_lead2_sens))
+
+qic_gnm_tratados             <- qic_gnm(model_gnm_tratados)
+qic_gnm_tratados_lead1       <- qic_gnm(model_gnm_tratados_lead1)
+qic_gnm_tratados_lead2       <- qic_gnm(model_gnm_tratados_lead2)
+qic_gnm_tratados_sens        <- qic_gnm(model_gnm_tratados_sens)
+qic_gnm_tratados_lead1_sens  <- qic_gnm(model_gnm_tratados_lead1_sens)
+qic_gnm_tratados_lead2_sens  <- qic_gnm(model_gnm_tratados_lead2_sens)
+
+qic_gnm_controles            <- qic_gnm(model_gnm_controles)
+qic_gnm_controles_lead1      <- qic_gnm(model_gnm_controles_lead1)
+qic_gnm_controles_lead2      <- qic_gnm(model_gnm_controles_lead2)
+qic_gnm_controles_sens       <- qic_gnm(model_gnm_controles_sens)
+qic_gnm_controles_lead1_sens <- qic_gnm(model_gnm_controles_lead1_sens)
+qic_gnm_controles_lead2_sens <- qic_gnm(model_gnm_controles_lead2_sens)
+
+
+## ─── 2. Vector with names ───────────────────────────────────────────
+qic_vec <- c(
+  "Treated (base)"            = qic_gnm_tratados,
+  "Treated + lead 1"          = qic_gnm_tratados_lead1,
+  "Treated + lead 2"          = qic_gnm_tratados_lead2,
+  "Treated sensitivity (- Sherbrooke)"      = qic_gnm_tratados_sens,
+  "Treated sens + lead 1"     = qic_gnm_tratados_lead1_sens,
+  "Treated sens + lead 2"     = qic_gnm_tratados_lead2_sens,
+  "Controls (base)"           = qic_gnm_controles,
+  "Controls + lead 1"         = qic_gnm_controles_lead1,
+  "Controls + lead 2"         = qic_gnm_controles_lead2,
+  "Controls sensitivity (+ Sherbrooke)"     = qic_gnm_controles_sens,
+  "Controls sens + lead 1"    = qic_gnm_controles_lead1_sens,
+  "Controls sens + lead 2"    = qic_gnm_controles_lead2_sens
+)
+
+## ─── 3. print results ───────────────────────────────────────
+cat(
+  "\n≡ Comparison of models through QIC (quasi‑AIC) ≡",
+  "\n(‑2·ℓ / φ  +  2·k ;  lower ⇒ better)\n\n",
+  paste(names(qic_vec), sprintf(": %.1f", qic_vec), collapse = "\n"),
+  "\n\n≡ Ranking (better → worse) ≡\n",
+  paste(names(sort(qic_vec)), sprintf(": %.1f", sort(qic_vec)), collapse = "\n"),
+  "\n"
+)
+
+```
+
+We made placebo tests with post-exposure.
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: test-association-gnm-placebo
+#| eval: true
+#| results: "hold"
+
+cat("Treated (w/o Sherbrooke), contemporaneous effects\n")
+placebo_model_gnm_tratados <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==TRUE)
+)
+summary(placebo_model_gnm_tratados)
+
+
+cat("Controls (w/o Sherbrooke), contemporaneous effects\n")
+placebo_model_gnm_controles <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==FALSE)
+)
+summary(placebo_model_gnm_controles)
+
+pb1  <- placebo_model_gnm_controles$coefficients[[1]]; pse1 <- sqrt(diag(vcov(placebo_model_gnm_controles)))[[1]]
+pb2  <- placebo_model_gnm_tratados$coefficients[[1]]; pse2 <- sqrt(diag(vcov(placebo_model_gnm_tratados)))[[1]]
+pz   <- (pb1 - pb2) / sqrt(pse1^2 + pse2^2)
+pp   <- 2 * pnorm(-abs(pz))     # 0.32
+cat("Controls vs. Treated (w/o Sherbrooke), contemporaneous effects;  p-values\n")
+pp
+
+log_rrr  <- pb2-pb1
+se_rrr   <- sqrt(pse1^2 + pse2^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_p      <- exp(log_rrr)
+lo95_p     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_p     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_p, lo95_p, hi95_p))
+
+
+cat("Treated (w/o Sherbrooke), effects after 1 day\n")
+placebo_model_gnm_tratados_lead1 <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==TRUE)
+)
+summary(placebo_model_gnm_tratados_lead1)
+
+
+cat("Controls (w/o Sherbrooke), effects after 1 day\n")
+placebo_model_gnm_controles_lead1 <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==FALSE)
+)
+summary(placebo_model_gnm_controles_lead1)
+
+pb1_lead1  <- placebo_model_gnm_controles_lead1$coefficients[[1]]; pse1_lead1 <- sqrt(diag(vcov(placebo_model_gnm_controles_lead1)))[[1]]
+pb2_lead1  <- placebo_model_gnm_tratados_lead1$coefficients[[1]]; pse2_lead1 <- sqrt(diag(vcov(placebo_model_gnm_tratados_lead1)))[[1]]
+pz_lead1   <- (pb1_lead1 - pb2_lead1) / sqrt(pse1_lead1^2 + pse2_lead1^2)
+pp_lead1   <- 2 * pnorm(-abs(z_lead1))     # 0.32
+cat("Controls vs. Treated (w/o Sherbrooke), effects after 1 day;  p-values\n")
+pp_lead1
+
+
+log_rrr  <- pb2_lead1-pb1_lead1 
+se_rrr   <- sqrt(pse1_lead1^2 + pse2_lead1^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_p_lead1      <- exp(log_rrr)
+lo95_p_lead1     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_p_lead1     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_p_lead1, lo95_p_lead1, hi95_p_lead1))
+
+cat("Treated (w/o Sherbrooke), effects after 2 days\n")
+placebo_model_gnm_tratados_lead2 <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==TRUE)
+)
+summary(placebo_model_gnm_tratados_lead2)
+
+
+cat("Controls (w/o Sherbrooke), effects after 2 days\n")
+placebo_model_gnm_controles_lead2 <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated==FALSE)
+)
+summary(placebo_model_gnm_controles_lead2)
+
+pb1_lead2  <- placebo_model_gnm_controles_lead2$coefficients[[1]]; pse1_lead2 <- sqrt(diag(vcov(placebo_model_gnm_controles_lead2)))[[1]]
+pb2_lead2  <- placebo_model_gnm_tratados_lead2$coefficients[[1]]; pse2_lead2 <- sqrt(diag(vcov(placebo_model_gnm_tratados_lead2)))[[1]]
+pz_lead2   <- (pb1_lead2 - pb2_lead2) / sqrt(pse1_lead2^2 + pse2_lead2^2)
+pp_lead2   <- 2 * pnorm(-abs(pz_lead2))     # 0.32
+cat("Controls vs. Treated (w/o Sherbrooke), effects after 2 days;  p-values\n")
+pp_lead2
+
+
+
+log_rrr  <- pb2_lead2- pb1_lead2
+se_rrr   <- sqrt(pse1_lead2^2 + pse2_lead2^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_p_lead2      <- exp(log_rrr)
+lo95_p_lead2     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_p_lead2     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_p_lead2, lo95_p_lead2, hi95_p_lead2))
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+cat("With Sherbrooke\n")
+
+cat("Treated (w/ Sherbrooke), contemporaneous effects\n")
+placebo_model_gnm_tratados_sens <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated_sens==TRUE)
+)
+summary(placebo_model_gnm_tratados_sens)
+
+
+cat("Controls (w/ Sherbrooke), contemporaneous effects\n")
+placebo_model_gnm_controles_sens <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated_sens==FALSE)
+)
+summary(placebo_model_gnm_controles_sens)
+
+pb1_sens  <- placebo_model_gnm_controles_sens$coefficients[[1]]; pse1_sens <- sqrt(diag(vcov(placebo_model_gnm_controles_sens)))[[1]]
+pb2_sens  <- placebo_model_gnm_tratados_sens$coefficients[[1]]; pse2_sens <- sqrt(diag(vcov(placebo_model_gnm_tratados_sens)))[[1]]
+pz_sens   <- (pb1_sens - pb2_sens) / sqrt(pse1_sens^2 + pse2_sens^2)
+pp_sens   <- 2 * pnorm(-abs(pz_sens))     # 0.32
+cat("Controls (w/ Sherbrooke) vs. Treated, contemporaneous effects;  p-values\n")
+pp_sens
+
+
+log_rrr  <- pb2_sens-pb1_sens
+se_rrr   <- sqrt(pse1_sens^2 + pse2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_p_sens      <- exp(log_rrr)
+lo95_p_sens     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_p_sens     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_p_sens, lo95_p_sens, hi95_p_sens))
+
+cat("Treated (w/ Sherbrooke), effects after 1 day\n")
+placebo_model_gnm_tratados_lead1_sens <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated_sens==TRUE)
+)
+summary(placebo_model_gnm_tratados_lead1_sens)
+
+
+cat("Controls (w/ Sherbrooke), effects after 1 day\n")
+placebo_model_gnm_controles_lead1_sens <- gnm(
+  sum_velocidad_lead1 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated_sens==FALSE)
+)
+summary(placebo_model_gnm_controles_lead1_sens)
+
+pb1_lead1_sens  <- placebo_model_gnm_controles_lead1_sens$coefficients[[1]]; pse1_lead1_sens <- sqrt(diag(vcov(placebo_model_gnm_controles_lead1_sens)))[[1]]
+pb2_lead1_sens  <- placebo_model_gnm_tratados_lead1_sens$coefficients[[1]]; pse2_lead1_sens <- sqrt(diag(vcov(placebo_model_gnm_tratados_lead1_sens)))[[1]]
+pz_lead1_sens   <- (pb1_lead1_sens - pb2_lead1_sens) / sqrt(pse1_lead1_sens^2 + pse2_lead1_sens^2)
+pp_lead1_sens   <- 2 * pnorm(-abs(pz_lead1_sens))     # 0.32
+cat("Controls (w/ Sherbrooke) vs. Treated, effects after 1 day;  p-values\n")
+pp_lead1_sens
+
+
+log_rrr  <- pb2_lead1_sens-pb1_lead1_sens
+se_rrr   <- sqrt(pse1_lead1_sens^2 + pse2_lead1_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_p_lead1_sens      <- exp(log_rrr)
+lo95_p_lead1_sens     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_p_lead1_sens     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_p_lead1_sens, lo95_p_lead1_sens, hi95_p_lead1_sens))
+
+cat("Treated (w/ Sherbrooke), effects after 2 days\n")
+placebo_model_gnm_tratados_lead2_sens <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated_sens==TRUE)
+)
+summary(placebo_model_gnm_tratados_lead2_sens)
+
+
+cat("Controls (w/ Sherbrooke), effects after 2 days\n")
+placebo_model_gnm_controles_lead2_sens <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) & treated_sens==FALSE)
+)
+summary(placebo_model_gnm_controles_lead2_sens)
+
+pb1_lead2_sens  <- placebo_model_gnm_controles_lead2_sens$coefficients[[1]]; pse1_lead2_sens <- sqrt(diag(vcov(placebo_model_gnm_controles_lead2_sens)))[[1]]
+pb2_lead2_sens  <- placebo_model_gnm_tratados_lead2_sens$coefficients[[1]]; pse2_lead2_sens <- sqrt(diag(vcov(placebo_model_gnm_tratados_lead2_sens)))[[1]]
+pz_lead2_sens   <- (pb1_lead2_sens - pb2_lead2_sens) / sqrt(pse1_lead2_sens^2 + pse2_lead2_sens^2)
+pp_lead2_sens   <- 2 * pnorm(-abs(pz_lead2_sens))     # 0.32
+cat("Controls (w/ Sherbrooke) vs. Treated, effects after 2 days;  p-values\n")
+pp_lead2_sens
+
+log_rrr  <- pb2_lead2_sens-pb1_lead2_sens
+se_rrr   <- sqrt(pse1_lead2_sens^2 + pse2_lead2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_p_lead2_sens      <- exp(log_rrr)
+lo95_p_lead2_sens     <- exp(log_rrr - 1.96 * se_rrr)
+hi95_p_lead2_sens     <- exp(log_rrr + 1.96 * se_rrr)
+
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_p_lead2_sens, lo95_p_lead2_sens, hi95_p_lead2_sens))
+
+
+cbind.data.frame(type=c("Main","","", "", "Placebo","","",""),
+rbind.data.frame(
+                tidy_exp_gnm_corr(model_gnm_tratados_sens),
+                tidy_exp_gnm_corr(model_gnm_controles_sens),
+                tidy_exp_gnm_corr(model_gnm_tratados),
+                tidy_exp_gnm_corr(model_gnm_controles),
+                tidy_exp_gnm_corr(placebo_model_gnm_tratados_sens),
+                tidy_exp_gnm_corr(placebo_model_gnm_controles_sens),                 
+                tidy_exp_gnm_corr(placebo_model_gnm_tratados),
+                tidy_exp_gnm_corr(placebo_model_gnm_controles)),
+  sig= round(c(p_sens, NA, p, NA, pp_sens, NA, pp, NA),3),
+  RRR= c(sprintf("%.2f (%.2f–%.2f)\n", RRR_sens, lo95_sens, hi95_sens), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR, lo95, hi95), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_p_sens, lo95_p_sens, hi95_p_sens), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_p, lo95_p, hi95_p), NA))|> 
+  mutate(RR= sprintf("%.2f (%.2f–%.2f)", `exp(Est.)`, `2.5%`, `97.5%`))|>
+  mutate(sig= sprintf("%.3f", sig))|> 
+  rename("p.value"="P")|> 
+  dplyr::select(term, p.value, RR, sig, RRR)|> 
+  knitr::kable("markdown", caption="Main, high-speed collisions, instantaneous effect", digits=3, na= "-")
+
+cbind.data.frame(type=c("Main","","", "", "Placebo","","",""),
+rbind.data.frame(
+                tidy_exp_gnm_corr(model_gnm_tratados_lead1_sens),
+                tidy_exp_gnm_corr(model_gnm_controles_lead1_sens),
+                tidy_exp_gnm_corr(model_gnm_tratados_lead1),
+                tidy_exp_gnm_corr(model_gnm_controles_lead1),
+                tidy_exp_gnm_corr(placebo_model_gnm_tratados_lead1_sens),
+                tidy_exp_gnm_corr(placebo_model_gnm_controles_lead1_sens),
+                tidy_exp_gnm_corr(placebo_model_gnm_tratados_lead1),
+                tidy_exp_gnm_corr(placebo_model_gnm_controles_lead1)),
+sig= round(c(p_lead1_sens, NA, p_lead1, NA, pp_lead1_sens, NA, pp_lead1, NA),3),
+  RRR= c(sprintf("%.2f (%.2f–%.2f)\n", RRR_lead1_sens, lo95_lead1_sens, hi95_lead1_sens), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_lead1, lo95_lead1, hi95_lead1), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_p_lead1_sens, lo95_p_lead1_sens, hi95_p_lead1_sens), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_p_lead1, lo95_p_lead1, hi95_p_lead1), NA))|> 
+  mutate(RR= sprintf("%.2f (%.2f–%.2f)", `exp(Est.)`, `2.5%`, `97.5%`))|>
+  mutate(sig= sprintf("%.3f", sig))|> 
+  rename("p.value"="P")|> 
+  dplyr::select(term, p.value, RR, sig, RRR)|> 
+  knitr::kable("markdown", caption="Main, high-speed collisions after one day", digits=3, na= "-")
+
+cbind.data.frame(type=c("Main","","", "", "Placebo","","",""),
+rbind.data.frame(
+                tidy_exp_gnm_corr(model_gnm_tratados_lead2_sens),
+                tidy_exp_gnm_corr(model_gnm_controles_lead2_sens),
+                tidy_exp_gnm_corr(model_gnm_tratados_lead2),
+                tidy_exp_gnm_corr(model_gnm_controles_lead2),
+                tidy_exp_gnm_corr(placebo_model_gnm_tratados_lead2_sens),
+                tidy_exp_gnm_corr(placebo_model_gnm_controles_lead2_sens),
+                tidy_exp_gnm_corr(placebo_model_gnm_tratados_lead2),
+                tidy_exp_gnm_corr(placebo_model_gnm_controles_lead2)),
+  sig= round(c(p_lead2_sens, NA, p_lead2, NA, pp_lead2_sens, NA, pp_lead2, NA),3),
+  RRR= c(sprintf("%.2f (%.2f–%.2f)", RRR_lead2_sens, lo95_lead2_sens, hi95_lead2_sens), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_lead2, lo95_lead2, hi95_lead2), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_p_lead2_sens, lo95_p_lead2_sens, hi95_p_lead2_sens), NA, sprintf("%.2f (%.2f–%.2f)\n", RRR_p_lead2, lo95_p_lead2, hi95_p_lead2), NA))|> 
+  mutate(RR= sprintf("%.2f (%.2f–%.2f)", `exp(Est.)`, `2.5%`, `97.5%`))|>
+  mutate(sig= sprintf("%.3f", sig))|> 
+  rename("p.value"="P")|> 
+  dplyr::select(term, p.value, RR, sig, RRR)|> 
+  knitr::kable("markdown", caption="Main, high-speed collisions after two days", digits=3, na= "-")
+
+pqic_gnm_tratados             <- qic_gnm(placebo_model_gnm_tratados)
+pqic_gnm_tratados_lead1       <- qic_gnm(placebo_model_gnm_tratados_lead1)
+pqic_gnm_tratados_lead2       <- qic_gnm(placebo_model_gnm_tratados_lead2)
+pqic_gnm_tratados_sens        <- qic_gnm(placebo_model_gnm_tratados_sens)
+pqic_gnm_tratados_lead1_sens  <- qic_gnm(placebo_model_gnm_tratados_lead1_sens)
+pqic_gnm_tratados_lead2_sens  <- qic_gnm(placebo_model_gnm_tratados_lead2_sens)
+
+pqic_gnm_controles            <- qic_gnm(placebo_model_gnm_controles)
+pqic_gnm_controles_lead1      <- qic_gnm(placebo_model_gnm_controles_lead1)
+pqic_gnm_controles_lead2      <- qic_gnm(placebo_model_gnm_controles_lead2)
+pqic_gnm_controles_sens       <- qic_gnm(placebo_model_gnm_controles_sens)
+pqic_gnm_controles_lead1_sens <- qic_gnm(placebo_model_gnm_controles_lead1_sens)
+pqic_gnm_controles_lead2_sens <- qic_gnm(placebo_model_gnm_controles_lead2_sens)
+
+## ─── 2. Vector with names ───────────────────────────────────────────
+pqic_vec <- c(
+  "Treated (base)"            = pqic_gnm_tratados,
+  "Treated + lead 1"          = pqic_gnm_tratados_lead1,
+  "Treated + lead 2"          = pqic_gnm_tratados_lead2,
+  "Treated sensitivity (- Sherbrooke)"      = pqic_gnm_tratados_sens,
+  "Treated sens + lead 1"     = pqic_gnm_tratados_lead1_sens,
+  "Treated sens + lead 2"     = pqic_gnm_tratados_lead2_sens,
+  "Controls (base)"           = pqic_gnm_controles,
+  "Controls + lead 1"         = pqic_gnm_controles_lead1,
+  "Controls + lead 2"         = pqic_gnm_controles_lead2,
+  "Controls sensitivity (+ Sherbrooke)"     = pqic_gnm_controles_sens,
+  "Controls sens + lead 1"    = pqic_gnm_controles_lead1_sens,
+  "Controls sens + lead 2"    = pqic_gnm_controles_lead2_sens
+)
+
+## ─── 3. print results ───────────────────────────────────────
+cat(
+  "\n≡ Comparison of models through QIC (quasi‑AIC) ≡",
+  "\n(‑2·ℓ / φ  +  2·k ;  lower ⇒ better)\n\n",
+  paste(names(pqic_vec), sprintf(": %.1f", pqic_vec), collapse = "\n"),
+  "\n\n≡ Ranking (better → worse) ≡\n",
+  paste(names(sort(pqic_vec)), sprintf(": %.1f", sort(pqic_vec)), collapse = "\n"),
+  "\n"
+)
+
+```
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: test-association-gnm-main-vs-placebo
+#| eval: true
+#| results: "hold"
+
+z_lead2_placebo_main_h_sens   <- (b2_lead2_sens - pb2_lead2_sens) / sqrt(se2_lead2_sens^2 + pse2_lead2_sens^2)
+p_lead2_placebo_main_h_sens   <- 2 * pnorm(-abs(z_lead2_placebo_main_h_sens))     # 0.32
+cat("Host MRC-years; Main vs. Placebo (w/ Sherbrooke as control), effects after 2 days;  p-values\n")
+p_lead2_placebo_main_h_sens
+
+log_rrr_placebo_main_h_sens  <- b2_lead2_sens- pb2_lead2_sens
+se_rrr_placebo_main_h_sens   <- sqrt(se2_lead2_sens^2 + pse2_lead2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_placebo_main_h_sens      <- exp(log_rrr_placebo_main_h_sens)
+lo95_lead2_placebo_main_h_sens     <- exp(log_rrr_placebo_main_h_sens - 1.96 * se_rrr_placebo_main_h_sens)
+hi95_lead2_placebo_main_h_sens     <- exp(log_rrr_placebo_main_h_sens + 1.96 * se_rrr_placebo_main_h_sens)
+
+cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_h_sens, lo95_lead2_placebo_main_h_sens, hi95_lead2_placebo_main_h_sens, p_lead2_placebo_main_h_sens))
+
+
+z_lead2_placebo_main_nh_sens   <- (b1_lead2_sens - pb1_lead2_sens) / sqrt(se1_lead2_sens^2 + pse1_lead2_sens^2)
+p_lead2_placebo_main_nh_sens   <- 2 * pnorm(-abs(z_lead2_placebo_main_nh_sens))     # 0.32
+cat("Non-Host MRC-years; Main vs. Placebo (w/ Sherbrooke as control), effects after 2 days;  p-values\n")
+p_lead2_placebo_main_nh_sens
+
+log_rrr_placebo_main_nh_sens  <- b1_lead2_sens- pb1_lead2_sens
+se_rrr_placebo_main_nh_sens   <- sqrt(se1_lead2_sens^2 + pse1_lead2_sens^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_placebo_main_nh_sens      <- exp(log_rrr_placebo_main_nh_sens)
+lo95_lead2_placebo_main_nh_sens     <- exp(log_rrr_placebo_main_nh_sens - 1.96 * se_rrr_placebo_main_nh_sens)
+hi95_lead2_placebo_main_nh_sens     <- exp(log_rrr_placebo_main_nh_sens + 1.96 * se_rrr_placebo_main_nh_sens)
+
+cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_nh_sens, lo95_lead2_placebo_main_nh_sens, hi95_lead2_placebo_main_nh_sens, p_lead2_placebo_main_nh_sens))
+
+
+
+
+
+z_lead2_placebo_main_h   <- (b2_lead2 - pb2_lead2) / sqrt(se2_lead2^2 + pse2_lead2^2)
+p_lead2_placebo_main_h   <- 2 * pnorm(-abs(z_lead2_placebo_main_h))     # 0.32
+cat("Host MRC-years; Main vs. Placebo (w/o Sherbrooke), effects after 2 days;  p-values\n")
+p_lead2_placebo_main_h
+
+log_rrr_placebo_main_h  <- b2_lead2- pb2_lead2
+se_rrr_placebo_main_h   <- sqrt(se2_lead2^2 + pse2_lead2^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_placebo_main_h      <- exp(log_rrr_placebo_main_h)
+lo95_lead2_placebo_main_h     <- exp(log_rrr_placebo_main_h - 1.96 * se_rrr_placebo_main_h)
+hi95_lead2_placebo_main_h     <- exp(log_rrr_placebo_main_h + 1.96 * se_rrr_placebo_main_h)
+
+cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_h, lo95_lead2_placebo_main_h, hi95_lead2_placebo_main_h, p_lead2_placebo_main_h))
+
+
+z_lead2_placebo_main_nh   <- (b1_lead2 - pb1_lead2) / sqrt(se1_lead2^2 + pse1_lead2^2)
+p_lead2_placebo_main_nh   <- 2 * pnorm(-abs(z_lead2_placebo_main_nh))     # 0.32
+cat("Non-Host MRC-years; Main vs. Placebo (w/o Sherbrooke), effects after 2 days;  p-values\n")
+p_lead2_placebo_main_nh
+
+log_rrr_placebo_main_nh  <- b1_lead2- pb1_lead2
+se_rrr_placebo_main_nh   <- sqrt(se1_lead2^2 + pse1_lead2^2)   # var(Δ) = var1 + var2
+
+## RRR y IC 95 %
+RRR_lead2_placebo_main_nh      <- exp(log_rrr_placebo_main_nh)
+lo95_lead2_placebo_main_nh     <- exp(log_rrr_placebo_main_nh - 1.96 * se_rrr_placebo_main_nh)
+hi95_lead2_placebo_main_nh     <- exp(log_rrr_placebo_main_nh + 1.96 * se_rrr_placebo_main_nh)
+
+cat(sprintf("%.2f (%.2f–%.2f) p= %.3f", RRR_lead2_placebo_main_nh, lo95_lead2_placebo_main_nh, hi95_lead2_placebo_main_nh, p_lead2_placebo_main_nh))
+
+```
+
+We made model with interaction terms.
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: test-association-gnm-int-post-conv
+#| eval: true
+#| results: "hold"
+
+cat("DID (w/ Sherbrooke), effects after 2 days\n")
+model_gnm_lead2_did_sens <- gnm(
+    sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")*treated_sens+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+        offset(off_lic),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window))
+)
+summary(model_gnm_lead2_did_sens)
+cat("DID (w/o Sherbrooke), effects after 2 days\n")
+model_gnm_lead2_did <- gnm(
+    sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")*treated+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+        offset(off_lic),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window))
+)
+summary(model_gnm_lead2_did)
+
+
+cat("PlaceboDID (w/ Sherbrooke), effects after 2 days\n")
+placebo_model_gnm_lead2_did_sens <- gnm(
+    sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")*treated_sens+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+        offset(off_lic),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window))
+)
+summary(placebo_model_gnm_lead2_did_sens)
+
+
+cat("PlaceboDID (w/o Sherbrooke), effects after 2 days\n")
+placebo_model_gnm_lead2_did <- gnm(
+    sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")*treated+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+        offset(off_lic),
+    eliminate = cluster,                            # <── “conditional” part
+    family    = quasipoisson(link = "log"),
+    data      = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Post",exposure_window) )
+)
+summary(placebo_model_gnm_lead2_did)
+
+
+tidy_exp_gnm <- function(model, conf.level = 0.95, use_t = FALSE) {
+  td <- broom::tidy(model)
+  alpha <- 1 - conf.level
+  crit <- if (use_t) {
+    stats::qt(1 - alpha/2, df = model$df.residual)
+  } else {
+    stats::qnorm(1 - alpha/2)
+  }
+    td %>%
+    mutate(
+      conf.low_log  = estimate - crit * std.error,
+      conf.high_log = estimate + crit * std.error,
+      rate_ratio    = exp(estimate),
+      rr_conf.low   = exp(conf.low_log),
+      rr_conf.high  = exp(conf.high_log)
+    ) %>%
+    dplyr::select(term, rate_ratio, rr_conf.low, rr_conf.high, std.error, p.value) |> 
+    data.frame() |> 
+    dplyr::slice(7)
+}
+
+# tidy_exp_gnm2 <- function(model, conf.level = 0.95) {
+#   # Extrae coeficientes y errores estándar
+#   td <- broom::tidy(model)
+#   
+#   # Z crítico
+#   alpha <- 1 - conf.level
+#   z <- stats::qnorm(1 - alpha/2)
+#   
+#   # Cálculo de IC en escala log y exponenciación
+#   td %>%
+#     mutate(
+#       conf.low_log  = estimate - z * std.error,
+#       conf.high_log = estimate + z * std.error,
+#       rate_ratio    = exp(estimate),
+#       rr_conf.low   = exp(conf.low_log),
+#       rr_conf.high  = exp(conf.high_log)
+#     ) %>%
+#     dplyr::select(term, rate_ratio, rr_conf.low, rr_conf.high, std.error, p.value) |> 
+#     data.frame() |> 
+#     dplyr::slice(7)
+# }
+cbind.data.frame(type=c("Main","","Placebo",""),
+rbind.data.frame(as_tibble(Epi::ci.exp(model_gnm_lead2_did_sens, subset=":", pval=T), rownames = "term"),
+                 as_tibble(Epi::ci.exp(model_gnm_lead2_did, subset=":", pval=T), rownames = "term"),
+                as_tibble(Epi::ci.exp(placebo_model_gnm_lead2_did_sens, subset=":", pval=T), rownames = "term"),
+                as_tibble(Epi::ci.exp(placebo_model_gnm_lead2_did, subset=":", pval=T), rownames = "term")))|> 
+  mutate(RR= sprintf("%.2f (%.2f–%.2f)", `exp(Est.)`, `2.5%`, `97.5%`))|>
+  knitr::kable("markdown", caption="Interaction models, RRRs, high-speed collisions after two days", digits=4)
+```
+
+
+<br>
+
+# Session info
+
+```{r session-info, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+cat(paste0("R library: ", Sys.getenv("R_LIBS_USER")))
+cat(paste0("Date: ",withr::with_locale(new = c('LC_TIME' = 'C'), code =Sys.time())))
+cat(paste0("Editor context: ", getwd()))
+cat("quarto version: "); system("quarto --version") 
+
+quarto::quarto_version()
+
+save.image("_data/step2_2.RData")
+```
+
+```{r session-info-r, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+#| class-output: center-table
+
+sesion_info <- devtools::session_info()
+dplyr::select(
+  tibble::as_tibble(sesion_info$packages),
+  c(package, loadedversion, source)
+) |> 
+ knitr::kable(caption = "R packages", format = "html",
+      col.names = c("Row number", "Package", "Version"),
+    row.names = FALSE,
+      align = c("c", "l", "r")) |> 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)|> 
+  kableExtra::scroll_box(width = "100%", height = "375px")  
+```
+
+```{r session-info-python, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+#| class-output: center-table
+
+reticulate::py_list_packages()%>% 
+ knitr::kable(caption = "Python packages", format = "html",
+      col.names = c("Package", "Version", "Requirement"),
+    row.names = FALSE,
+      align = c("c", "l", "r", "r"))%>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)|>
+  kableExtra::scroll_box(width = "100%", height = "375px")  
+```
+
+
+# References

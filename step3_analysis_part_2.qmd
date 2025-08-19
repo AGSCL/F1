@@ -184,13 +184,121 @@ data.table::setDTthreads(threads = num_cores)#restore_after_fork = NULL, throttl
 
 options(scipen=2) #display numbers rather scientific number
 
-
+#nixtlar::nixtla_client_setup(api_key = readLines(paste0(gsub("f1/","", getwd() ),"/key.txt"))[[1]])
 nixtlar::nixtla_client_setup(api_key = readLines(paste0(gsub("f1/","", getwd() ),"/key_alt.txt"))[[1]])
 
 ```
 
 
 </div>
+
+### Bayesian
+
+```{r}
+cat("Treated (w/o Sherbrooke), effects after 2 days\n")
+b_cmp <- brm(
+  sum_velocidad_lead2 ~  relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + (1 | cluster) + offset(off_lic),#median_lag_2_prec_median_imp+
+  family = negbinomial(),#poisson(),
+  data   = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated_sens==TRUE),
+  prior  = c(
+    prior(normal(0, 5), class = "b"),#,prior(exponential(1), class = "nu")       # ν > 0
+    prior(gamma(0.01, 0.01), class = "shape")   # θ controla la sobre-disp.
+  ),
+  chains = 4, cores = 16, iter = 4000*10, warmup = 4000*2,
+  control = list(adapt_delta = .99)
+)
+
+a_cmp <- brm(
+  sum_velocidad_lead2 ~  relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin +(1 | cluster) + offset(off_lic),# median_lag_2_prec_median_imp+ 
+  family = negbinomial(),#poisson(),
+  data   = subset(collisions_weather_corr_rect_pre_post, grepl("^Pre|^Exp",exposure_window) & treated_sens==FALSE),
+  prior  = c(
+    prior(normal(0, 5), class = "b"),#,#,prior(exponential(1), class = "nu")       # ν > 0
+    prior(gamma(0.01, 0.01), class = "shape")   # θ controla la sobre-disp.
+  ),
+  chains = 4, cores = 16, iter = 4000*10, warmup = 4000*2,
+  control = list(adapt_delta = .99)
+)
+
+
+# # 2.1 Histograma/overlay de densidades
+# pp_check(b_cmp, type = "dens_overlay", ndraws = 200)
+# pp_check(a_cmp, type = "dens_overlay", ndraws = 200)
+# 
+# # 2.2 Rootogram (bueno para conteos)
+# pp_check(b_cmp, type = "rootogram")
+# pp_check(a_cmp, type = "rootogram")
+# 
+# # 2.3 Distribución del número de ceros
+# pp_check(b_cmp, type = "bars", statistic = "zero")
+# 
+# # 2.4 Estadísticos resumidos
+# pp_check(
+#   b_cmp,
+#   type      = "stat",
+#   statistic = c("mean", "sd", "var", "max")   # elige los que te interesen
+# )#relevelfactorexposure_windowrefEQPreMexposureExposure
+
+# 
+# y_rep <- posterior_predict(b_cmp, draws = 500)   # 500 réplicas
+# summ_mean <- apply(y_rep, 1, function(x) c(mean = mean(x)))
+# summ_var <- apply(y_rep, 1, function(x) c(var = var(x)))
+# df_predict_mean<- sapply(summ_mean, FUN = identity) 
+# df_predict_var<- sapply(summ_var, FUN = identity) 
+# tibble(mean= as.numeric(df_predict_mean), var= as.numeric(df_predict_var))|>
+#   ggplot(aes(x = mean, y = var)) +
+#   geom_point(alpha = .3) +
+#   geom_abline(slope = 1, intercept = 0, colour = "red") +
+#   labs(title = "Media vs Varianza en réplicas -> línea roja = Poisson ideal")
+# #MUCHA SOBREDISPERSIÓN
+# 
+
+# Extrae draws del coeficiente, p. ej. el de `exposure_windowExp`
+betaA <- posterior_samples(a_cmp, "b_relevelfactorexposure_windowrefEQPreMexposureExposure")$b_relevelfactorexposure_windowrefEQPreMexposureExposure
+betaB <- posterior_samples(b_cmp, "b_relevelfactorexposure_windowrefEQPreMexposureExposure")$b_relevelfactorexposure_windowrefEQPreMexposureExposure
+
+cat("Cat B= Host-MRC-years\n")
+mean(exp(betaB)); quantile(exp(betaB), c(.025, .975))
+
+cat("Cat A= Non-Host-MRC-years\n")
+mean(exp(betaA)); quantile(exp(betaA), c(.025, .975))
+
+cat("Delta\n")
+delta <- betaA - betaB        # diferencia A − B
+
+# Resumen con intervalo de credibilidad
+quantile(delta, c(.025, .5, .975))
+#>      2.5%        50%      97.5%
+#>   -0.12   |   0.08   |    0.28   (ejemplo)
+#>   
+#Si el 95 % CrI de delta incluye 0 → el efecto puede ser igual en ambas poblaciones.
+library(posterior)
+
+delta_draws <- as_draws_matrix(matrix(delta, ncol = 1))
+colnames(delta_draws) <- "delta"        # nombre de la columna → etiqueta en la leyenda
+
+# 2. Grafica el área de credibilidad del 95 %
+mcmc_areas(delta_draws, pars = "delta", prob = 0.95) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(title = "Δβ (A − B)",
+       x     = "Coefficient difference",
+       y     = NULL)
+
+summ <- summarise_draws(
+  delta_draws,
+  prob_gt0  = ~ mean(.x > 0),
+  prob_lt0  = ~ mean(.x < 0),
+  prob_rope = ~ mean(abs(.x) < 0.05)   # ROPE de ±0.05 “en línea”
+)
+
+summ
+#ROPE: El 11.9 % de las simulaciones cae en la zona de irrelevancia práctica que fijaste.
+# Usando reglas heurísticas típicas:
+# • < 0.75 → débil, 0.75–0.90 → moderada, 0.90–0.97 → fuerte, > 0.97 → muy fuerte.
+# Con 0.82 estás en la franja moderada: hay más apoyo por un efecto positivo que negativo, pero la incertidumbre todavía es apreciable.
+```
+
+
 
 ### Matrix-completion method
 
@@ -699,9 +807,9 @@ plot(impact3d_ratio_resp2)
 
 
 err_ci_00 <- impact3d_ratio_resp2$series$response - impact3d_ratio_resp2$series$point.pred
-rmse_ci_00 <- sqrt(mean(err_ci_00[1:35]^2))
-mean_pre_00 <- mean(df33$sum_velocidad_lead2[1:35]) 
-sd_pre_00 <- sd(df33$sum_velocidad_lead2[1:35])
+rmse_ci_00 <- sqrt(mean(err_ci_00[1:34]^2))
+mean_pre_00 <- mean(df33$sum_velocidad_lead2[1:34]) 
+sd_pre_00 <- sd(df33$sum_velocidad_lead2[1:34])
 nrmse_00 <- rmse_ci_00 / mean_pre_00 # RMSE relativo; 
 sd_ratio_00 <- rmse_ci_00 / sd_pre_00 # RMSE relativo a la variabilidad natural
 
@@ -710,7 +818,7 @@ cat(sprintf("NRMSE: %.2f (RMSE relative to pre-period mean, %.1f)\n", nrmse_00, 
 cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_ratio_00, sd_pre_00))
 
 # Benchmark naïve (random walk de un paso):
-naive_rmse_00 <- sqrt(mean((df33$sum_velocidad_lead2[2:35] - df33$sum_velocidad_lead2[1:34])^2))
+naive_rmse_00 <- sqrt(mean((df33$sum_velocidad_lead2[2:34] - df33$sum_velocidad_lead2[1:33])^2))
 improvement_00 <- 1 - rmse_ci_00 / naive_rmse_00  # >0 = mejora sobre el naïve
 
 ```
@@ -793,9 +901,9 @@ plot(impact3d_ratio_resp2_c)
 
 
 err_ci_0c <- impact3d_ratio_resp2_c$series$response - impact3d_ratio_resp2_c$series$point.pred
-rmse_ci_0c <- sqrt(mean(err_ci_0c[1:35]^2))
-mean_pre_0c <- mean(df33c$sum_velocidad_lead2[1:35]) 
-sd_pre_0c <- sd(df33c$sum_velocidad_lead2[1:35])
+rmse_ci_0c <- sqrt(mean(err_ci_0c[1:34]^2))
+mean_pre_0c <- mean(df33c$sum_velocidad_lead2[1:34]) 
+sd_pre_0c <- sd(df33c$sum_velocidad_lead2[1:34])
 nrmse_0c <- rmse_ci_0c / mean_pre_0c # RMSE relativo; 
 sd_ratio_0c <- rmse_ci_0c / sd_pre_0c # RMSE relativo a la variabilidad natural
 
@@ -804,7 +912,7 @@ cat(sprintf("NRMSE: %.2f (RMSE relative to pre-period mean, %.1f)\n", nrmse_0c, 
 cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_ratio_0c, sd_pre_0c))
 
 # Benchmark naïve (random walk de un paso):
-naive_rmse_0c <- sqrt(mean((df33c$sum_velocidad_lead2[2:35] - df33c$sum_velocidad_lead2[1:34])^2))
+naive_rmse_0c <- sqrt(mean((df33c$sum_velocidad_lead2[2:34] - df33c$sum_velocidad_lead2[1:33])^2))
 improvement_0c <- 1 - rmse_ci_0c / naive_rmse_0c  # >0 = mejora sobre el naïve
 
 ```
@@ -830,7 +938,7 @@ improvement_0c <- 1 - rmse_ci_0c / naive_rmse_0c  # >0 = mejora sobre el naïve
 # yss2ab<- log(yss2ab)
 lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33$sum_velocidad_lead2), lower = -2, upper = 2)
 y_bc <- BoxCox(as.numeric(df33$sum_velocidad_lead2), lambda_opt)
-yss2ab <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+yss2ab <- c(y_bc, rep(NA, 4)) # respuesta escalada por 100 millones
 
 # Model 2
 ss2ab <- list()
@@ -842,7 +950,7 @@ ss2ab <- AddSeasonal(ss2ab, yss2ab,
 #ss2ab <- AddAutoAr(ss2ab, y = c(as.numeric(df33$rate_lead2_lic), rep(NA,3)), lags = 10) #NO PUEDO AREGAR AR1 CON gaussian
 # For example, to add a day-of-week component to data with daily granularity, use model.args = list(nseasons = 7, season.duration = 1). To add a day-of-week component to data with hourly granularity, set model.args = list(nseasons = 7, season.duration = 24).
 
-covariates_future33b <- as.matrix(df33_post[1:3, c("mean_min_temp_mean_lin",
+covariates_future33b <- as.matrix(df33_post[1:4, c("mean_min_temp_mean_lin",
                                              "mean_max_temp_mean_lin",
                                              "mean_median_lag_2_prec_median_imp",
                                              "mean_median_total_precip_median_lin"#,
@@ -865,7 +973,7 @@ model2ab_ratio <- bsts(yss2ab,
 # make their coefficients time-varying using AddDynamicRegression().
 
 impact3ab_ratio_resp <- CausalImpact(bsts.model = model2ab_ratio,model.args = list(prior.level.sd=.1, dynamic.regression=T),
-                                                   post.period.response = as.numeric(BoxCox(as.numeric(df33_post$sum_velocidad_lead2[1:3]), lambda_opt)))
+                                                   post.period.response = as.numeric(BoxCox(as.numeric(df33_post$sum_velocidad_lead2[1:4]), lambda_opt)))
               #post.period.response = log(df33_post$sum_velocidad_lead2[1:3]))
 
 summary(impact3ab_ratio_resp)
@@ -909,7 +1017,7 @@ improvement <- 1 - rmse_ci / naive_rmse  # >0 = mejora sobre el naïve
 # yss2cab <- log(yss2cab)
 lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33c$sum_velocidad_lead2), lower = -2, upper = 2)
 y_bc <- BoxCox(as.numeric(df33c$sum_velocidad_lead2), lambda_opt)
-yss2cab <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+yss2cab <- c(y_bc, rep(NA, 4)) # respuesta escalada por 100 millones
 
 # Model 2
 ss2cab <- list()
@@ -921,7 +1029,7 @@ ss2cab <- AddSeasonal(ss2cab, yss2cab,
 #ss2ab <- AddAutoAr(ss2ab, y = c(as.numeric(df33$rate_lead2_lic), rep(NA,3)), lags = 10) #NO PUEDO AREGAR AR1 CON gaussian
 # For example, to add a day-of-week component to data with daily granularity, use model.args = list(nseasons = 7, season.duration = 1). To add a day-of-week component to data with hourly granularity, set model.args = list(nseasons = 7, season.duration = 24).
 
-covariates_future33cb <- as.matrix(df33c_post[1:3, c("mean_min_temp_mean_lin",
+covariates_future33cb <- as.matrix(df33c_post[1:4, c("mean_min_temp_mean_lin",
                                              "mean_max_temp_mean_lin",
                                              "mean_median_lag_2_prec_median_imp",
                                              "mean_median_total_precip_median_lin"#,
@@ -945,7 +1053,7 @@ model2cab_ratio <- bsts(yss2cab,
 
 impact3cab_ratio_resp <- CausalImpact(bsts.model = model2cab_ratio,model.args = list(prior.level.sd=.1, dynamic.regression=T),
               #post.period.response = log(df33c_post$sum_velocidad_lead2[1:3]))
-              post.period.response = as.numeric(BoxCox(as.numeric(df33c_post$sum_velocidad_lead2[1:3]), lambda_opt)))
+              post.period.response = as.numeric(BoxCox(as.numeric(df33c_post$sum_velocidad_lead2[1:4]), lambda_opt)))
 
 summary(impact3cab_ratio_resp)
 plot(impact3cab_ratio_resp)
@@ -985,7 +1093,7 @@ improvement_c <- 1 - rmse_ci_c / naive_rmse_c  # >0 = mejora sobre el naïve
 # y33b <- log(y33b)
 lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33$sum_velocidad_lead2), lower = -2, upper = 2)
 y_bc <- BoxCox(as.numeric(df33$sum_velocidad_lead2), lambda_opt)
-y33b <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+y33b <- c(y_bc, rep(NA, 4)) # respuesta escalada por 100 millones
 
 
 ss2b <- list()
@@ -1004,7 +1112,7 @@ model33b <- bsts(y33b, state.specification = ss2b, seed=2125,
 
 impact3db_ratio_resp2 <- CausalImpact(bsts.model = model33b, model.args = list(prior.level.sd=.1, dynamic.regression=T),
               #post.period.response = log(df33_post$sum_velocidad_lead2[1:3]))
-              post.period.response = as.numeric(BoxCox(as.numeric(df33_post$sum_velocidad_lead2[1:3]), lambda_opt)))
+              post.period.response = as.numeric(BoxCox(as.numeric(df33_post$sum_velocidad_lead2[1:4]), lambda_opt)))
 
 summary(impact3db_ratio_resp2)
 
@@ -1043,7 +1151,7 @@ cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_rat
 # y33b_c <- log(y33b_c)
 lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33c$sum_velocidad_lead2), lower = -2, upper = 2)
 y_bc <- BoxCox(as.numeric(df33c$sum_velocidad_lead2), lambda_opt)
-y33b_c <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+y33b_c <- c(y_bc, rep(NA, 4)) # respuesta escalada por 100 millones
 
 
 ss2b_c <- list()
@@ -1052,7 +1160,7 @@ ss2b_c <- AddSeasonal(ss2b_c, y33b_c, nseasons = 7, season.duration = 1)
 #ss2b <- AddAutoAr(ss2b, y33b, lags = 1)
 
 
-covariates_future33c2 <- as.matrix(df33c_post[1:3, c("mean_min_temp_mean_lin",
+covariates_future33c2 <- as.matrix(df33c_post[1:4, c("mean_min_temp_mean_lin",
                                              "mean_max_temp_mean_lin",
                                              "mean_median_lag_2_prec_median_imp",
                                              "mean_median_total_precip_median_lin"#,
@@ -1071,7 +1179,7 @@ model33b_c <- bsts(y33b_c, state.specification = ss2b_c, seed=2125,
 
 impact3db_ratio_resp2_c <- CausalImpact(bsts.model = model33b_c, model.args = list(prior.level.sd=.1, dynamic.regression=T),
               #post.period.response = log(df33c_post$sum_velocidad_lead2[1:3]))
-              post.period.response = as.numeric(BoxCox(as.numeric(df33c_post$sum_velocidad_lead2[1:3]), lambda_opt)))
+              post.period.response = as.numeric(BoxCox(as.numeric(df33c_post$sum_velocidad_lead2[1:4]), lambda_opt)))
 
 summary(impact3db_ratio_resp2_c)
 
@@ -1115,7 +1223,7 @@ cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_rat
 # y33_qc <- log(y33_qc)
 lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33_qc$sum_velocidad_lead2), lower = -2, upper = 2)
 y_bc <- BoxCox(as.numeric(df33_qc$sum_velocidad_lead2), lambda_opt)
-y33_qc <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+y33_qc <- c(y_bc, rep(NA, 4)) # respuesta escalada por 100 millones
 
 
 ## ── Covariables (data.frame) ─────────────────────────────────────────────────
@@ -1136,7 +1244,7 @@ covariates_future33_qc <- df33_post_qc |> dplyr::select(
 )
 
 covariates_full33_qc <- dplyr::bind_rows(covariates33_qc, covariates_future33_qc[1:7,])
-covariates_full33_qc2 <- dplyr::bind_rows(covariates33_qc, covariates_future33_qc[1:3,])
+covariates_full33_qc2 <- dplyr::bind_rows(covariates33_qc, covariates_future33_qc[1:4,])
 
 ```
 
@@ -1161,7 +1269,7 @@ covariates_full33_qc2 <- dplyr::bind_rows(covariates33_qc, covariates_future33_q
 # y33_qc_c <- log(y33_qc_c)
 lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33c_qc$sum_velocidad_lead2), lower = -2, upper = 2)
 y_bc <- BoxCox(as.numeric(df33c_qc$sum_velocidad_lead2), lambda_opt)
-y33_qc_c <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+y33_qc_c <- c(y_bc, rep(NA, 4)) # respuesta escalada por 100 millones
 
 ## ── Covariables (data.frame) ─────────────────────────────────────────────────
 covariates33_qc_c <- df33c_qc |> dplyr::select(
@@ -1181,7 +1289,7 @@ covariates_future33_qc_c <- df33c_post_qc |> dplyr::select(
 )
 
 covariates_full33_qc_c <- dplyr::bind_rows(covariates33_qc_c, covariates_future33_qc_c[1:7,])
-covariates_full33_qc_c2 <- dplyr::bind_rows(covariates33_qc_c, covariates_future33_qc_c[1:3,])
+covariates_full33_qc_c2 <- dplyr::bind_rows(covariates33_qc_c, covariates_future33_qc_c[1:4,])
 
 ```
 
@@ -1206,9 +1314,9 @@ covariates_full33_qc_c2 <- dplyr::bind_rows(covariates33_qc_c, covariates_future
 # y33b_qc <- log(y33b_qc)
 lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33_qc$sum_velocidad_lead2), lower = -2, upper = 2)
 y_bc <- forecast::BoxCox(as.numeric(df33_qc$sum_velocidad_lead2), lambda_opt)
-y33b_qc <- c(y_bc, rep(NA, 3)) # respuesta escalada por 100 millones
+y33b_qc <- c(y_bc, rep(NA, 4)) # respuesta escalada por 100 millones
 
-covariates_full33b_qc <- dplyr::bind_rows(covariates33_qc, covariates_future33_qc[1:3,])
+covariates_full33b_qc <- dplyr::bind_rows(covariates33_qc, covariates_future33_qc[1:4,])
 
 ## ── Especificación del estado: nivel local ───────────────────────────────────
 ss2ab_qc <- list()
@@ -1230,16 +1338,16 @@ impact33b_qc <- CausalImpact(
   bsts.model           = model2ab_qc,
   model.args           = list(prior.level.sd = .1, dynamic.regression = TRUE),
   #post.period.response = log(df33_post_qc$sum_velocidad_lead2[1:3])
-  post.period.response = as.numeric(forecast::BoxCox(as.numeric(df33_post_qc$sum_velocidad_lead2[1:3]), lambda_opt))
+  post.period.response = as.numeric(forecast::BoxCox(as.numeric(df33_post_qc$sum_velocidad_lead2[1:4]), lambda_opt))
 )
 
 summary(impact33b_qc)
 
 
 err_ci_qb_corr <- impact33b_qc$series$response - impact33b_qc$series$point.pred
-rmse_ci_qb_corr <- sqrt(mean(err_ci_qb_corr[1:35]^2))
-mean_pre_qb_corr <- mean(df33_qc$sum_velocidad_lead2[1:35], na.rm=T) 
-sd_pre_qb_corr <- sd(df33_qc$sum_velocidad_lead2[1:35], na.rm=T)
+rmse_ci_qb_corr <- sqrt(mean(err_ci_qb_corr[1:34]^2))
+mean_pre_qb_corr <- mean(df33_qc$sum_velocidad_lead2[1:34], na.rm=T) 
+sd_pre_qb_corr <- sd(df33_qc$sum_velocidad_lead2[1:34], na.rm=T)
 nrmse_qb_corr <- rmse_ci_qb_corr / mean_pre_qb_corr # RMSE relativo; 
 sd_ratio_qb_corr <- rmse_ci_qb_corr / sd_pre_qb_corr # RMSE relativo a la variabilidad natural
 
@@ -1272,7 +1380,7 @@ plot(impact33b_qc)
 # y33b_qc_c <- log(y33b_qc_c)
 lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33c_qc$sum_velocidad_lead2), lower = -2, upper = 2)
 y33b_qc_c <- BoxCox(as.numeric(df33c_qc$sum_velocidad_lead2), lambda_opt)
-y33b_qc_c <- c(as.numeric(y33b_qc_c), rep(NA, 3)) 
+y33b_qc_c <- c(as.numeric(y33b_qc_c), rep(NA, 4)) 
 
 ## ── Especificación del estado: nivel local ───────────────────────────────────
 ss2ab_qc_c <- list()
@@ -1294,7 +1402,7 @@ impact33ab_qc_c <- CausalImpact(
   bsts.model           = model2ab_qc_c,
   model.args           = list(prior.level.sd = .1, dynamic.regression = TRUE),
   #post.period.response = log(df33c_post_qc$sum_velocidad_lead2[1:3])
-  post.period.response = as.numeric(BoxCox(as.numeric(df33c_post_qc$sum_velocidad_lead2[1:3]), lambda_opt))
+  post.period.response = as.numeric(BoxCox(as.numeric(df33c_post_qc$sum_velocidad_lead2[1:4]), lambda_opt))
 )
 
 
@@ -1334,7 +1442,7 @@ plot(impact33ab_qc_c)
 # y33b_lin_qc <- log(y33b_lin_qc)
 lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33_qc$sum_velocidad_lead2), lower = -2, upper = 2)
 y33b_lin_qc <- BoxCox(as.numeric(df33_qc$sum_velocidad_lead2), lambda_opt)
-y33b_lin_qc <- c(as.numeric(y33b_lin_qc), rep(NA, 3))
+y33b_lin_qc <- c(as.numeric(y33b_lin_qc), rep(NA, 4))
 
 ## ── Covariables (data.frame) ─────────────────────────────────────────────────
 covariates_full33b_qc <- dplyr::bind_rows(covariates33_qc, covariates_future33_qc)
@@ -1359,7 +1467,7 @@ impact2_33b_qc2 <- CausalImpact(
   bsts.model           = model33b_qc2,
   model.args           = list(prior.level.sd = .1, dynamic.regression = TRUE),
   #post.period.response = log(df33_post_qc$sum_velocidad_lead2[1:3]),
-  post.period.response = as.numeric(forecast::BoxCox(as.numeric(df33_post_qc$sum_velocidad_lead2[1:3]), lambda_opt))
+  post.period.response = as.numeric(forecast::BoxCox(as.numeric(df33_post_qc$sum_velocidad_lead2[1:4]), lambda_opt))
 )
 
 summary(impact2_33b_qc2)
@@ -1400,7 +1508,7 @@ plot(impact2_33b_qc2)
 # y33b_lin_qc_c <- log(y33b_lin_qc_c)
 lambda_opt <- forecast::BoxCox.lambda(as.numeric(df33c_qc$sum_velocidad_lead2), lower = -2, upper = 2)
 y33b_lin_qc_c <- BoxCox(as.numeric(df33c_qc$sum_velocidad_lead2), lambda_opt)
-y33b_lin_qc_c <- c(as.numeric(y33b_lin_qc_c), rep(NA, 3))
+y33b_lin_qc_c <- c(as.numeric(y33b_lin_qc_c), rep(NA, 4))
 
 ## ── Estado: tendencia local lineal ───────────────────────────────────────────
 ss2bb_qc_c <- list()
@@ -1422,7 +1530,7 @@ impact2_33b_qc_c <- CausalImpact(
   bsts.model           = model33b_qc_c,
   model.args           = list(prior.level.sd = .1, dynamic.regression = TRUE),
   #post.period.response = log(df33c_post_qc$sum_velocidad_lead2[1:3])
-  post.period.response = as.numeric(BoxCox(as.numeric(df33c_post_qc$sum_velocidad_lead2[1:3]), lambda_opt))
+  post.period.response = as.numeric(BoxCox(as.numeric(df33c_post_qc$sum_velocidad_lead2[1:4]), lambda_opt))
 )
 
 summary(impact2_33b_qc_c)
@@ -1442,6 +1550,93 @@ cat(sprintf("SD-ratio: %.2f (RMSE vs pre-period variability, SD=%.1f)\n", sd_rat
 plot(impact2_33b_qc_c)
 ```
 
+```{r}
+# Inversa de Box–Cox (con salvaguarda numérica)
+inv_boxcox <- function(z, lambda) {
+  if (abs(lambda) < 1e-12) return(exp(z))      # caso λ≈0 (log)
+  base <- lambda * z + 1
+  base[base <= 0] <- .Machine$double.eps       # evita NaN por redondeo/colas
+  base^(1 / lambda)
+}
+
+# RR a partir de un objeto CausalImpact usando IC para obtener sd (post = últimos Tpost)
+rr_from_impact <- function(impact, lambda, Tpost = 4, n_sims = 20000, level = 0.95, seed = 2125) {
+  stopifnot(!is.null(impact$series))
+  ser  <- as.data.frame(impact$series)
+  post <- tail(ser, Tpost)
+
+  req <- c("response", "point.pred", "point.pred.lower", "point.pred.upper")
+  if (!all(req %in% names(post))) {
+    stop("Faltan columnas en impact$series: se requieren 'response', 'point.pred', 'point.pred.lower', 'point.pred.upper'.")
+  }
+
+  z    <- qnorm(0.5 + level/2)
+  y_t  <- as.numeric(post$response)      # observado (escala Box–Cox)
+  mu_t <- as.numeric(post$point.pred)    # media contrafactual (escala Box–Cox)
+  sd_t <- as.numeric(post$point.pred.upper - post$point.pred.lower) / (2*z)
+
+  # Observado a escala original
+  y <- inv_boxcox(y_t, lambda)
+
+  # Simulación del contrafactual en escala Box–Cox y back-transform
+  set.seed(seed)
+  Tpost <- length(mu_t)
+  cf_t  <- matrix(
+    rnorm(Tpost * n_sims, mean = rep(mu_t, n_sims), sd = rep(sd_t, n_sims)),
+    nrow = Tpost, ncol = n_sims, byrow = FALSE
+  )
+  cf    <- inv_boxcox(cf_t, lambda)
+
+  # RR puntual (usando la media contrafactual) y RR por simulación
+  rr_hat     <- sum(y) / sum(inv_boxcox(mu_t, lambda))
+  rr_draws   <- sum(y) / pmax(colSums(cf), .Machine$double.eps)
+
+  list(rr_hat = rr_hat, rr_draws = rr_draws)
+}
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+## --- Asigna los λ que realmente usaste en cada impacto ---
+lambda_imp1 <- 0.6779003   
+lambda_imp2 <- -1.325838 
+
+# Calcula RR de cada impacto (post = 4 tiempos)
+res1 <- rr_from_impact(impact3db_ratio_resp2,     lambda = lambda_imp1, Tpost = 4, n_sims = 2e5, seed = 2125)
+sprintf("Back-transformed RRs: %.2f (%.2f,%.2f)", quantile(res1$rr_draws, c(0.5), na.rm = TRUE),quantile(res1$rr_draws, c(0.025), na.rm = TRUE),quantile(res1$rr_draws, c(0.975), na.rm = TRUE))
+
+res2 <- rr_from_impact(impact3db_ratio_resp2_c, lambda = lambda_imp2, Tpost = 4, n_sims = 2e5, seed = 2125)
+sprintf("Back-transformed RRs: %.2f (%.2f,%.2f)", quantile(res2$rr_draws, c(0.5), na.rm = TRUE),quantile(res2$rr_draws, c(0.025), na.rm = TRUE),quantile(res2$rr_draws, c(0.975), na.rm = TRUE))
+
+# RRR e intervalo (cuantílico)
+rrr_draws <- res1$rr_draws / res2$rr_draws
+RRR_hat   <- res1$rr_hat / res2$rr_hat
+ci        <- quantile(rrr_draws, c(0.025, 0.5, 0.975), na.rm = TRUE)
+
+cat("Québec only, -3 días pre, local linear trend (escala original via back-transform)\n")
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_hat, ci[1], ci[3]))
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+## --- Asigna los λ que realmente usaste en cada impacto ---
+lambda_imp1q <- 0.4903961   # para impact33b_qc (df33_qc)
+lambda_imp2q <- -1.720255   # para impact2_33b_qc_c (df33c_qc)
+
+# Calcula RR de cada impacto (post = 4 tiempos)
+res1q <- rr_from_impact(impact33b_qc,     lambda = lambda_imp1q, Tpost = 4, n_sims = 2e5, seed = 2125)
+sprintf("Back-transformed RRs: %.2f (%.2f,%.2f)", quantile(res1q$rr_draws, c(0.5), na.rm = TRUE),quantile(res1q$rr_draws, c(0.025), na.rm = TRUE),quantile(res1q$rr_draws, c(0.975), na.rm = TRUE))
+
+res2q <- rr_from_impact(impact2_33b_qc_c, lambda = lambda_imp2q, Tpost = 4, n_sims = 2e5, seed = 2125)
+sprintf("Back-transformed RRs: %.2f (%.2f,%.2f)", quantile(res2q$rr_draws, c(0.5), na.rm = TRUE),quantile(res2q$rr_draws, c(0.025), na.rm = TRUE),quantile(res2q$rr_draws, c(0.975), na.rm = TRUE))
+
+
+# RRR e intervalo (cuantílico)
+rrr_drawsq <- res1q$rr_draws / res2q$rr_draws
+RRR_hatq   <- res1q$rr_hat / res2q$rr_hat
+ciq       <- quantile(rrr_drawsq, c(0.025, 0.5, 0.975), na.rm = TRUE)
+
+cat("Québec only, -3 días pre, local linear trend (escala original via back-transform)\n")
+cat(sprintf("RRR = %.3f (95%% CI %.3f–%.3f)\n", RRR_hatq, ciq[1], ciq[3]))
+```
 
 
 <br>
