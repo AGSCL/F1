@@ -1,0 +1,1128 @@
+---
+title: "Fast followers?/Speed contagion: assessing the impact of Montreal F1 Grand Prix on high-speed ticketing rates (2000-2022)"
+description: |
+  Step 4. Post review (1)
+lang: en
+date: last-modified #date-format: "D [d]e MMM, YYYY"
+bibliography: [_lit/refs.bib]
+csl: "_lit/american-medical-association.csl" # (Opcional: estilo de citas, p.ej., APA)
+author: "Andrés González Santa Cruz"
+format: 
+  html:
+    css: [_lib/styles.scss]
+    code-fold: true
+    embed-resources: true
+    fig-cap-location: top
+lightbox: auto
+toc: true
+toc-depth: 5
+toc-location: left
+toc-float: true
+editor: source
+---
+
+<style>
+.scrollable-content {
+  max-height: 350px;
+  overflow-y: auto;
+}
+</style>
+<style>
+pre.scrollable-code {
+  max-height: 350px;
+  overflow-y: auto;
+}
+</style>
+
+```{r}
+#| message: true
+#| include: true
+#| warning: true
+
+# remove objects and memory
+rm(list=ls());gc()
+
+#remove images
+while(!dev.cur())dev.off()
+cat("\014")
+load(paste0(getwd(),"/_data/step3.RData"))
+
+```
+
+# Load libraries and data
+
+<div class="scrollable-content">
+```{r}
+#| label: setup
+#| message: true
+#| warning: true
+#| class-output: center-table
+#| include: true
+#| results: "hold"
+
+#borrar caché
+#system("fc-cache -f -v")
+
+#check R version
+if(Sys.info()["sysname"]=="Windows"){
+if (getRversion() != "4.4.1") { stop("Requiere versión de R 4.4.1. Actual: ", getRversion()) }
+}
+if(Sys.info()["sysname"]=="Linux"){
+if (getRversion() != "4.4.1") { stop("Requiere versión de R 4.4.1. Actual: ", getRversion()) }
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+# install.packages(c("dplyr", #for data
+#                    "tidyr", #for data
+#                    "lubridate",  #for dates
+#                    "openxlsx", #for excel files
+#                    "rio", #for importing and exporting data
+#                    "purrr", #for iterating in databases
+#                    "devtools", #for external packages
+#                    "DiagrammeR", #para visualizar DAG
+#                    "dagitty",
+#                    "ggdag",
+#                    "ggplot2" #for graphics
+#                    "kableExtra", #pretty tables
+#                    "quarto", #for documents
+#                    "geosphere" #for coordinates and classifying
+#                    "geepack", #for regression
+#                    "glmmTMB", #For GLMMs
+#                    "DHARMa", #For residual diagnostics
+#                    "car", #For hypothesis testing
+#                    "brms", #Bayesian model
+#                    "bayesplot",
+#                    "loo",
+#                    "Synth", #for synthetic control method
+#                    "weathercan",#for weather data
+#                    "sandwich", #cluster robust intervals
+#                    "emmeans", #for predictions
+#                    "gnm", #Conditional gaussian models
+#                    "splines", #nonlinearity 
+#                    "geeM", #negative binomial and more flexible GEE models
+#                    "PanelMatch", #Matching technique with panel data
+#                    "scpi" #control sintético
+#                    "nixtlar", #for time series analysis and prediction
+#                    "CausalImpact" #for time series causal impact
+#                    "forecast" #for time series analysis prediction and decomposition
+#                    ))
+library(dplyr); library(lubridate); library(rio); library(purrr); library(kableExtra); library(geosphere); library(geepack); library(lme4); library(glmmTMB); library(DHARMa); library(car); library(sandwich); library(emmeans); library(gnm); library(splines); library(geeM); library(plm); library(PanelMatch)
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+sum_dates <- function(x){
+ 
+  cbind.data.frame(
+	min= as.Date(min(unclass(as.Date(x)), na.rm=T), origin = "1970-01-01"),
+	p001= as.Date(quantile(unclass(as.Date(x)), .001, na.rm=T), origin = "1970-01-01"),
+	p005= as.Date(quantile(unclass(as.Date(x)), .005, na.rm=T), origin = "1970-01-01"),
+	p025= as.Date(quantile(unclass(as.Date(x)), .025, na.rm=T), origin = "1970-01-01"),
+	p25= as.Date(quantile(unclass(as.Date(x)), .25, na.rm=T), origin = "1970-01-01"),
+	p50= as.Date(quantile(unclass(as.Date(x)), .5, na.rm=T), origin = "1970-01-01"),
+	p75= as.Date(quantile(unclass(as.Date(x)), .75, na.rm=T), origin = "1970-01-01"),
+	p975= as.Date(quantile(unclass(as.Date(x)), .975, na.rm=T), origin = "1970-01-01"),
+	p995= as.Date(quantile(unclass(as.Date(x)), .995, na.rm=T), origin = "1970-01-01"),
+	p999= as.Date(quantile(unclass(as.Date(x)), .999, na.rm=T), origin = "1970-01-01"),
+	max= as.Date(max(unclass(as.Date(x)), na.rm=T), origin = "1970-01-01")
+  )
+}
+smd_bin <- function(x,y){
+  z <- x*(1-x)
+  t <- y*(1-y)
+  k <- sum(z,t)
+  l <- k/2
+  
+  return((x-y)/sqrt(l))
+  
+}
+
+theme_custom_sjplot2 <- function(base_size = 12, base_family = "") {
+  theme_minimal(base_size = base_size, base_family = base_family) +
+    theme(
+      # Text elements
+      text = element_text(size = base_size, family = base_family),
+      plot.title = element_text(face = "bold", hjust = 0.5, size = base_size * 1.2),
+      plot.subtitle = element_text(hjust = 0.5, margin = margin(b = 10)),
+      axis.title = element_text(size = base_size, face = "bold"),
+      axis.text = element_text(size = base_size * 0.8),
+      axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5),
+      axis.text.y = element_text(angle = 0, hjust = 1, vjust = 0.5),
+      axis.title.x = element_text(margin = margin(t = 10)),
+      axis.title.y = element_text(margin = margin(r = 10)),
+      
+      # Plot layout
+      plot.margin = margin(t = 20, r = 20, b = 20, l = 20),
+      panel.grid.major = element_line(color = "grey80"),
+      panel.grid.minor = element_blank(),
+      legend.position = "right",
+      legend.text = element_text(size = base_size * 0.8),
+      legend.title = element_text(size = base_size, face = "bold"),
+      legend.background = element_rect(fill = "white", colour = NA),
+      legend.box.background = element_rect(colour = "grey80", linetype = "solid"),
+      legend.key = element_rect(fill = "white", colour = "white")
+    )
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+compare_gnm_effects <- function(model_ref, model_cmp, comparison_name = "Ref vs Cmp",
+                                coef_index = 1, digits = 3) {
+  # extract coefficients and robustly handle named/unnamed coef vectors
+  coef_ref <- stats::coef(model_ref)
+  coef_cmp <- stats::coef(model_cmp)
+  if (is.null(coef_ref) || is.null(coef_cmp)) stop("Both inputs must be model-like objects with coef().")
+  b1 <- coef_ref[[coef_index]]
+  b2 <- coef_cmp[[coef_index]]
+  
+  # extract standard errors from vcov; allow either matrix or numeric
+  vc1 <- tryCatch(stats::vcov(model_ref), error = function(e) NULL)
+  vc2 <- tryCatch(stats::vcov(model_cmp), error = function(e) NULL)
+  if (is.null(vc1) || is.null(vc2)) stop("Both inputs must support vcov().")
+  se1 <- sqrt(diag(vc1))[[coef_index]]
+  se2 <- sqrt(diag(vc2))[[coef_index]]
+  
+  # difference test
+  z <- (b2 - b1) / sqrt(se1^2 + se2^2)
+  p <- 2 * stats::pnorm(-abs(z))
+  
+  # relative reduction ratio (RRR) and 95% CI
+  log_rrr <- b2 - b1
+  se_rrr  <- sqrt(se1^2 + se2^2)
+  RRR     <- exp(log_rrr)
+  lo95    <- exp(log_rrr - 1.96 * se_rrr)
+  hi95    <- exp(log_rrr + 1.96 * se_rrr)
+  
+  # formatted output
+  cat(sprintf("%s — coefficient index %d\n", comparison_name, coef_index))
+  cat(sprintf("  z = %.*f; p = %.*f\n", digits, z, digits, p))
+  cat(sprintf("  log(RRR) = %.*f; se = %.*f\n", digits, log_rrr, digits, se_rrr))
+  cat(sprintf("  RRR = %.*f (95%% CI %.*f–%.*f)\n", digits, RRR, digits, lo95, digits, hi95))
+  
+  # invisibly return numeric results for further use
+  invisible(list(
+    coef_ref = b1,
+    se_ref = se1,
+    coef_cmp = b2,
+    se_cmp = se2,
+    z = z,
+    p = p,
+    log_rrr = log_rrr,
+    se_rrr = se_rrr,
+    RRR = RRR,
+    lo95 = lo95,
+    hi95 = hi95
+  ))
+}
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#CONFIG #######################################################################
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+options(scipen=2) #display numbers rather scientific number
+```
+
+</div>
+
+# Placebo tests
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: placebo1
+#| eval: true
+#| results: "hold"
+
+collisions_weather_corr_rect_pre_post_placebo <-
+  collisions_weather_corr_rect |>
+  #4 days , 2 weeks before
+  mutate(
+    pre_exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date_rec - lubridate::days((14+3)),
+                                race_date_rec - lubridate::days((14-0)))), 0L),
+    exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date_rec - lubridate::days(3),
+                                race_date_rec + lubridate::days(0))), 0L),
+    #4 days , 2 weeks after
+    neg_exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date_rec + lubridate::days(28-3),
+                                race_date_rec + lubridate::days(28+0))), 0L),
+    exposure_window= case_when(pre_exposure_post_conv==1~ "Pre-exposure",
+                               exposure_post_conv==1~ "Exposure",
+                               neg_exposure_post_conv==1~ "Post-exposure"))|>
+  group_by(cluster, exposure_window)|>
+  summarise(
+    sum_velocidad = sum(velocidad, na.rm = TRUE),
+    sum_velocidad_lead1= sum(velocidad_lead1_post_conv_imp, na.rm = T),
+    sum_velocidad_lead2= sum(velocidad_lead2_post_conv_imp, na.rm = T),
+    exp_veh       = sum(vehicles_use_type,        na.rm = TRUE), # Nº de vehículos expuestos
+    exp_lic       = sum(license_holders_sex_age,  na.rm = TRUE), # Nº de conductores
+    median_lag_2_prec_median_imp = median(lag_2_prec_median_lin_imp, na.rm = TRUE),
+    mean_min_temp_mean_lin       = mean(min_temp_mean_lin,       na.rm = TRUE),
+    sd_min_temp_mean_lin       = sd(min_temp_mean_lin,       na.rm = TRUE),
+    mean_max_temp_mean_lin       = mean(max_temp_mean_lin,       na.rm = TRUE),
+    sd_max_temp_mean_lin       = sd(max_temp_mean_lin,       na.rm = TRUE),
+    median_total_precip_median_lin = median(total_precip_median_lin, na.rm = TRUE),
+    q1_total_precip_median_lin = quantile(total_precip_median_lin, .25, na.rm = TRUE),
+    q3_total_precip_median_lin = quantile(total_precip_median_lin, .75, na.rm = TRUE),
+    min_date= as.Date(min(unclass(date))),
+    max_date= as.Date(max(unclass(date))),
+    .groups = "drop"
+  ) |>
+  mutate(                                     # ── aux variables
+    rate_veh = (sum_velocidad / exp_veh) * 1e6, # not to model
+    rate_lic = (sum_velocidad / exp_lic) * 1e6, # not to model
+    rate_lead1_veh = (sum_velocidad_lead1 / exp_veh) * 1e6, # not to model
+    rate_lead1_lic = (sum_velocidad_lead1 / exp_lic) * 1e6, # not to model    
+    rate_lead2_veh = (sum_velocidad_lead2 / exp_veh) * 1e6, # not to model
+    rate_lead2_lic = (sum_velocidad_lead2 / exp_lic) * 1e6, # not to model        
+    off_veh  = log(exp_veh),                  # offset
+    off_lic  = log(exp_lic)
+  ) |> 
+  filter(!is.na(exposure_window)) |> 
+  mutate(
+    treated = !grepl("\\.(23)$", cluster) &
+      grepl(paste0("^(", paste(as.character(setdiff(2000:2022, c(2009, 2020, 2021))), collapse="|"), ")"), cluster)
+  ) |> 
+  mutate(
+    treated_sens = !grepl("\\.(23|43)$", cluster) &
+      grepl(paste0("^(", paste(as.character(setdiff(2000:2022, c(2009, 2020, 2021))), collapse="|"), ")"), cluster)
+  )|> 
+  mutate(
+    treated_placebo = !grepl("\\.(23)$", cluster) &
+      grepl(paste0("^(", paste(as.character(c(2009, 2020, 2021)), collapse="|"), ")"), cluster)
+  ) |> 
+  mutate(
+    treated_sens_placebo = !grepl("\\.(23|43)$", cluster) &
+      grepl(paste0("^(", paste(as.character(c(2009, 2020, 2021)), collapse="|"), ")"), cluster),
+    D= paste0(exposure_window, ".", treated),
+    D_sens= paste0(exposure_window, ".", treated_sens),
+    D_placebo= paste0(exposure_window, ".", treated_placebo),
+    D_placebo_sens= paste0(exposure_window, ".", treated_sens_placebo)    
+  )
+```
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: placebo2
+#| eval: true
+#| results: "hold"
+
+# subset(collisions_weather_corr_rect_pre_post_placebo, grepl("^Pre|^Exp",exposure_window) & 
+#          treated_placebo==TRUE)|> mutate(cluster=as.character(cluster))|> pull(cluster)|> unique()|> dput()
+cluster_placebo_treated<- 
+c("2009.43", "2020.43", "2021.43", "2009.58", "2020.58", "2021.58", 
+  "2009.65", "2020.65", "2021.65", "2009.66", "2020.66", "2021.66")
+
+# subset(collisions_weather_corr_rect_pre_post_placebo, grepl("^Pre|^Exp",exposure_window) & 
+#          treated_placebo==FALSE) |> mutate(cluster=as.character(cluster)) |> pull(cluster) |> unique()
+cluster_placebo_controls<- 
+c("2000.23", "2001.23", "2002.23", "2003.23", "2004.23", "2005.23", 
+  "2006.23", "2007.23", "2008.23", "2009.23", "2010.23", "2011.23", 
+  "2012.23", "2013.23", "2014.23", "2015.23", "2016.23", "2017.23", 
+  "2018.23", "2019.23", "2020.23", "2021.23", "2022.23", "2000.43", 
+  "2001.43", "2002.43", "2003.43", "2004.43", "2005.43", "2006.43", 
+  "2007.43", "2008.43", "2010.43", "2011.43", "2012.43", "2013.43", 
+  "2014.43", "2015.43", "2016.43", "2017.43", "2018.43", "2019.43", 
+  "2022.43", "2000.58", "2001.58", "2002.58", "2003.58", "2004.58", 
+  "2005.58", "2006.58", "2007.58", "2008.58", "2010.58", "2011.58", 
+  "2012.58", "2013.58", "2014.58", "2015.58", "2016.58", "2017.58", 
+  "2018.58", "2019.58", "2022.58", "2000.65", "2001.65", "2002.65", 
+  "2003.65", "2004.65", "2005.65", "2006.65", "2007.65", "2008.65", 
+  "2010.65", "2011.65", "2012.65", "2013.65", "2014.65", "2015.65", 
+  "2016.65", "2017.65", "2018.65", "2019.65", "2022.65", "2000.66", 
+  "2001.66", "2002.66", "2003.66", "2004.66", "2005.66", "2006.66", 
+  "2007.66", "2008.66", "2010.66", "2011.66", "2012.66", "2013.66", 
+  "2014.66", "2015.66", "2016.66", "2017.66", "2018.66", "2019.66", 
+  "2022.66")
+cat("*_*_*_*_*_*_*_*_*_")
+cat("*_*_*_*_PLACEBO!*_*_*_*_*_")
+cat("*_*_*_*_*_*_*_*_*_")
+cat("Treated (w/ Sherbrooke), effects after 2 days\n")
+model_gnm_tratados_lead2_PL <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post_placebo, 
+                     grepl("^Pre|^Exp",exposure_window) & treated_placebo==TRUE)
+)
+summary(model_gnm_tratados_lead2_PL)
+#exp(1.12608)
+#[1] 3.083545
+#NS
+
+
+cat("Controls (Quebec only), effects after 2 days\n")
+model_gnm_controles_lead2_PL <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post_placebo, 
+                     grepl("^Pre|^Exp",exposure_window) & treated_placebo==FALSE)
+)
+summary(model_gnm_controles_lead2_PL)
+#exp(0.245724)
+#[1] 1.278547
+#SIG
+
+lead2_PL_main <- compare_gnm_effects(model_gnm_controles_lead2_PL,
+                                  model_gnm_tratados_lead2_PL,
+                                  comparison_name = "Treated vs. Controls (QC only; w/o Sherbrooke), placebo",
+                                  coef_index = 1, digits = 3)
+# Treated vs. Controls (QC only; w/o Sherbrooke), placebo — coefficient index 1
+# z = 1.212; p = 0.226
+# log(RRR) = 0.880; se = 0.726
+# RRR = 2.412 (95% CI 0.581–10.015)
+
+cat("Treated (w/ Sherbrooke), effects after 2 days\n")
+model_gnm_tratados_lead2_sens_PL <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post_placebo, 
+                     grepl("^Pre|^Exp",exposure_window) & treated_sens_placebo==TRUE)
+)
+summary(model_gnm_tratados_lead2_sens_PL)
+# exp(0.75969)
+#[1] 2.137613
+#NS
+
+cat("Controls (w/ Sherbrooke), effects after 2 days\n")
+model_gnm_controles_lead2_sens_PL <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post_placebo, 
+                     grepl("^Pre|^Exp",exposure_window) & treated_sens_placebo==FALSE)
+)
+summary(model_gnm_controles_lead2_sens_PL)
+#[1] 1.275913
+#SIG
+
+lead2_PL_sens <- compare_gnm_effects(model_gnm_controles_lead2_sens_PL,
+                                     model_gnm_tratados_lead2_sens_PL,
+                                     comparison_name = "Treated vs. Controls (QC + Sherbrooke), placebo",
+                                     coef_index = 1, digits = 3)
+# Treated vs. Controls (QC + Sherbrooke), placebo — coefficient index 1
+# z = 0.562; p = 0.574
+# log(RRR) = 0.516; se = 0.918
+# RRR = 1.675 (95% CI 0.277–10.128)
+
+cat(paste0("Control years in Host-MRCs: ", paste(setdiff(paste0("20",sprintf("%02.0f",0:22)), c("2009", "2020",  "2021")), collapse=", ")))
+
+cbind.data.frame(type=c("Placebo-post (controls=QC+Sherbrooke)","","Placebo-post (controls=QC only)",""),
+                 rbind.data.frame(
+                   tidy_exp_gnm_corr(model_gnm_tratados_lead2_sens_PL),
+                   tidy_exp_gnm_corr(model_gnm_controles_lead2_sens_PL),
+                   tidy_exp_gnm_corr(model_gnm_tratados_lead2_PL),
+                   tidy_exp_gnm_corr(model_gnm_controles_lead2_PL)))|> 
+  mutate(RR= sprintf("%.2f (%.2f–%.2f)", `exp(Est.)`, `2.5%`, `97.5%`))|>
+  mutate(sig= sprintf("%.3f", P))|> 
+  rename("p.value"="P")|> 
+  mutate(term="Exposure")|> 
+  dplyr::select(type, term, RR, sig)|> 
+  knitr::kable("markdown", 
+        caption="High-speed collisions, 2-day lagged effect", digits=3, na= "-")
+
+cat("PLACEBO= Main analysis (sherbrooke+ quebec as controls):\n")
+sprintf("RRR = %.2f (95%% CI: %.2f–%.2f), p = %s",
+        lead2_PL_sens$RRR,
+        lead2_PL_sens$lo95,
+        lead2_PL_sens$hi95,
+        ifelse(lead2_PL_sens$p < 0.001,
+               "<.001",
+               sprintf("%.2f", lead2_PL_sens$p)))
+
+cat("PLACEBO= Secondary analysis (sherbrooke+ quebec as controls):\n")
+sprintf("RRR = %.2f (95%% CI: %.2f–%.2f), p = %s",
+        lead2_PL_main$RRR,
+        lead2_PL_main$lo95,
+        lead2_PL_main$hi95,
+        ifelse(lead2_PL_main$p < 0.001,
+               "<.001",
+               sprintf("%.2f", lead2_PL_main$p)))
+```
+
+# Excluding years with Francos festivals
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: no-francos
+#| eval: true
+#| results: "hold"
+
+francos_yrs<- c("2006", "2010", "2011", "2012", "2016", "2017", "2018", "2022")
+
+
+cat("Treated (w/ Sherbrooke), effects after 2 days, 4-day summary\n")
+model_gnm_tratados_lead2_sinfrancos <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post_placebo, 
+                     grepl("^Pre|^Exp",exposure_window) & 
+                     treated==TRUE & 
+                     !grepl(paste(francos_yrs, collapse="|"),cluster))
+)
+summary(model_gnm_tratados_lead2_sinfrancos)
+
+tidy_exp_gnm_corr(model_gnm_tratados_lead2_sinfrancos) |> 
+  knitr::kable("markdown", caption="Host MRCs (without Sherbrooke) pre vs. race weekend. High-speed collisions, 2-day lagged effect")
+```
+
+# Tested changes in offset
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: offset_changes1
+#| eval: true
+#| results: "hold"
+
+# 1. Calculate the Ratio based on your 2025 figures
+# Projected Host License Holders 2025 (Linear extrapolation of your data): ~2,538,839
+# https://docs.google.com/spreadsheets/d/1znDbWVXO2A5uSKiVazQwFJKZcrrH-VZXnQsG-INBQ-w/edit?gid=819465529#gid=819465529
+#  influx of more than 100,000 F1 fans.
+# https://gpdestinations.com/2025-canadian-grand-prix-weekend-attendance/
+# Haldenby, N. (2025, June 16). **2025 Canadian Grand Prix weekend attendance exceeds 350,000**. GPDestinations. https://gpdestinations.com/2025-canadian-grand-prix-weekend-attendance/
+# Attendance numbers have grown in Montreal in recent years. The last race before the coronavirus pandemic, in 2019, 
+# had a weekend total of 307,000 spectators. When F1 returned in 2022, the race weekend had 338,000 attendees. 
+# License hodlers in 2019: 2449509 (Google docs)
+# Expected Visitors 2019: 350,000
+#https://montreal.eater.com/2022/6/13/23166358/montreal-grand-prix-party-restaurants-bars-clubs-f1-events
+visitor_ratio <- 307000 / 2449509  # Returns ~0.125
+
+# 2. Prepare the dataset
+# We create a specific dataframe for the model to ensure the offset is calculated correctly
+
+df_model_4dsumm <- subset(collisions_weather_corr_rect_pre_post, 
+                   grepl("^Pre|^Exp", exposure_window) & treated_sens == TRUE)
+                        
+# 3. Create the Adjusted Offset
+# Logic: Total_Population = Locals + Visitors
+# Where Visitors = Locals * visitor_ratio
+# Therefore: Total_Population = Locals * (1 + visitor_ratio)
+
+# Initialize with original license holders
+df_model_4dsumm$population_adjusted <- df_model_4dsumm$exp_lic
+# Identify exposure rows (Race periods)
+is_exposure_4dsumm <- grepl("^Exp", df_model_4dsumm$exposure_window)
+# Apply the increase ONLY to the exposure period
+df_model_4dsumm$population_adjusted[is_exposure_4dsumm] <- df_model_4dsumm$population_adjusted[is_exposure_4dsumm] * (1 + visitor_ratio)
+```
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: offset_changes2
+#| eval: true
+#| results: "hold"
+
+cat("Treated (w/o Sherbrooke), effects after 2 days, 4-day summary\n")
+model_gnm_tratados_lead2_sens_adj_offs <- gnm(
+  sum_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(log(population_adjusted)),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = df_model_4dsumm
+)
+
+
+
+lead2_sens_adj_offset <- compare_gnm_effects(model_gnm_controles_lead2_sens,
+                                             model_gnm_tratados_lead2_sens_adj_offs,
+                                                  comparison_name = "Treated vs. Controls (QC + Sherbrooke), offset adj",
+                                                  coef_index = 1, digits = 3)
+# Treated vs. Controls (QC + Sherbrooke), offset adj — coefficient index 1
+# z = 0.939; p = 0.348
+# log(RRR) = 0.192; se = 0.204
+# RRR = 1.212 (95% CI 0.812–1.809)
+
+rbind.data.frame(
+tidy_exp_gnm_corr(model_gnm_tratados_lead2_sens_adj_offs)
+)|> 
+  mutate(RR= sprintf("%.2f (%.2f–%.2f)", `exp(Est.)`, `2.5%`, `97.5%`))|>
+  mutate(sig= sprintf("%.3f", P))|> 
+  rename("p.value"="P")|> 
+  mutate(term=c("Exposure, 4-day summ"))|> 
+  dplyr::select(term, RR, sig)|> 
+  knitr::kable("markdown", 
+               caption="High-speed collisions, 2-day lagged effect, offset * 1.25", digits=3, na= "-")
+# |term                 |RR               |sig   |
+# |:--------------------|:----------------|:-----|
+# |Exposure, 4-day summ |1.22 (0.99–1.50) |0.058 |
+
+
+sprintf("RRR = %.2f (95%% CI: %.2f–%.2f), p = %s",
+        lead2_sens_adj_offset$RRR,
+        lead2_sens_adj_offset$lo95,
+        lead2_sens_adj_offset$hi95,
+        ifelse(lead2_sens_adj_offset$p < 0.001,
+               "<.001",
+               sprintf("%.2f", lead2_sens_adj_offset$p)))
+```
+
+
+# Extended descriptive table
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: desc_ext1
+#| eval: true
+#| results: "hold"
+
+```
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: desc_ext2
+#| eval: true
+#| results: "hold"
+
+# asegúrate de que este sea el nombre correcto en tu entorno
+data_df <- collisions_weather_corr_rect_pre_post_full
+
+mrc_names <- c("montreal", "laval", "longueuil", "quebec", "shrebrooke")
+yday_pre <- c(21, 22, 23, 24)
+yday_exp <- c(35, 36, 37, 38)
+
+summarise_by_mrc <- function(df, window_pattern, treated_flag, group_name) {
+  df |>
+    dplyr::filter(grepl(window_pattern, exposure_window), treated_sens == treated_flag) |>
+    dplyr::mutate(
+      mrc = dplyr::case_when(
+        mrc == 66 ~ "montreal",
+        mrc == 65 ~ "laval",
+        mrc == 58 ~ "longueuil",
+        mrc == 23 ~ "quebec",
+        mrc == 43 ~ "shrebrooke",
+        TRUE ~ as.character(mrc)
+      )
+    ) |>
+    dplyr::group_by(mrc) |>
+    dplyr::summarise(
+      n = dplyr::n(),
+      sum_vel = base::sum(velocidad, na.rm = TRUE),
+      mean = mean(velocidad, na.rm = TRUE),
+      median = stats::quantile(velocidad, .5, na.rm = TRUE),
+      p25 = stats::quantile(velocidad, .25, na.rm = TRUE),
+      p75 = stats::quantile(velocidad, .75, na.rm = TRUE),
+      sd = stats::sd(velocidad, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    tidyr::complete(mrc = mrc_names) |>
+    dplyr::mutate(
+      group = group_name,
+      sum_nonnorm = ifelse(is.na(median), NA_character_, sprintf("%.2f [%.2f, %.2f]", median, p25, p75)),
+      sum_nonnorm_n_sum = ifelse(is.na(n), NA_character_, sprintf("%s; n=%d; sum=%.2f", sum_nonnorm, n, sum_vel))
+    ) |>
+    dplyr::select(mrc, group, n, sum_vel, mean, sd, median, p25, p75, sum_nonnorm, sum_nonnorm_n_sum)
+}
+
+summarise_by_yday <- function(df, window_pattern, treated_flag, group_name) {
+  days <- if (grepl("^Pre", window_pattern)) yday_pre else yday_exp
+  
+  df |>
+    dplyr::filter(grepl(window_pattern, exposure_window), treated_sens == treated_flag) |>
+    dplyr::group_by(yday_corr) |>
+    dplyr::summarise(
+      n = dplyr::n(),
+      sum_vel = base::sum(velocidad, na.rm = TRUE),
+      mean = mean(velocidad, na.rm = TRUE),
+      median = stats::quantile(velocidad, .5, na.rm = TRUE),
+      p25 = stats::quantile(velocidad, .25, na.rm = TRUE),
+      p75 = stats::quantile(velocidad, .75, na.rm = TRUE),
+      sd = stats::sd(velocidad, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    tidyr::complete(yday_corr = days) |>
+    dplyr::mutate(
+      group = group_name,
+      sum_nonnorm = ifelse(is.na(median), NA_character_, sprintf("%.2f [%.2f, %.2f]", median, p25, p75)),
+      sum_nonnorm_n_sum = ifelse(is.na(n), NA_character_, sprintf("%s; n=%d; sum=%.2f", sum_nonnorm, n, sum_vel))
+    ) |>
+    dplyr::select(yday_corr, group, n, sum_vel, mean, sd, median, p25, p75, sum_nonnorm, sum_nonnorm_n_sum)
+}
+
+params <- tibble::tibble(
+  window_pattern = c("^Pre", "^Exp", "^Pre", "^Exp"),
+  treated_flag   = c(FALSE, FALSE, TRUE, TRUE),
+  group_name     = c("Control_Nonhost", "GP_Nonhost", "Control_Host", "GP_Host")
+)
+
+# pmap pasando el data frame explícitamente para evitar errores de nombre
+summaries_mrc_list <- purrr::pmap(
+  list(params$window_pattern, params$treated_flag, params$group_name),
+  function(window_pattern, treated_flag, group_name) {
+    summarise_by_mrc(data_df, window_pattern, treated_flag, group_name)
+  }
+)
+
+all_mrc <- dplyr::bind_rows(summaries_mrc_list)
+
+table_mrc_wide <- all_mrc |>
+  tidyr::pivot_wider(
+    id_cols = mrc,
+    names_from = group,
+    values_from = sum_nonnorm_n_sum
+  ) |>
+  dplyr::select(mrc, Control_Nonhost, GP_Nonhost, Control_Host, GP_Host)
+
+# análogo para yday
+summaries_yday_list <- purrr::pmap(
+  list(params$window_pattern, params$treated_flag, params$group_name),
+  function(window_pattern, treated_flag, group_name) {
+    summarise_by_yday(data_df, window_pattern, treated_flag, group_name)
+  }
+)
+
+all_yday <- dplyr::bind_rows(summaries_yday_list)
+
+table_yday_wide <- all_yday |>
+  tidyr::pivot_wider(
+    id_cols = yday_corr,
+    names_from = group,
+    values_from = sum_nonnorm_n_sum
+  ) |>
+  dplyr::arrange(yday_corr) |>
+  dplyr::select(yday_corr, Control_Nonhost, GP_Nonhost, Control_Host, GP_Host)
+
+
+dplyr::bind_rows(
+table_yday_wide |> 
+  dplyr::mutate(across(-yday_corr, ~as.integer(stringr::str_extract(.x, "(?<=sum=)\\d+\\.?\\d*")))) |> 
+  dplyr::mutate(yday_corr= dplyr::case_when(
+  yday_corr == 35~ "Thursday",
+  yday_corr == 36 ~ "Friday",
+  yday_corr == 37 ~ "Saturday",
+  yday_corr == 38 ~ "Sunday",
+  yday_corr == 21~ "Thursday",
+  yday_corr == 22 ~ "Friday",
+  yday_corr == 23 ~ "Saturday",
+  yday_corr == 24 ~ "Sunday"
+  )) |> 
+  dplyr::select(yday_corr, GP_Nonhost, Control_Nonhost, GP_Host, Control_Host)|>
+  dplyr::group_by(yday_corr) |> 
+  summarise(GP_Nonhost= max(GP_Nonhost, na.rm=T), 
+            Control_Nonhost= max(Control_Nonhost, na.rm=T),
+            GP_Host= max(GP_Host, na.rm=T), 
+            Control_Host= max(Control_Host, na.rm=T)) |> 
+  dplyr::mutate(yday_corr= factor(yday_corr, 
+      levels= c("Thursday", "Friday", "Saturday", "Sunday"))) |> 
+  dplyr::arrange(yday_corr),
+#second table
+dplyr::mutate(table_mrc_wide, across(-mrc, ~as.integer(stringr::str_extract(.x, "(?<=sum=)\\d+\\.?\\d*"))))
+) |> 
+  dplyr::mutate(category= ifelse(is.na(mrc), as.character(yday_corr), as.character(mrc))) |> 
+  dplyr::select(category, everything()) |> 
+  dplyr::select(-any_of(c("mrc", "yday_corr"))) |> 
+  knitr::kable("markdown", caption= "Table 2. High-speed collisions by time windows (two weeks before and during the F1 Grand Prix race weekend) and Non-host/Host MRC-years")
+```
+
+
+# Comparison, QIC-based 
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: qic
+#| eval: true
+#| results: "hold"
+
+qic_gnm <- function(mod_quasi) {
+ ## 1)  φ from quasipoisson
+ phi <- get_phi(mod_quasi)
+ ## 2)  refit Poisson (mismo call)  → logLik 
+ mod_pois <- update(mod_quasi, family = poisson)
+ ## 3)  qAIC = -2·logLik/φ + 2·k  
+ bbmle::qAIC(mod_pois, dispersion = phi)
+}
+
+cat("Treated (w/o Sherbrooke), instantaneous effects\n")
+model_gnm_tratados_lead0_sens <- gnm(
+  sum_velocidad ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(collisions_weather_corr_rect_pre_post_placebo, 
+                     grepl("^Pre|^Exp",exposure_window) & treated_sens==TRUE)
+)
+
+cat("QIC, 2-day lagged high-speed collisions\n")
+qic_gnm(model_gnm_tratados_lead2_sens)
+#[1] 524.0127
+cat("QIC, 1-day lagged high-speed collisions\n")
+qic_gnm(model_gnm_tratados_lead1_sens)
+#[1] 530.3881
+cat("QIC, high-speed collisions, contemporaneous\n")
+qic_gnm(model_gnm_tratados_lead0_sens)
+#[1] 530.3753
+
+
+```
+
+# Negative control outcome
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: nc0
+#| eval: true
+#| results: "hold"
+
+
+collisions_weather_corr_rect$non_high_speed<- 
+  collisions_weather_corr_rect$nb_collisions- collisions_weather_corr_rect$velocidad
+
+collisions_weather_corr_rect$prueba<- 
+  collisions_weather_corr_rect$nb_collisions- (collisions_weather_corr_rect$velocidad+ collisions_weather_corr_rect$alcohol)
+
+collisions_weather_corr_rect$nb_blese_any<- 
+collisions_weather_corr_rect$nb_blese_grave_c+collisions_weather_corr_rect$nb_blese_leger_c
+
+stopifnot(all(collisions_weather_corr_rect$non_high_speed >= 0, na.rm = TRUE))
+
+
+# 2) Is nb_blese_any consistent with severity components? (if you have them)
+# nb_blese_any should often equal deaths + serious + minor (depending on definitions)
+summary(collisions_weather_corr_rect$nb_blese_any -
+                           (collisions_weather_corr_rect$nb_mort_c +
+                                                 collisions_weather_corr_rect$nb_blese_grave_c +
+                                                 collisions_weather_corr_rect$nb_blese_leger_c))
+
+
+total_casualty <- with(collisions_weather_corr_rect,
+                       nb_mort_c + nb_blese_grave_c + nb_blese_leger_c)
+
+summary(total_casualty - collisions_weather_corr_rect$velocidad)
+sum((total_casualty - collisions_weather_corr_rect$velocidad) < 0, na.rm = TRUE)
+
+
+cat("“non–high-speed casualty collisions (fatal + injured)")
+message("“As a specificity check, we repeated the analysis using 
+    non–high-speed casualty collisions (fatal and non-fatal injuries) as a negative-control outcome")
+
+collisions_weather_corr_rect$non_high_speed_lead2_post_conv<- (total_casualty - collisions_weather_corr_rect$velocidad)
+
+```
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: nc1
+#| eval: true
+#| results: "hold"
+
+collisions_weather_corr_rect$non_high_speed_lead2_post_conv <- 
+  collisions_weather_corr_rect|> 
+  group_by(mrc, year)|> 
+  mutate(non_high_speed_lead2_post_conv = dplyr::lead(non_high_speed, 2, order_by = iso_yday))|> 
+  ungroup()|>
+  pull(non_high_speed_lead2_post_conv) 
+cat("Last value carried forward approach\n")
+
+collisions_weather_corr_rect|>
+  group_by(mrc, year)|> 
+  arrange(iso_yday, .by_group = TRUE) |>
+  # create *_imp copies
+  mutate(across(all_of(starts_with("non_high_speed_lead2_post_conv")), ~ .x, .names = "{.col}_imp")) |>
+  # LOCF
+  tidyr::fill(ends_with("_imp"), .direction = "down") |>
+  ungroup()|>
+  (\(df) {
+    pull(df, non_high_speed_lead2_post_conv_imp) ->> collisions_weather_corr_rect$non_high_speed_lead2_post_conv_imp
+  })()
+
+
+nc_collisions_weather_corr_rect_pre_post_lag2 <-
+  collisions_weather_corr_rect |>
+  #4 days , 2 weeks before
+  mutate(
+    pre_exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date_rec - lubridate::days((14+3)),
+                                race_date_rec - lubridate::days((14-0)))), 0L),
+    exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date_rec - lubridate::days(3),
+                                race_date_rec + lubridate::days(0))), 0L),
+    #4 days , 2 weeks after
+    neg_exposure_post_conv = coalesce(
+      as.integer(dplyr::between(date, race_date_rec + lubridate::days(28-3),
+                                race_date_rec + lubridate::days(28+0))), 0L),
+    exposure_window= case_when(pre_exposure_post_conv==1~ "Pre-exposure",
+                               exposure_post_conv==1~ "Exposure",
+                               neg_exposure_post_conv==1~ "Post-exposure"))|>
+  
+  group_by(cluster, exposure_window)|>
+  summarise(
+    sum_velocidad = sum(velocidad, na.rm = TRUE),
+    sum_velocidad_lead1= sum(velocidad_lead1_post_conv_imp, na.rm = T),
+    sum_velocidad_lead2= sum(velocidad_lead2_post_conv_imp, na.rm = T),
+    sum_no_velocidad_lead2= sum(non_high_speed_lead2_post_conv_imp, na.rm = T),
+    exp_veh       = sum(vehicles_use_type,        na.rm = TRUE), # Nº de vehículos expuestos
+    exp_lic       = sum(license_holders_sex_age,  na.rm = TRUE), # Nº de conductores
+    median_lag_2_prec_median_imp = median(lag_2_prec_median_lin_imp, na.rm = TRUE),
+    mean_min_temp_mean_lin       = mean(min_temp_mean_lin,       na.rm = TRUE),
+    sd_min_temp_mean_lin       = sd(min_temp_mean_lin,       na.rm = TRUE),
+    mean_max_temp_mean_lin       = mean(max_temp_mean_lin,       na.rm = TRUE),
+    sd_max_temp_mean_lin       = sd(max_temp_mean_lin,       na.rm = TRUE),
+    median_total_precip_median_lin = median(total_precip_median_lin, na.rm = TRUE),
+    q1_total_precip_median_lin = quantile(total_precip_median_lin, .25, na.rm = TRUE),
+    q3_total_precip_median_lin = quantile(total_precip_median_lin, .75, na.rm = TRUE),
+    min_date= as.Date(min(unclass(date))),
+    max_date= as.Date(max(unclass(date))),
+    .groups = "drop"
+  ) |>
+  mutate(                                     # ── aux variables
+    rate_veh = (sum_velocidad / exp_veh) * 1e6, # not to model
+    rate_lic = (sum_velocidad / exp_lic) * 1e6, # not to model
+    rate_lead1_veh = (sum_velocidad_lead1 / exp_veh) * 1e6, # not to model
+    rate_lead1_lic = (sum_velocidad_lead1 / exp_lic) * 1e6, # not to model    
+    nc_rate_lead2_veh = (sum_no_velocidad_lead2 / exp_veh) * 1e6, # not to model
+    nc_rate_lead2_lic = (sum_no_velocidad_lead2 / exp_lic) * 1e6, # not to model            
+    rate_lead2_veh = (sum_velocidad_lead2 / exp_veh) * 1e6, # not to model
+    rate_lead2_lic = (sum_velocidad_lead2 / exp_lic) * 1e6, # not to model        
+    off_veh  = log(exp_veh),                  # offset
+    off_lic  = log(exp_lic)
+  ) |> 
+  filter(!is.na(exposure_window)) |> 
+  mutate(
+    treated = !grepl("\\.(23)$", cluster) &
+      grepl(paste0("^(", paste(as.character(setdiff(2000:2022, c(2009, 2020, 2021))), collapse="|"), ")"), cluster)
+  ) |> 
+  mutate(
+    treated_sens = !grepl("\\.(23|43)$", cluster) &
+      grepl(paste0("^(", paste(as.character(setdiff(2000:2022, c(2009, 2020, 2021))), collapse="|"), ")"), cluster),
+    D= paste0(exposure_window, ".", treated),
+    D_sens= paste0(exposure_window, ".", treated_sens)
+  )
+
+# If you already have non_high_speed_lead2:
+summary(nc_collisions_weather_corr_rect_pre_post_lag2$sum_no_velocidad_lead2)
+sum(nc_collisions_weather_corr_rect_pre_post_lag2$sum_no_velocidad_lead2 < 0, na.rm = TRUE)
+
+# Check complement identity (should be ~0 if definitions match):
+# summary((nc_collisions_weather_corr_rect_pre_post_lag2$sum_velocidad_lead2 + 
+#            nc_collisions_weather_corr_rect_pre_post_lag2$sum_no_velocidad_lead2) - nc_collisions_weather_corr_rect_pre_post_lag2$overall_lead2)
+
+tmp <- subset(nc_collisions_weather_corr_rect_pre_post_lag2,
+              grepl("^Pre|^Exp", exposure_window))
+
+table(tmp$exposure_window)                     # should look balanced-ish
+range(with(tmp, tapply(exposure_window, cluster, function(x) length(unique(x)))))
+
+# Stronger:
+any(table(tmp$cluster) != 2)
+
+
+with(nc_collisions_weather_corr_rect_pre_post_lag2,
+     table(treated, sub(".*\\.", "", cluster)))  # shows MRC codes by treated
+```
+
+
+
+```{r}
+#| class-output: center-table
+#| message: true
+#| include: true
+#| warning: true
+#| error: true
+#| label: nc2
+#| eval: true
+#| results: "hold"
+
+
+cat("Treated (w/ Sherbrooke), effects after 2 days, 4-day summary\n")
+nc_model_gnm_tratados_lead2 <- gnm(
+  sum_no_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(nc_collisions_weather_corr_rect_pre_post_lag2, grepl("^Pre|^Exp",exposure_window) & treated==TRUE)
+)
+summary(nc_model_gnm_tratados_lead2)
+
+
+cat("Negative-Control= Controls (w/o Sherbrooke), effects after 2 days, 4-day summary\n")
+nc_model_gnm_controles_lead2 <- gnm(
+  sum_no_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(nc_collisions_weather_corr_rect_pre_post_lag2, grepl("^Pre|^Exp",exposure_window) & treated==FALSE)
+)
+summary(nc_model_gnm_controles_lead2)
+
+nc_lead2_main <- compare_gnm_effects(nc_model_gnm_controles_lead2,
+                                     nc_model_gnm_tratados_lead2,
+                                  comparison_name = "Treated vs. Controls (QC only; w/o Sherbrooke)",
+                                  coef_index = 1, digits = 3)
+# Treated vs. Controls (QC only; w/o Sherbrooke) — coefficient index 1
+# z = 1.791; p = 0.073
+# log(RRR) = 0.391; se = 0.218
+# RRR = 1.478 (95% CI 0.964–2.267)
+
+cat("Negative-Control= Treated (w/o Sherbrooke), effects after 2 days, 4-day summary\n")
+nc_model_gnm_tratados_lead2_sens <- gnm(
+  sum_no_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(nc_collisions_weather_corr_rect_pre_post_lag2 , 
+                     grepl("^Pre|^Exp",exposure_window) & treated_sens==TRUE)
+)
+summary(nc_model_gnm_tratados_lead2_sens)
+
+
+cat("Negative-Control= Controls (Quebec+Sherbrooke), effects after 2 days, 4-day summary\n")
+nc_model_gnm_controles_lead2_sens <- gnm(
+  sum_no_velocidad_lead2 ~ relevel(factor(exposure_window), ref="Pre-exposure")+ mean_min_temp_mean_lin + mean_max_temp_mean_lin + median_total_precip_median_lin + median_lag_2_prec_median_imp+# spline cúbico (suaviza)
+    offset(off_lic),
+  eliminate = cluster,                            # <── “conditional” part
+  family    = quasipoisson(link = "log"),
+  data      = subset(nc_collisions_weather_corr_rect_pre_post_lag2 , 
+                     grepl("^Pre|^Exp",exposure_window) & treated_sens==FALSE)
+)
+summary(nc_model_gnm_controles_lead2_sens)
+
+nc_lead2_sens <- compare_gnm_effects(nc_model_gnm_controles_lead2_sens,
+                                  nc_model_gnm_tratados_lead2_sens,
+                                  comparison_name = "Treated vs. Controls (QC + Sherbrooke)",
+                                  coef_index = 1, digits = 3)
+# Treated vs. Controls (QC + Sherbrooke) — coefficient index 1
+# z = 1.516; p = 0.129
+# log(RRR) = 0.310; se = 0.204
+# RRR = 1.363 (95% CI 0.913–2.035)
+
+
+# Term	RR (95% CI) a	RRR (95% CI)
+# Host vs. Non-host
+# Host MRC-years	1.37 (1.12–1.69)	
+# Non-host MRC-years & host MRCs in ‘09, ‘20, ‘21	1.01 (0.71–1.42)	
+# 1.36 (0.91–2.04); P= 0.13
+# Host MRC-years b	1.36 (1.12–1.65)	
+# Non-host MRC-years (Quebec City only b) & host MRCs in ‘09, ‘20, ‘21 0.92 (0.63–1.35)	
+# 1.48 (0.96–2.27); P= 0.07
+
+
+cbind.data.frame(type=c("controls=QC+Sherbrooke","","controls=QC only",""),
+                 rbind.data.frame(
+                   tidy_exp_gnm_corr(nc_model_gnm_tratados_lead2_sens),
+                   tidy_exp_gnm_corr(nc_model_gnm_controles_lead2_sens),
+                   tidy_exp_gnm_corr(nc_model_gnm_tratados_lead2),
+                   tidy_exp_gnm_corr(nc_model_gnm_controles_lead2)))|> 
+  mutate(RR= sprintf("%.2f (%.2f–%.2f)", `exp(Est.)`, `2.5%`, `97.5%`))|>
+  mutate(sig= sprintf("%.3f", P))|> 
+  rename("p.value"="P")|> 
+  mutate(term="Exposure")|> 
+  dplyr::select(type, term, RR, sig)|> 
+  knitr::kable("markdown", 
+               caption="Non-High-speed collisions (NC), 4-day summ, 2-day lagged effect", digits=3, na= "-")
+
+cat("Main analysis (sherbrooke+ quebec as controls):\n")
+sprintf("RRR = %.2f (95%% CI: %.2f–%.2f), p = %s",
+        nc_lead2_sens$RRR,
+        nc_lead2_sens$lo95,
+        nc_lead2_sens$hi95,
+        ifelse(nc_lead2_sens$p < 0.001,
+               "<.001",
+               sprintf("%.2f", nc_lead2_sens$p)))
+
+cat("Sensitivity analysis (only Quebec as controls):\n")
+sprintf("RRR = %.2f (95%% CI: %.2f–%.2f), p = %s",
+        nc_lead2_main$RRR,
+        nc_lead2_main$lo95,
+        nc_lead2_main$hi95,
+        ifelse(nc_lead2_main$p < 0.001,
+               "<.001",
+               sprintf("%.2f", nc_lead2_main$p)))
+```
+
+
+<br>
+
+# Session info
+
+```{r session-info, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+cat(paste0("R library: ", Sys.getenv("R_LIBS_USER")))
+cat(paste0("Date: ",withr::with_locale(new = c('LC_TIME' = 'C'), code =Sys.time())))
+cat(paste0("Editor context: ", getwd()))
+cat("quarto version: "); system("quarto --version") 
+
+quarto::quarto_version()
+
+#save.image("_data/step3.RData")
+```
+
+```{r session-info-r, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+#| class-output: center-table
+
+sesion_info <- devtools::session_info()
+dplyr::select(
+  tibble::as_tibble(sesion_info$packages),
+  c(package, loadedversion, source)
+) |> 
+ knitr::kable(caption = "R packages", format = "html",
+      col.names = c("Row number", "Package", "Version"),
+    row.names = FALSE,
+      align = c("c", "l", "r")) |> 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)|> 
+  kableExtra::scroll_box(width = "100%", height = "375px")  
+```
+
+```{r session-info-python, echo=T, error=T, message=TRUE, paged.print=TRUE,eval=T, results='hold'}
+#| class-output: center-table
+
+reticulate::py_list_packages()%>% 
+ knitr::kable(caption = "Python packages", format = "html",
+      col.names = c("Package", "Version", "Requirement"),
+    row.names = FALSE,
+      align = c("c", "l", "r", "r"))%>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)|>
+  kableExtra::scroll_box(width = "100%", height = "375px")  
+```
+
+
+# References

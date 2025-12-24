@@ -33,3 +33,11 @@ This project evaluates the potential influence of the Montreal Formula 1 Grand P
 **Causal Inference Using Google's CausalImpact package**
 
 * Estimates the causal impact using a Bayesian time series analysis of the F1 event across different years and windows.
+
+### [`step3_analysis_part_2.html`](./step3_analysis_part_2.html)
+
+**Post review analyses and additions**
+
+* Post review adjustments and additional analyses based on peer feedback.
+
+### [`step4_sensitivity_analysis.html`](./step4_post_rev.html)

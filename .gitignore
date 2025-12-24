@@ -1,49 +1,88 @@
-# History files
-.Rhistory
-.Rapp.history
+#############################
+# 1. Ignorar todo por defecto
+#############################
+*
 
-# Session Data files
-.RData
-.RDataTmp
+# Permitir recorrer directorios
+!*/
 
-# User-specific files
-.Ruserdata
+# Mantener el propio .gitignore
+!.gitignore
 
-# Example code in package build process
-*-Ex.R
+########################################
+# 2. Archivos que SÍ quiero versionar
+########################################
 
-# Output files from R CMD build
-/*.tar.gz
+# Quarto
+!*.qmd
+!_quarto.yml
+!_quarto.yaml
+!quarto.yml
+!quarto.yaml
+!*.qproj
+!*.Rproj     # si usas RStudio projects
 
-# Output files from R CMD check
-/*.Rcheck/
+# HTML/CSS/JS/SCSS (salidas o assets del sitio)
+!*.html
+!*.css
+!*.js
+!*.mjs
+!*.scss
+!*.sass
+!*.json      # a veces lo necesitas como config (puede quitarse si no aplica)
 
-# RStudio files
-.Rproj.user/
+# Documentos básicos
+!README*
+!LICENSE*
+!LICENCE*
 
-# produced vignettes
-vignettes/*.html
-vignettes/*.pdf
+# Imágenes y PDFs
+!*.png
+!*.jpg
+!*.jpeg
+!*.gif
+!*.svg
+!*.webp
+!*.pdf
 
-# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
-.httr-oauth
+# Archivo de lock de renv (importante para reproducibilidad)
+!renv.lock
 
-# knitr and R markdown default cache directories
-*_cache/
-/cache/
+########################################
+# 3. Ignorar cosas pesadas o innecesarias
+########################################
 
-# Temporary files created by R markdown
-*.utf8.md
-*.knit.md
-
-# R Environment Variables
+# Carpeta renv completa
+renv/
+.Rprofile
 .Renviron
+.Rhistory
+.RData
+.Rproj.user/
+.Ruserdata
+.Rcache/
 
-# pkgdown site
+# Quarto cache/output
+_site/
 docs/
+.quarto/
 
-# translation temp files
-po/*~
+# Python / notebooks temporales
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
 
-# RStudio Connect folder
-rsconnect/
+# Sistemas / editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Comprimidos / temporales / logs
+*.zip
+*.tar.gz
+*.rar
+*.tmp
+*.log
+
+_data/step3.RData
