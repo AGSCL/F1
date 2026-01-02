@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Andrés González Santa Cruz">
-<meta name="dcterms.date" content="2025-12-24">
+<meta name="dcterms.date" content="2025-12-29">
 <meta name="description" content="Step 4. Post review (1)">
 
 <title>Fast followers?/Speed contagion: assessing the impact of Montreal F1 Grand Prix on high-speed ticketing rates (2000-2022)</title>
@@ -2559,6 +2559,7 @@ center-table {
   <li><a href="#excluding-years-with-francos-festivals" id="toc-excluding-years-with-francos-festivals" class="nav-link" data-scroll-target="#excluding-years-with-francos-festivals">Excluding years with Francos festivals</a></li>
   <li><a href="#tested-changes-in-offset" id="toc-tested-changes-in-offset" class="nav-link" data-scroll-target="#tested-changes-in-offset">Tested changes in offset</a></li>
   <li><a href="#extended-descriptive-table" id="toc-extended-descriptive-table" class="nav-link" data-scroll-target="#extended-descriptive-table">Extended descriptive table</a></li>
+  <li><a href="#rates-per-licensed-vehicles-by-mrc" id="toc-rates-per-licensed-vehicles-by-mrc" class="nav-link" data-scroll-target="#rates-per-licensed-vehicles-by-mrc">Rates per licensed vehicles by MRC</a></li>
   <li><a href="#comparison-qic-based" id="toc-comparison-qic-based" class="nav-link" data-scroll-target="#comparison-qic-based">Comparison, QIC-based</a></li>
   <li><a href="#negative-control-outcome" id="toc-negative-control-outcome" class="nav-link" data-scroll-target="#negative-control-outcome">Negative control outcome</a></li>
   <li><a href="#session-info" id="toc-session-info" class="nav-link" data-scroll-target="#session-info">Session info</a></li>
@@ -2594,7 +2595,7 @@ center-table {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">December 24, 2025</p>
+      <p class="date">December 29, 2025</p>
     </div>
   </div>
   
@@ -2626,8 +2627,8 @@ overflow-y: auto;
 </details>
 <div class="cell-output cell-output-stdout">
 <pre><code>          used (Mb) gc trigger (Mb) max used (Mb)
-Ncells  838969 44.9    1660800 88.7  1127968 60.3
-Vcells 1696554 13.0    8388608 64.0  3499973 26.8</code></pre>
+Ncells  839044 44.9    1661868 88.8  1126260 60.2
+Vcells 1697676 13.0    8388608 64.0  3395449 26.0</code></pre>
 </div>
 <details class="code-fold">
 <summary>Code</summary>
@@ -3823,39 +3824,183 @@ Treated vs. Controls (QC + Sherbrooke), offset adj — coefficient index 1
 </div>
 </div>
 </section>
+<section id="rates-per-licensed-vehicles-by-mrc" class="level1">
+<h1>Rates per licensed vehicles by MRC</h1>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>df_speed_per_lic_yr <span class="ot">&lt;-</span> collisions_weather_corr_rect<span class="sc">|&gt;</span></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">#4 days , 2 weeks before</span></span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">pre_exposure_post_conv =</span> <span class="fu">coalesce</span>(</span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as.integer</span>(dplyr<span class="sc">::</span><span class="fu">between</span>(</span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a>        date,</span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a>        race_date_rec <span class="sc">-</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">14</span><span class="sc">+</span><span class="dv">3</span>),</span>
+<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a>        race_date_rec <span class="sc">-</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">4</span>)   <span class="co"># miércoles previo al jueves de carrera</span></span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a>      )),</span>
+<span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a>      <span class="dv">0</span>L</span>
+<span id="cb39-11"><a href="#cb39-11" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb39-12"><a href="#cb39-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">#2025-12-22: Teniendo en cuenta el desfase de seguimiento</span></span>
+<span id="cb39-13"><a href="#cb39-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">exposure_post_conv =</span> <span class="fu">coalesce</span>(</span>
+<span id="cb39-14"><a href="#cb39-14" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as.integer</span>(dplyr<span class="sc">::</span><span class="fu">between</span>(date, race_date_rec <span class="sc">-</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">1</span>),</span>
+<span id="cb39-15"><a href="#cb39-15" aria-hidden="true" tabindex="-1"></a>                                race_date_rec <span class="sc">+</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">2</span>))), <span class="dv">0</span>L))<span class="sc">|&gt;</span></span>
+<span id="cb39-16"><a href="#cb39-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(mrc_f, year, exposure_post_conv) <span class="sc">%&gt;%</span></span>
+<span id="cb39-17"><a href="#cb39-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">reframe</span>(<span class="at">high_speed_tickets_per_lic =</span> (<span class="fu">sum</span>(velocidad, <span class="at">na.rm=</span>T)<span class="sc">/</span><span class="fu">sum</span>(license_holders_sex_age, <span class="at">na.rm=</span>T))<span class="sc">*</span><span class="fl">1e6</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb39-18"><a href="#cb39-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb39-19"><a href="#cb39-19" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb39-20"><a href="#cb39-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">mrc =</span> dplyr<span class="sc">::</span><span class="fu">case_when</span>(</span>
+<span id="cb39-21"><a href="#cb39-21" aria-hidden="true" tabindex="-1"></a>      mrc_f <span class="sc">==</span> <span class="dv">66</span> <span class="sc">~</span> <span class="st">&quot;montreal&quot;</span>,</span>
+<span id="cb39-22"><a href="#cb39-22" aria-hidden="true" tabindex="-1"></a>      mrc_f <span class="sc">==</span> <span class="dv">65</span> <span class="sc">~</span> <span class="st">&quot;laval&quot;</span>,</span>
+<span id="cb39-23"><a href="#cb39-23" aria-hidden="true" tabindex="-1"></a>      mrc_f <span class="sc">==</span> <span class="dv">58</span> <span class="sc">~</span> <span class="st">&quot;longueuil&quot;</span>,</span>
+<span id="cb39-24"><a href="#cb39-24" aria-hidden="true" tabindex="-1"></a>      mrc_f <span class="sc">==</span> <span class="dv">23</span> <span class="sc">~</span> <span class="st">&quot;quebec&quot;</span>,</span>
+<span id="cb39-25"><a href="#cb39-25" aria-hidden="true" tabindex="-1"></a>      mrc_f <span class="sc">==</span> <span class="dv">43</span> <span class="sc">~</span> <span class="st">&quot;shrebrooke&quot;</span>,</span>
+<span id="cb39-26"><a href="#cb39-26" aria-hidden="true" tabindex="-1"></a>      <span class="cn">TRUE</span> <span class="sc">~</span> <span class="fu">as.character</span>(mrc_f)</span>
+<span id="cb39-27"><a href="#cb39-27" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb39-28"><a href="#cb39-28" aria-hidden="true" tabindex="-1"></a>  ) </span>
+<span id="cb39-29"><a href="#cb39-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-30"><a href="#cb39-30" aria-hidden="true" tabindex="-1"></a>df_speed_per_lic_yr <span class="sc">|&gt;</span> </span>
+<span id="cb39-31"><a href="#cb39-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(exposure_post_conv<span class="sc">==</span><span class="dv">0</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb39-32"><a href="#cb39-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(mrc) <span class="sc">|&gt;</span> </span>
+<span id="cb39-33"><a href="#cb39-33" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarise</span>(</span>
+<span id="cb39-34"><a href="#cb39-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">n =</span> <span class="fu">n</span>(),</span>
+<span id="cb39-35"><a href="#cb39-35" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean =</span> <span class="fu">mean</span>(high_speed_tickets_per_lic, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb39-36"><a href="#cb39-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">median =</span> <span class="fu">quantile</span>(high_speed_tickets_per_lic, .<span class="dv">5</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb39-37"><a href="#cb39-37" aria-hidden="true" tabindex="-1"></a>    <span class="at">p25 =</span> <span class="fu">quantile</span>(high_speed_tickets_per_lic, .<span class="dv">25</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb39-38"><a href="#cb39-38" aria-hidden="true" tabindex="-1"></a>    <span class="at">p75 =</span> <span class="fu">quantile</span>(high_speed_tickets_per_lic, .<span class="dv">75</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb39-39"><a href="#cb39-39" aria-hidden="true" tabindex="-1"></a>    <span class="at">sd =</span> <span class="fu">sd</span>(high_speed_tickets_per_lic, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb39-40"><a href="#cb39-40" aria-hidden="true" tabindex="-1"></a>    <span class="at">iqr =</span> <span class="fu">IQR</span>(high_speed_tickets_per_lic, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb39-41"><a href="#cb39-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">skew=</span> mean<span class="sc">/</span>sd <span class="co">#&lt;2 serious skewness</span></span>
+<span id="cb39-42"><a href="#cb39-42" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">print=</span> <span class="fu">sprintf</span>(<span class="st">&quot;(Mdn= %2.2f; IQR= %2.2f-%2.2f)&quot;</span>, median, p25, p75)) <span class="sc">|&gt;</span> </span>
+<span id="cb39-43"><a href="#cb39-43" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="st">&quot;markdown&quot;</span>, <span class="at">caption=</span><span class="st">&quot;Yearly high‑speed collision rates by region (per 1,000,000 license holders; May–Sep)&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Yearly high‑speed collision rates by region (per 1,000,000 license holders; May–Sep)</caption>
+<colgroup>
+<col style="width: 9%">
+<col style="width: 2%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 8%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">mrc</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">mean</th>
+<th style="text-align: right;">median</th>
+<th style="text-align: right;">p25</th>
+<th style="text-align: right;">p75</th>
+<th style="text-align: right;">sd</th>
+<th style="text-align: right;">iqr</th>
+<th style="text-align: right;">skew</th>
+<th style="text-align: left;">print</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">laval</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">1.7129131</td>
+<td style="text-align: right;">1.4906999</td>
+<td style="text-align: right;">1.0987943</td>
+<td style="text-align: right;">2.4327199</td>
+<td style="text-align: right;">0.9135975</td>
+<td style="text-align: right;">1.3339256</td>
+<td style="text-align: right;">1.874910</td>
+<td style="text-align: left;">(Mdn= 1.49; IQR= 1.10-2.43)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">longueuil</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">0.5765156</td>
+<td style="text-align: right;">0.5860928</td>
+<td style="text-align: right;">0.3753684</td>
+<td style="text-align: right;">0.7880717</td>
+<td style="text-align: right;">0.2529888</td>
+<td style="text-align: right;">0.4127033</td>
+<td style="text-align: right;">2.278818</td>
+<td style="text-align: left;">(Mdn= 0.59; IQR= 0.38-0.79)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">montreal</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">1.8189576</td>
+<td style="text-align: right;">1.4584196</td>
+<td style="text-align: right;">1.2037574</td>
+<td style="text-align: right;">2.5241584</td>
+<td style="text-align: right;">0.8211711</td>
+<td style="text-align: right;">1.3204010</td>
+<td style="text-align: right;">2.215078</td>
+<td style="text-align: left;">(Mdn= 1.46; IQR= 1.20-2.52)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">quebec</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">1.2837297</td>
+<td style="text-align: right;">1.3909654</td>
+<td style="text-align: right;">0.8413894</td>
+<td style="text-align: right;">1.6015473</td>
+<td style="text-align: right;">0.5295038</td>
+<td style="text-align: right;">0.7601578</td>
+<td style="text-align: right;">2.424401</td>
+<td style="text-align: left;">(Mdn= 1.39; IQR= 0.84-1.60)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">shrebrooke</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">0.6201147</td>
+<td style="text-align: right;">0.5217501</td>
+<td style="text-align: right;">0.4135006</td>
+<td style="text-align: right;">0.7869631</td>
+<td style="text-align: right;">0.3343950</td>
+<td style="text-align: right;">0.3734625</td>
+<td style="text-align: right;">1.854438</td>
+<td style="text-align: left;">(Mdn= 0.52; IQR= 0.41-0.79)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
 <section id="comparison-qic-based" class="level1">
 <h1>Comparison, QIC-based</h1>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>qic_gnm <span class="ot">&lt;-</span> <span class="cf">function</span>(mod_quasi) {</span>
-<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a> <span class="do">## 1)  φ from quasipoisson</span></span>
-<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a> phi <span class="ot">&lt;-</span> <span class="fu">get_phi</span>(mod_quasi)</span>
-<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a> <span class="do">## 2)  refit Poisson (mismo call)  → logLik </span></span>
-<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a> mod_pois <span class="ot">&lt;-</span> <span class="fu">update</span>(mod_quasi, <span class="at">family =</span> poisson)</span>
-<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a> <span class="do">## 3)  qAIC = -2·logLik/φ + 2·k  </span></span>
-<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a> bbmle<span class="sc">::</span><span class="fu">qAIC</span>(mod_pois, <span class="at">dispersion =</span> phi)</span>
-<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Treated (w/o Sherbrooke), instantaneous effects</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb39-11"><a href="#cb39-11" aria-hidden="true" tabindex="-1"></a>model_gnm_tratados_lead0_sens <span class="ot">&lt;-</span> <span class="fu">gnm</span>(</span>
-<span id="cb39-12"><a href="#cb39-12" aria-hidden="true" tabindex="-1"></a>  sum_velocidad <span class="sc">~</span> <span class="fu">relevel</span>(<span class="fu">factor</span>(exposure_window), <span class="at">ref=</span><span class="st">&quot;Pre-exposure&quot;</span>)<span class="sc">+</span> mean_min_temp_mean_lin <span class="sc">+</span> mean_max_temp_mean_lin <span class="sc">+</span> median_total_precip_median_lin <span class="sc">+</span> median_lag_2_prec_median_imp<span class="sc">+</span><span class="co"># spline cúbico (suaviza)</span></span>
-<span id="cb39-13"><a href="#cb39-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">offset</span>(off_lic),</span>
-<span id="cb39-14"><a href="#cb39-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">eliminate =</span> cluster,                            <span class="co"># &lt;── “conditional” part</span></span>
-<span id="cb39-15"><a href="#cb39-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">family    =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">&quot;log&quot;</span>),</span>
-<span id="cb39-16"><a href="#cb39-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> <span class="fu">subset</span>(collisions_weather_corr_rect_pre_post_placebo, </span>
-<span id="cb39-17"><a href="#cb39-17" aria-hidden="true" tabindex="-1"></a>                     <span class="fu">grepl</span>(<span class="st">&quot;^Pre|^Exp&quot;</span>,exposure_window) <span class="sc">&amp;</span> treated_sens<span class="sc">==</span><span class="cn">TRUE</span>)</span>
-<span id="cb39-18"><a href="#cb39-18" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb39-19"><a href="#cb39-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-20"><a href="#cb39-20" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;QIC, 2-day lagged high-speed collisions</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb39-21"><a href="#cb39-21" aria-hidden="true" tabindex="-1"></a><span class="fu">qic_gnm</span>(model_gnm_tratados_lead2_sens)</span>
-<span id="cb39-22"><a href="#cb39-22" aria-hidden="true" tabindex="-1"></a><span class="co">#[1] 524.0127</span></span>
-<span id="cb39-23"><a href="#cb39-23" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;QIC, 1-day lagged high-speed collisions</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb39-24"><a href="#cb39-24" aria-hidden="true" tabindex="-1"></a><span class="fu">qic_gnm</span>(model_gnm_tratados_lead1_sens)</span>
-<span id="cb39-25"><a href="#cb39-25" aria-hidden="true" tabindex="-1"></a><span class="co">#[1] 530.3881</span></span>
-<span id="cb39-26"><a href="#cb39-26" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;QIC, high-speed collisions, contemporaneous</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb39-27"><a href="#cb39-27" aria-hidden="true" tabindex="-1"></a><span class="fu">qic_gnm</span>(model_gnm_tratados_lead0_sens)</span>
-<span id="cb39-28"><a href="#cb39-28" aria-hidden="true" tabindex="-1"></a><span class="co">#[1] 530.3753</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>qic_gnm <span class="ot">&lt;-</span> <span class="cf">function</span>(mod_quasi) {</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a> <span class="do">## 1)  φ from quasipoisson</span></span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a> phi <span class="ot">&lt;-</span> <span class="fu">get_phi</span>(mod_quasi)</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a> <span class="do">## 2)  refit Poisson (mismo call)  → logLik </span></span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a> mod_pois <span class="ot">&lt;-</span> <span class="fu">update</span>(mod_quasi, <span class="at">family =</span> poisson)</span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a> <span class="do">## 3)  qAIC = -2·logLik/φ + 2·k  </span></span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a> bbmle<span class="sc">::</span><span class="fu">qAIC</span>(mod_pois, <span class="at">dispersion =</span> phi)</span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Treated (w/o Sherbrooke), instantaneous effects</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb40-11"><a href="#cb40-11" aria-hidden="true" tabindex="-1"></a>model_gnm_tratados_lead0_sens <span class="ot">&lt;-</span> <span class="fu">gnm</span>(</span>
+<span id="cb40-12"><a href="#cb40-12" aria-hidden="true" tabindex="-1"></a>  sum_velocidad <span class="sc">~</span> <span class="fu">relevel</span>(<span class="fu">factor</span>(exposure_window), <span class="at">ref=</span><span class="st">&quot;Pre-exposure&quot;</span>)<span class="sc">+</span> mean_min_temp_mean_lin <span class="sc">+</span> mean_max_temp_mean_lin <span class="sc">+</span> median_total_precip_median_lin <span class="sc">+</span> median_lag_2_prec_median_imp<span class="sc">+</span><span class="co"># spline cúbico (suaviza)</span></span>
+<span id="cb40-13"><a href="#cb40-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">offset</span>(off_lic),</span>
+<span id="cb40-14"><a href="#cb40-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">eliminate =</span> cluster,                            <span class="co"># &lt;── “conditional” part</span></span>
+<span id="cb40-15"><a href="#cb40-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">family    =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">&quot;log&quot;</span>),</span>
+<span id="cb40-16"><a href="#cb40-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> <span class="fu">subset</span>(collisions_weather_corr_rect_pre_post_placebo, </span>
+<span id="cb40-17"><a href="#cb40-17" aria-hidden="true" tabindex="-1"></a>                     <span class="fu">grepl</span>(<span class="st">&quot;^Pre|^Exp&quot;</span>,exposure_window) <span class="sc">&amp;</span> treated_sens<span class="sc">==</span><span class="cn">TRUE</span>)</span>
+<span id="cb40-18"><a href="#cb40-18" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb40-19"><a href="#cb40-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-20"><a href="#cb40-20" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;QIC, 2-day lagged high-speed collisions</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb40-21"><a href="#cb40-21" aria-hidden="true" tabindex="-1"></a><span class="fu">qic_gnm</span>(model_gnm_tratados_lead2_sens)</span>
+<span id="cb40-22"><a href="#cb40-22" aria-hidden="true" tabindex="-1"></a><span class="co">#[1] 524.0127</span></span>
+<span id="cb40-23"><a href="#cb40-23" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;QIC, 1-day lagged high-speed collisions</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb40-24"><a href="#cb40-24" aria-hidden="true" tabindex="-1"></a><span class="fu">qic_gnm</span>(model_gnm_tratados_lead1_sens)</span>
+<span id="cb40-25"><a href="#cb40-25" aria-hidden="true" tabindex="-1"></a><span class="co">#[1] 530.3881</span></span>
+<span id="cb40-26"><a href="#cb40-26" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;QIC, high-speed collisions, contemporaneous</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb40-27"><a href="#cb40-27" aria-hidden="true" tabindex="-1"></a><span class="fu">qic_gnm</span>(model_gnm_tratados_lead0_sens)</span>
+<span id="cb40-28"><a href="#cb40-28" aria-hidden="true" tabindex="-1"></a><span class="co">#[1] 530.3753</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-stdout">
 <pre class="center-table"><code>Treated (w/o Sherbrooke), instantaneous effects
@@ -3873,36 +4018,36 @@ QIC, high-speed collisions, contemporaneous
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">$</span>non_high_speed<span class="ot">&lt;-</span> </span>
-<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>  collisions_weather_corr_rect<span class="sc">$</span>nb_collisions<span class="sc">-</span> collisions_weather_corr_rect<span class="sc">$</span>velocidad</span>
-<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">$</span>prueba<span class="ot">&lt;-</span> </span>
-<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>  collisions_weather_corr_rect<span class="sc">$</span>nb_collisions<span class="sc">-</span> (collisions_weather_corr_rect<span class="sc">$</span>velocidad<span class="sc">+</span> collisions_weather_corr_rect<span class="sc">$</span>alcohol)</span>
-<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">$</span>nb_blese_any<span class="ot">&lt;-</span> </span>
-<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">$</span>nb_blese_grave_c<span class="sc">+</span>collisions_weather_corr_rect<span class="sc">$</span>nb_blese_leger_c</span>
-<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-10"><a href="#cb41-10" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">all</span>(collisions_weather_corr_rect<span class="sc">$</span>non_high_speed <span class="sc">&gt;=</span> <span class="dv">0</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span>
-<span id="cb41-11"><a href="#cb41-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-12"><a href="#cb41-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-13"><a href="#cb41-13" aria-hidden="true" tabindex="-1"></a><span class="co"># 2) Is nb_blese_any consistent with severity components? (if you have them)</span></span>
-<span id="cb41-14"><a href="#cb41-14" aria-hidden="true" tabindex="-1"></a><span class="co"># nb_blese_any should often equal deaths + serious + minor (depending on definitions)</span></span>
-<span id="cb41-15"><a href="#cb41-15" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(collisions_weather_corr_rect<span class="sc">$</span>nb_blese_any <span class="sc">-</span></span>
-<span id="cb41-16"><a href="#cb41-16" aria-hidden="true" tabindex="-1"></a>                           (collisions_weather_corr_rect<span class="sc">$</span>nb_mort_c <span class="sc">+</span></span>
-<span id="cb41-17"><a href="#cb41-17" aria-hidden="true" tabindex="-1"></a>                                                 collisions_weather_corr_rect<span class="sc">$</span>nb_blese_grave_c <span class="sc">+</span></span>
-<span id="cb41-18"><a href="#cb41-18" aria-hidden="true" tabindex="-1"></a>                                                 collisions_weather_corr_rect<span class="sc">$</span>nb_blese_leger_c))</span>
-<span id="cb41-19"><a href="#cb41-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-20"><a href="#cb41-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-21"><a href="#cb41-21" aria-hidden="true" tabindex="-1"></a>total_casualty <span class="ot">&lt;-</span> <span class="fu">with</span>(collisions_weather_corr_rect,</span>
-<span id="cb41-22"><a href="#cb41-22" aria-hidden="true" tabindex="-1"></a>                       nb_mort_c <span class="sc">+</span> nb_blese_grave_c <span class="sc">+</span> nb_blese_leger_c)</span>
-<span id="cb41-23"><a href="#cb41-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-24"><a href="#cb41-24" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(total_casualty <span class="sc">-</span> collisions_weather_corr_rect<span class="sc">$</span>velocidad)</span>
-<span id="cb41-25"><a href="#cb41-25" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>((total_casualty <span class="sc">-</span> collisions_weather_corr_rect<span class="sc">$</span>velocidad) <span class="sc">&lt;</span> <span class="dv">0</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb41-26"><a href="#cb41-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-27"><a href="#cb41-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-28"><a href="#cb41-28" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;“non–high-speed casualty collisions (fatal + injured)&quot;</span>)</span>
-<span id="cb41-29"><a href="#cb41-29" aria-hidden="true" tabindex="-1"></a><span class="fu">message</span>(<span class="st">&quot;“As a specificity check, we repeated the analysis using </span></span>
-<span id="cb41-30"><a href="#cb41-30" aria-hidden="true" tabindex="-1"></a><span class="st">    non–high-speed casualty collisions (fatal and non-fatal injuries) as a negative-control outcome&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">$</span>non_high_speed<span class="ot">&lt;-</span> </span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>  collisions_weather_corr_rect<span class="sc">$</span>nb_collisions<span class="sc">-</span> collisions_weather_corr_rect<span class="sc">$</span>velocidad</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">$</span>prueba<span class="ot">&lt;-</span> </span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>  collisions_weather_corr_rect<span class="sc">$</span>nb_collisions<span class="sc">-</span> (collisions_weather_corr_rect<span class="sc">$</span>velocidad<span class="sc">+</span> collisions_weather_corr_rect<span class="sc">$</span>alcohol)</span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">$</span>nb_blese_any<span class="ot">&lt;-</span> </span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">$</span>nb_blese_grave_c<span class="sc">+</span>collisions_weather_corr_rect<span class="sc">$</span>nb_blese_leger_c</span>
+<span id="cb42-9"><a href="#cb42-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-10"><a href="#cb42-10" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">all</span>(collisions_weather_corr_rect<span class="sc">$</span>non_high_speed <span class="sc">&gt;=</span> <span class="dv">0</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb42-11"><a href="#cb42-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-12"><a href="#cb42-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-13"><a href="#cb42-13" aria-hidden="true" tabindex="-1"></a><span class="co"># 2) Is nb_blese_any consistent with severity components? (if you have them)</span></span>
+<span id="cb42-14"><a href="#cb42-14" aria-hidden="true" tabindex="-1"></a><span class="co"># nb_blese_any should often equal deaths + serious + minor (depending on definitions)</span></span>
+<span id="cb42-15"><a href="#cb42-15" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(collisions_weather_corr_rect<span class="sc">$</span>nb_blese_any <span class="sc">-</span></span>
+<span id="cb42-16"><a href="#cb42-16" aria-hidden="true" tabindex="-1"></a>                           (collisions_weather_corr_rect<span class="sc">$</span>nb_mort_c <span class="sc">+</span></span>
+<span id="cb42-17"><a href="#cb42-17" aria-hidden="true" tabindex="-1"></a>                                                 collisions_weather_corr_rect<span class="sc">$</span>nb_blese_grave_c <span class="sc">+</span></span>
+<span id="cb42-18"><a href="#cb42-18" aria-hidden="true" tabindex="-1"></a>                                                 collisions_weather_corr_rect<span class="sc">$</span>nb_blese_leger_c))</span>
+<span id="cb42-19"><a href="#cb42-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-20"><a href="#cb42-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-21"><a href="#cb42-21" aria-hidden="true" tabindex="-1"></a>total_casualty <span class="ot">&lt;-</span> <span class="fu">with</span>(collisions_weather_corr_rect,</span>
+<span id="cb42-22"><a href="#cb42-22" aria-hidden="true" tabindex="-1"></a>                       nb_mort_c <span class="sc">+</span> nb_blese_grave_c <span class="sc">+</span> nb_blese_leger_c)</span>
+<span id="cb42-23"><a href="#cb42-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-24"><a href="#cb42-24" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(total_casualty <span class="sc">-</span> collisions_weather_corr_rect<span class="sc">$</span>velocidad)</span>
+<span id="cb42-25"><a href="#cb42-25" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>((total_casualty <span class="sc">-</span> collisions_weather_corr_rect<span class="sc">$</span>velocidad) <span class="sc">&lt;</span> <span class="dv">0</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb42-26"><a href="#cb42-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-27"><a href="#cb42-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-28"><a href="#cb42-28" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;“non–high-speed casualty collisions (fatal + injured)&quot;</span>)</span>
+<span id="cb42-29"><a href="#cb42-29" aria-hidden="true" tabindex="-1"></a><span class="fu">message</span>(<span class="st">&quot;“As a specificity check, we repeated the analysis using </span></span>
+<span id="cb42-30"><a href="#cb42-30" aria-hidden="true" tabindex="-1"></a><span class="st">    non–high-speed casualty collisions (fatal and non-fatal injuries) as a negative-control outcome&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-stderr">
 <pre><code>“As a specificity check, we repeated the analysis using 
@@ -3910,7 +4055,7 @@ QIC, high-speed collisions, contemporaneous
 </div>
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">$</span>non_high_speed_lead2_post_conv<span class="ot">&lt;-</span> (total_casualty <span class="sc">-</span> collisions_weather_corr_rect<span class="sc">$</span>velocidad)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">$</span>non_high_speed_lead2_post_conv<span class="ot">&lt;-</span> (total_casualty <span class="sc">-</span> collisions_weather_corr_rect<span class="sc">$</span>velocidad)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-stdout">
 <pre class="center-table"><code>    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
@@ -3924,109 +4069,109 @@ QIC, high-speed collisions, contemporaneous
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">$</span>non_high_speed_lead2_post_conv <span class="ot">&lt;-</span> </span>
-<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>  collisions_weather_corr_rect<span class="sc">|&gt;</span> </span>
-<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(mrc, year)<span class="sc">|&gt;</span> </span>
-<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">non_high_speed_lead2_post_conv =</span> dplyr<span class="sc">::</span><span class="fu">lead</span>(non_high_speed, <span class="dv">2</span>, <span class="at">order_by =</span> iso_yday))<span class="sc">|&gt;</span> </span>
-<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()<span class="sc">|&gt;</span></span>
-<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(non_high_speed_lead2_post_conv) </span>
-<span id="cb45-7"><a href="#cb45-7" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Last value carried forward approach</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb45-8"><a href="#cb45-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb45-9"><a href="#cb45-9" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">|&gt;</span></span>
-<span id="cb45-10"><a href="#cb45-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(mrc, year)<span class="sc">|&gt;</span> </span>
-<span id="cb45-11"><a href="#cb45-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(iso_yday, <span class="at">.by_group =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
-<span id="cb45-12"><a href="#cb45-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># create *_imp copies</span></span>
-<span id="cb45-13"><a href="#cb45-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">all_of</span>(<span class="fu">starts_with</span>(<span class="st">&quot;non_high_speed_lead2_post_conv&quot;</span>)), <span class="sc">~</span> .x, <span class="at">.names =</span> <span class="st">&quot;{.col}_imp&quot;</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb45-14"><a href="#cb45-14" aria-hidden="true" tabindex="-1"></a>  <span class="co"># LOCF</span></span>
-<span id="cb45-15"><a href="#cb45-15" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">fill</span>(<span class="fu">ends_with</span>(<span class="st">&quot;_imp&quot;</span>), <span class="at">.direction =</span> <span class="st">&quot;down&quot;</span>) <span class="sc">|&gt;</span></span>
-<span id="cb45-16"><a href="#cb45-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()<span class="sc">|&gt;</span></span>
-<span id="cb45-17"><a href="#cb45-17" aria-hidden="true" tabindex="-1"></a>  (\(df) {</span>
-<span id="cb45-18"><a href="#cb45-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pull</span>(df, non_high_speed_lead2_post_conv_imp) <span class="ot">-&gt;&gt;</span> collisions_weather_corr_rect<span class="sc">$</span>non_high_speed_lead2_post_conv_imp</span>
-<span id="cb45-19"><a href="#cb45-19" aria-hidden="true" tabindex="-1"></a>  })()</span>
-<span id="cb45-20"><a href="#cb45-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb45-21"><a href="#cb45-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb45-22"><a href="#cb45-22" aria-hidden="true" tabindex="-1"></a>nc_collisions_weather_corr_rect_pre_post_lag2 <span class="ot">&lt;-</span></span>
-<span id="cb45-23"><a href="#cb45-23" aria-hidden="true" tabindex="-1"></a>  collisions_weather_corr_rect <span class="sc">|&gt;</span></span>
-<span id="cb45-24"><a href="#cb45-24" aria-hidden="true" tabindex="-1"></a>  <span class="co">#4 days , 2 weeks before</span></span>
-<span id="cb45-25"><a href="#cb45-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb45-26"><a href="#cb45-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">pre_exposure_post_conv =</span> <span class="fu">coalesce</span>(</span>
-<span id="cb45-27"><a href="#cb45-27" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as.integer</span>(dplyr<span class="sc">::</span><span class="fu">between</span>(date, race_date_rec <span class="sc">-</span> lubridate<span class="sc">::</span><span class="fu">days</span>((<span class="dv">14</span><span class="sc">+</span><span class="dv">3</span>)),</span>
-<span id="cb45-28"><a href="#cb45-28" aria-hidden="true" tabindex="-1"></a>                                race_date_rec <span class="sc">-</span> lubridate<span class="sc">::</span><span class="fu">days</span>((<span class="dv">14-0</span>)))), <span class="dv">0</span>L),</span>
-<span id="cb45-29"><a href="#cb45-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">exposure_post_conv =</span> <span class="fu">coalesce</span>(</span>
-<span id="cb45-30"><a href="#cb45-30" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as.integer</span>(dplyr<span class="sc">::</span><span class="fu">between</span>(date, race_date_rec <span class="sc">-</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">3</span>),</span>
-<span id="cb45-31"><a href="#cb45-31" aria-hidden="true" tabindex="-1"></a>                                race_date_rec <span class="sc">+</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">0</span>))), <span class="dv">0</span>L),</span>
-<span id="cb45-32"><a href="#cb45-32" aria-hidden="true" tabindex="-1"></a>    <span class="co">#4 days , 2 weeks after</span></span>
-<span id="cb45-33"><a href="#cb45-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">neg_exposure_post_conv =</span> <span class="fu">coalesce</span>(</span>
-<span id="cb45-34"><a href="#cb45-34" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as.integer</span>(dplyr<span class="sc">::</span><span class="fu">between</span>(date, race_date_rec <span class="sc">+</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">28-3</span>),</span>
-<span id="cb45-35"><a href="#cb45-35" aria-hidden="true" tabindex="-1"></a>                                race_date_rec <span class="sc">+</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">28</span><span class="sc">+</span><span class="dv">0</span>))), <span class="dv">0</span>L),</span>
-<span id="cb45-36"><a href="#cb45-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">exposure_window=</span> <span class="fu">case_when</span>(pre_exposure_post_conv<span class="sc">==</span><span class="dv">1</span><span class="sc">~</span> <span class="st">&quot;Pre-exposure&quot;</span>,</span>
-<span id="cb45-37"><a href="#cb45-37" aria-hidden="true" tabindex="-1"></a>                               exposure_post_conv<span class="sc">==</span><span class="dv">1</span><span class="sc">~</span> <span class="st">&quot;Exposure&quot;</span>,</span>
-<span id="cb45-38"><a href="#cb45-38" aria-hidden="true" tabindex="-1"></a>                               neg_exposure_post_conv<span class="sc">==</span><span class="dv">1</span><span class="sc">~</span> <span class="st">&quot;Post-exposure&quot;</span>))<span class="sc">|&gt;</span></span>
-<span id="cb45-39"><a href="#cb45-39" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb45-40"><a href="#cb45-40" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(cluster, exposure_window)<span class="sc">|&gt;</span></span>
-<span id="cb45-41"><a href="#cb45-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
-<span id="cb45-42"><a href="#cb45-42" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum_velocidad =</span> <span class="fu">sum</span>(velocidad, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb45-43"><a href="#cb45-43" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum_velocidad_lead1=</span> <span class="fu">sum</span>(velocidad_lead1_post_conv_imp, <span class="at">na.rm =</span> T),</span>
-<span id="cb45-44"><a href="#cb45-44" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum_velocidad_lead2=</span> <span class="fu">sum</span>(velocidad_lead2_post_conv_imp, <span class="at">na.rm =</span> T),</span>
-<span id="cb45-45"><a href="#cb45-45" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum_no_velocidad_lead2=</span> <span class="fu">sum</span>(non_high_speed_lead2_post_conv_imp, <span class="at">na.rm =</span> T),</span>
-<span id="cb45-46"><a href="#cb45-46" aria-hidden="true" tabindex="-1"></a>    <span class="at">exp_veh       =</span> <span class="fu">sum</span>(vehicles_use_type,        <span class="at">na.rm =</span> <span class="cn">TRUE</span>), <span class="co"># Nº de vehículos expuestos</span></span>
-<span id="cb45-47"><a href="#cb45-47" aria-hidden="true" tabindex="-1"></a>    <span class="at">exp_lic       =</span> <span class="fu">sum</span>(license_holders_sex_age,  <span class="at">na.rm =</span> <span class="cn">TRUE</span>), <span class="co"># Nº de conductores</span></span>
-<span id="cb45-48"><a href="#cb45-48" aria-hidden="true" tabindex="-1"></a>    <span class="at">median_lag_2_prec_median_imp =</span> <span class="fu">median</span>(lag_2_prec_median_lin_imp, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb45-49"><a href="#cb45-49" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_min_temp_mean_lin       =</span> <span class="fu">mean</span>(min_temp_mean_lin,       <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb45-50"><a href="#cb45-50" aria-hidden="true" tabindex="-1"></a>    <span class="at">sd_min_temp_mean_lin       =</span> <span class="fu">sd</span>(min_temp_mean_lin,       <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb45-51"><a href="#cb45-51" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_max_temp_mean_lin       =</span> <span class="fu">mean</span>(max_temp_mean_lin,       <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb45-52"><a href="#cb45-52" aria-hidden="true" tabindex="-1"></a>    <span class="at">sd_max_temp_mean_lin       =</span> <span class="fu">sd</span>(max_temp_mean_lin,       <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb45-53"><a href="#cb45-53" aria-hidden="true" tabindex="-1"></a>    <span class="at">median_total_precip_median_lin =</span> <span class="fu">median</span>(total_precip_median_lin, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb45-54"><a href="#cb45-54" aria-hidden="true" tabindex="-1"></a>    <span class="at">q1_total_precip_median_lin =</span> <span class="fu">quantile</span>(total_precip_median_lin, .<span class="dv">25</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb45-55"><a href="#cb45-55" aria-hidden="true" tabindex="-1"></a>    <span class="at">q3_total_precip_median_lin =</span> <span class="fu">quantile</span>(total_precip_median_lin, .<span class="dv">75</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
-<span id="cb45-56"><a href="#cb45-56" aria-hidden="true" tabindex="-1"></a>    <span class="at">min_date=</span> <span class="fu">as.Date</span>(<span class="fu">min</span>(<span class="fu">unclass</span>(date))),</span>
-<span id="cb45-57"><a href="#cb45-57" aria-hidden="true" tabindex="-1"></a>    <span class="at">max_date=</span> <span class="fu">as.Date</span>(<span class="fu">max</span>(<span class="fu">unclass</span>(date))),</span>
-<span id="cb45-58"><a href="#cb45-58" aria-hidden="true" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">&quot;drop&quot;</span></span>
-<span id="cb45-59"><a href="#cb45-59" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb45-60"><a href="#cb45-60" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(                                     <span class="co"># ── aux variables</span></span>
-<span id="cb45-61"><a href="#cb45-61" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate_veh =</span> (sum_velocidad <span class="sc">/</span> exp_veh) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model</span></span>
-<span id="cb45-62"><a href="#cb45-62" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate_lic =</span> (sum_velocidad <span class="sc">/</span> exp_lic) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model</span></span>
-<span id="cb45-63"><a href="#cb45-63" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate_lead1_veh =</span> (sum_velocidad_lead1 <span class="sc">/</span> exp_veh) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model</span></span>
-<span id="cb45-64"><a href="#cb45-64" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate_lead1_lic =</span> (sum_velocidad_lead1 <span class="sc">/</span> exp_lic) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model    </span></span>
-<span id="cb45-65"><a href="#cb45-65" aria-hidden="true" tabindex="-1"></a>    <span class="at">nc_rate_lead2_veh =</span> (sum_no_velocidad_lead2 <span class="sc">/</span> exp_veh) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model</span></span>
-<span id="cb45-66"><a href="#cb45-66" aria-hidden="true" tabindex="-1"></a>    <span class="at">nc_rate_lead2_lic =</span> (sum_no_velocidad_lead2 <span class="sc">/</span> exp_lic) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model            </span></span>
-<span id="cb45-67"><a href="#cb45-67" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate_lead2_veh =</span> (sum_velocidad_lead2 <span class="sc">/</span> exp_veh) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model</span></span>
-<span id="cb45-68"><a href="#cb45-68" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate_lead2_lic =</span> (sum_velocidad_lead2 <span class="sc">/</span> exp_lic) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model        </span></span>
-<span id="cb45-69"><a href="#cb45-69" aria-hidden="true" tabindex="-1"></a>    <span class="at">off_veh  =</span> <span class="fu">log</span>(exp_veh),                  <span class="co"># offset</span></span>
-<span id="cb45-70"><a href="#cb45-70" aria-hidden="true" tabindex="-1"></a>    <span class="at">off_lic  =</span> <span class="fu">log</span>(exp_lic)</span>
-<span id="cb45-71"><a href="#cb45-71" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb45-72"><a href="#cb45-72" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(exposure_window)) <span class="sc">|&gt;</span> </span>
-<span id="cb45-73"><a href="#cb45-73" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb45-74"><a href="#cb45-74" aria-hidden="true" tabindex="-1"></a>    <span class="at">treated =</span> <span class="sc">!</span><span class="fu">grepl</span>(<span class="st">&quot;</span><span class="sc">\\</span><span class="st">.(23)$&quot;</span>, cluster) <span class="sc">&amp;</span></span>
-<span id="cb45-75"><a href="#cb45-75" aria-hidden="true" tabindex="-1"></a>      <span class="fu">grepl</span>(<span class="fu">paste0</span>(<span class="st">&quot;^(&quot;</span>, <span class="fu">paste</span>(<span class="fu">as.character</span>(<span class="fu">setdiff</span>(<span class="dv">2000</span><span class="sc">:</span><span class="dv">2022</span>, <span class="fu">c</span>(<span class="dv">2009</span>, <span class="dv">2020</span>, <span class="dv">2021</span>))), <span class="at">collapse=</span><span class="st">&quot;|&quot;</span>), <span class="st">&quot;)&quot;</span>), cluster)</span>
-<span id="cb45-76"><a href="#cb45-76" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb45-77"><a href="#cb45-77" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb45-78"><a href="#cb45-78" aria-hidden="true" tabindex="-1"></a>    <span class="at">treated_sens =</span> <span class="sc">!</span><span class="fu">grepl</span>(<span class="st">&quot;</span><span class="sc">\\</span><span class="st">.(23|43)$&quot;</span>, cluster) <span class="sc">&amp;</span></span>
-<span id="cb45-79"><a href="#cb45-79" aria-hidden="true" tabindex="-1"></a>      <span class="fu">grepl</span>(<span class="fu">paste0</span>(<span class="st">&quot;^(&quot;</span>, <span class="fu">paste</span>(<span class="fu">as.character</span>(<span class="fu">setdiff</span>(<span class="dv">2000</span><span class="sc">:</span><span class="dv">2022</span>, <span class="fu">c</span>(<span class="dv">2009</span>, <span class="dv">2020</span>, <span class="dv">2021</span>))), <span class="at">collapse=</span><span class="st">&quot;|&quot;</span>), <span class="st">&quot;)&quot;</span>), cluster),</span>
-<span id="cb45-80"><a href="#cb45-80" aria-hidden="true" tabindex="-1"></a>    <span class="at">D=</span> <span class="fu">paste0</span>(exposure_window, <span class="st">&quot;.&quot;</span>, treated),</span>
-<span id="cb45-81"><a href="#cb45-81" aria-hidden="true" tabindex="-1"></a>    <span class="at">D_sens=</span> <span class="fu">paste0</span>(exposure_window, <span class="st">&quot;.&quot;</span>, treated_sens)</span>
-<span id="cb45-82"><a href="#cb45-82" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb45-83"><a href="#cb45-83" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb45-84"><a href="#cb45-84" aria-hidden="true" tabindex="-1"></a><span class="co"># If you already have non_high_speed_lead2:</span></span>
-<span id="cb45-85"><a href="#cb45-85" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nc_collisions_weather_corr_rect_pre_post_lag2<span class="sc">$</span>sum_no_velocidad_lead2)</span>
-<span id="cb45-86"><a href="#cb45-86" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(nc_collisions_weather_corr_rect_pre_post_lag2<span class="sc">$</span>sum_no_velocidad_lead2 <span class="sc">&lt;</span> <span class="dv">0</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb45-87"><a href="#cb45-87" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb45-88"><a href="#cb45-88" aria-hidden="true" tabindex="-1"></a><span class="co"># Check complement identity (should be ~0 if definitions match):</span></span>
-<span id="cb45-89"><a href="#cb45-89" aria-hidden="true" tabindex="-1"></a><span class="co"># summary((nc_collisions_weather_corr_rect_pre_post_lag2$sum_velocidad_lead2 + </span></span>
-<span id="cb45-90"><a href="#cb45-90" aria-hidden="true" tabindex="-1"></a><span class="co">#            nc_collisions_weather_corr_rect_pre_post_lag2$sum_no_velocidad_lead2) - nc_collisions_weather_corr_rect_pre_post_lag2$overall_lead2)</span></span>
-<span id="cb45-91"><a href="#cb45-91" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb45-92"><a href="#cb45-92" aria-hidden="true" tabindex="-1"></a>tmp <span class="ot">&lt;-</span> <span class="fu">subset</span>(nc_collisions_weather_corr_rect_pre_post_lag2,</span>
-<span id="cb45-93"><a href="#cb45-93" aria-hidden="true" tabindex="-1"></a>              <span class="fu">grepl</span>(<span class="st">&quot;^Pre|^Exp&quot;</span>, exposure_window))</span>
-<span id="cb45-94"><a href="#cb45-94" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb45-95"><a href="#cb45-95" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(tmp<span class="sc">$</span>exposure_window)                     <span class="co"># should look balanced-ish</span></span>
-<span id="cb45-96"><a href="#cb45-96" aria-hidden="true" tabindex="-1"></a><span class="fu">range</span>(<span class="fu">with</span>(tmp, <span class="fu">tapply</span>(exposure_window, cluster, <span class="cf">function</span>(x) <span class="fu">length</span>(<span class="fu">unique</span>(x)))))</span>
-<span id="cb45-97"><a href="#cb45-97" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb45-98"><a href="#cb45-98" aria-hidden="true" tabindex="-1"></a><span class="co"># Stronger:</span></span>
-<span id="cb45-99"><a href="#cb45-99" aria-hidden="true" tabindex="-1"></a><span class="fu">any</span>(<span class="fu">table</span>(tmp<span class="sc">$</span>cluster) <span class="sc">!=</span> <span class="dv">2</span>)</span>
-<span id="cb45-100"><a href="#cb45-100" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb45-101"><a href="#cb45-101" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb45-102"><a href="#cb45-102" aria-hidden="true" tabindex="-1"></a><span class="fu">with</span>(nc_collisions_weather_corr_rect_pre_post_lag2,</span>
-<span id="cb45-103"><a href="#cb45-103" aria-hidden="true" tabindex="-1"></a>     <span class="fu">table</span>(treated, <span class="fu">sub</span>(<span class="st">&quot;.*</span><span class="sc">\\</span><span class="st">.&quot;</span>, <span class="st">&quot;&quot;</span>, cluster)))  <span class="co"># shows MRC codes by treated</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">$</span>non_high_speed_lead2_post_conv <span class="ot">&lt;-</span> </span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>  collisions_weather_corr_rect<span class="sc">|&gt;</span> </span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(mrc, year)<span class="sc">|&gt;</span> </span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">non_high_speed_lead2_post_conv =</span> dplyr<span class="sc">::</span><span class="fu">lead</span>(non_high_speed, <span class="dv">2</span>, <span class="at">order_by =</span> iso_yday))<span class="sc">|&gt;</span> </span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()<span class="sc">|&gt;</span></span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(non_high_speed_lead2_post_conv) </span>
+<span id="cb46-7"><a href="#cb46-7" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Last value carried forward approach</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb46-8"><a href="#cb46-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-9"><a href="#cb46-9" aria-hidden="true" tabindex="-1"></a>collisions_weather_corr_rect<span class="sc">|&gt;</span></span>
+<span id="cb46-10"><a href="#cb46-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(mrc, year)<span class="sc">|&gt;</span> </span>
+<span id="cb46-11"><a href="#cb46-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(iso_yday, <span class="at">.by_group =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb46-12"><a href="#cb46-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># create *_imp copies</span></span>
+<span id="cb46-13"><a href="#cb46-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">all_of</span>(<span class="fu">starts_with</span>(<span class="st">&quot;non_high_speed_lead2_post_conv&quot;</span>)), <span class="sc">~</span> .x, <span class="at">.names =</span> <span class="st">&quot;{.col}_imp&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb46-14"><a href="#cb46-14" aria-hidden="true" tabindex="-1"></a>  <span class="co"># LOCF</span></span>
+<span id="cb46-15"><a href="#cb46-15" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">fill</span>(<span class="fu">ends_with</span>(<span class="st">&quot;_imp&quot;</span>), <span class="at">.direction =</span> <span class="st">&quot;down&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb46-16"><a href="#cb46-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()<span class="sc">|&gt;</span></span>
+<span id="cb46-17"><a href="#cb46-17" aria-hidden="true" tabindex="-1"></a>  (\(df) {</span>
+<span id="cb46-18"><a href="#cb46-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pull</span>(df, non_high_speed_lead2_post_conv_imp) <span class="ot">-&gt;&gt;</span> collisions_weather_corr_rect<span class="sc">$</span>non_high_speed_lead2_post_conv_imp</span>
+<span id="cb46-19"><a href="#cb46-19" aria-hidden="true" tabindex="-1"></a>  })()</span>
+<span id="cb46-20"><a href="#cb46-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-21"><a href="#cb46-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-22"><a href="#cb46-22" aria-hidden="true" tabindex="-1"></a>nc_collisions_weather_corr_rect_pre_post_lag2 <span class="ot">&lt;-</span></span>
+<span id="cb46-23"><a href="#cb46-23" aria-hidden="true" tabindex="-1"></a>  collisions_weather_corr_rect <span class="sc">|&gt;</span></span>
+<span id="cb46-24"><a href="#cb46-24" aria-hidden="true" tabindex="-1"></a>  <span class="co">#4 days , 2 weeks before</span></span>
+<span id="cb46-25"><a href="#cb46-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb46-26"><a href="#cb46-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">pre_exposure_post_conv =</span> <span class="fu">coalesce</span>(</span>
+<span id="cb46-27"><a href="#cb46-27" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as.integer</span>(dplyr<span class="sc">::</span><span class="fu">between</span>(date, race_date_rec <span class="sc">-</span> lubridate<span class="sc">::</span><span class="fu">days</span>((<span class="dv">14</span><span class="sc">+</span><span class="dv">3</span>)),</span>
+<span id="cb46-28"><a href="#cb46-28" aria-hidden="true" tabindex="-1"></a>                                race_date_rec <span class="sc">-</span> lubridate<span class="sc">::</span><span class="fu">days</span>((<span class="dv">14-0</span>)))), <span class="dv">0</span>L),</span>
+<span id="cb46-29"><a href="#cb46-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">exposure_post_conv =</span> <span class="fu">coalesce</span>(</span>
+<span id="cb46-30"><a href="#cb46-30" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as.integer</span>(dplyr<span class="sc">::</span><span class="fu">between</span>(date, race_date_rec <span class="sc">-</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">3</span>),</span>
+<span id="cb46-31"><a href="#cb46-31" aria-hidden="true" tabindex="-1"></a>                                race_date_rec <span class="sc">+</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">0</span>))), <span class="dv">0</span>L),</span>
+<span id="cb46-32"><a href="#cb46-32" aria-hidden="true" tabindex="-1"></a>    <span class="co">#4 days , 2 weeks after</span></span>
+<span id="cb46-33"><a href="#cb46-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">neg_exposure_post_conv =</span> <span class="fu">coalesce</span>(</span>
+<span id="cb46-34"><a href="#cb46-34" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as.integer</span>(dplyr<span class="sc">::</span><span class="fu">between</span>(date, race_date_rec <span class="sc">+</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">28-3</span>),</span>
+<span id="cb46-35"><a href="#cb46-35" aria-hidden="true" tabindex="-1"></a>                                race_date_rec <span class="sc">+</span> lubridate<span class="sc">::</span><span class="fu">days</span>(<span class="dv">28</span><span class="sc">+</span><span class="dv">0</span>))), <span class="dv">0</span>L),</span>
+<span id="cb46-36"><a href="#cb46-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">exposure_window=</span> <span class="fu">case_when</span>(pre_exposure_post_conv<span class="sc">==</span><span class="dv">1</span><span class="sc">~</span> <span class="st">&quot;Pre-exposure&quot;</span>,</span>
+<span id="cb46-37"><a href="#cb46-37" aria-hidden="true" tabindex="-1"></a>                               exposure_post_conv<span class="sc">==</span><span class="dv">1</span><span class="sc">~</span> <span class="st">&quot;Exposure&quot;</span>,</span>
+<span id="cb46-38"><a href="#cb46-38" aria-hidden="true" tabindex="-1"></a>                               neg_exposure_post_conv<span class="sc">==</span><span class="dv">1</span><span class="sc">~</span> <span class="st">&quot;Post-exposure&quot;</span>))<span class="sc">|&gt;</span></span>
+<span id="cb46-39"><a href="#cb46-39" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb46-40"><a href="#cb46-40" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(cluster, exposure_window)<span class="sc">|&gt;</span></span>
+<span id="cb46-41"><a href="#cb46-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb46-42"><a href="#cb46-42" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum_velocidad =</span> <span class="fu">sum</span>(velocidad, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb46-43"><a href="#cb46-43" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum_velocidad_lead1=</span> <span class="fu">sum</span>(velocidad_lead1_post_conv_imp, <span class="at">na.rm =</span> T),</span>
+<span id="cb46-44"><a href="#cb46-44" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum_velocidad_lead2=</span> <span class="fu">sum</span>(velocidad_lead2_post_conv_imp, <span class="at">na.rm =</span> T),</span>
+<span id="cb46-45"><a href="#cb46-45" aria-hidden="true" tabindex="-1"></a>    <span class="at">sum_no_velocidad_lead2=</span> <span class="fu">sum</span>(non_high_speed_lead2_post_conv_imp, <span class="at">na.rm =</span> T),</span>
+<span id="cb46-46"><a href="#cb46-46" aria-hidden="true" tabindex="-1"></a>    <span class="at">exp_veh       =</span> <span class="fu">sum</span>(vehicles_use_type,        <span class="at">na.rm =</span> <span class="cn">TRUE</span>), <span class="co"># Nº de vehículos expuestos</span></span>
+<span id="cb46-47"><a href="#cb46-47" aria-hidden="true" tabindex="-1"></a>    <span class="at">exp_lic       =</span> <span class="fu">sum</span>(license_holders_sex_age,  <span class="at">na.rm =</span> <span class="cn">TRUE</span>), <span class="co"># Nº de conductores</span></span>
+<span id="cb46-48"><a href="#cb46-48" aria-hidden="true" tabindex="-1"></a>    <span class="at">median_lag_2_prec_median_imp =</span> <span class="fu">median</span>(lag_2_prec_median_lin_imp, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb46-49"><a href="#cb46-49" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_min_temp_mean_lin       =</span> <span class="fu">mean</span>(min_temp_mean_lin,       <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb46-50"><a href="#cb46-50" aria-hidden="true" tabindex="-1"></a>    <span class="at">sd_min_temp_mean_lin       =</span> <span class="fu">sd</span>(min_temp_mean_lin,       <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb46-51"><a href="#cb46-51" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_max_temp_mean_lin       =</span> <span class="fu">mean</span>(max_temp_mean_lin,       <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb46-52"><a href="#cb46-52" aria-hidden="true" tabindex="-1"></a>    <span class="at">sd_max_temp_mean_lin       =</span> <span class="fu">sd</span>(max_temp_mean_lin,       <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb46-53"><a href="#cb46-53" aria-hidden="true" tabindex="-1"></a>    <span class="at">median_total_precip_median_lin =</span> <span class="fu">median</span>(total_precip_median_lin, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb46-54"><a href="#cb46-54" aria-hidden="true" tabindex="-1"></a>    <span class="at">q1_total_precip_median_lin =</span> <span class="fu">quantile</span>(total_precip_median_lin, .<span class="dv">25</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb46-55"><a href="#cb46-55" aria-hidden="true" tabindex="-1"></a>    <span class="at">q3_total_precip_median_lin =</span> <span class="fu">quantile</span>(total_precip_median_lin, .<span class="dv">75</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb46-56"><a href="#cb46-56" aria-hidden="true" tabindex="-1"></a>    <span class="at">min_date=</span> <span class="fu">as.Date</span>(<span class="fu">min</span>(<span class="fu">unclass</span>(date))),</span>
+<span id="cb46-57"><a href="#cb46-57" aria-hidden="true" tabindex="-1"></a>    <span class="at">max_date=</span> <span class="fu">as.Date</span>(<span class="fu">max</span>(<span class="fu">unclass</span>(date))),</span>
+<span id="cb46-58"><a href="#cb46-58" aria-hidden="true" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">&quot;drop&quot;</span></span>
+<span id="cb46-59"><a href="#cb46-59" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb46-60"><a href="#cb46-60" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(                                     <span class="co"># ── aux variables</span></span>
+<span id="cb46-61"><a href="#cb46-61" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate_veh =</span> (sum_velocidad <span class="sc">/</span> exp_veh) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model</span></span>
+<span id="cb46-62"><a href="#cb46-62" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate_lic =</span> (sum_velocidad <span class="sc">/</span> exp_lic) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model</span></span>
+<span id="cb46-63"><a href="#cb46-63" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate_lead1_veh =</span> (sum_velocidad_lead1 <span class="sc">/</span> exp_veh) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model</span></span>
+<span id="cb46-64"><a href="#cb46-64" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate_lead1_lic =</span> (sum_velocidad_lead1 <span class="sc">/</span> exp_lic) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model    </span></span>
+<span id="cb46-65"><a href="#cb46-65" aria-hidden="true" tabindex="-1"></a>    <span class="at">nc_rate_lead2_veh =</span> (sum_no_velocidad_lead2 <span class="sc">/</span> exp_veh) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model</span></span>
+<span id="cb46-66"><a href="#cb46-66" aria-hidden="true" tabindex="-1"></a>    <span class="at">nc_rate_lead2_lic =</span> (sum_no_velocidad_lead2 <span class="sc">/</span> exp_lic) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model            </span></span>
+<span id="cb46-67"><a href="#cb46-67" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate_lead2_veh =</span> (sum_velocidad_lead2 <span class="sc">/</span> exp_veh) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model</span></span>
+<span id="cb46-68"><a href="#cb46-68" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate_lead2_lic =</span> (sum_velocidad_lead2 <span class="sc">/</span> exp_lic) <span class="sc">*</span> <span class="fl">1e6</span>, <span class="co"># not to model        </span></span>
+<span id="cb46-69"><a href="#cb46-69" aria-hidden="true" tabindex="-1"></a>    <span class="at">off_veh  =</span> <span class="fu">log</span>(exp_veh),                  <span class="co"># offset</span></span>
+<span id="cb46-70"><a href="#cb46-70" aria-hidden="true" tabindex="-1"></a>    <span class="at">off_lic  =</span> <span class="fu">log</span>(exp_lic)</span>
+<span id="cb46-71"><a href="#cb46-71" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb46-72"><a href="#cb46-72" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(exposure_window)) <span class="sc">|&gt;</span> </span>
+<span id="cb46-73"><a href="#cb46-73" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb46-74"><a href="#cb46-74" aria-hidden="true" tabindex="-1"></a>    <span class="at">treated =</span> <span class="sc">!</span><span class="fu">grepl</span>(<span class="st">&quot;</span><span class="sc">\\</span><span class="st">.(23)$&quot;</span>, cluster) <span class="sc">&amp;</span></span>
+<span id="cb46-75"><a href="#cb46-75" aria-hidden="true" tabindex="-1"></a>      <span class="fu">grepl</span>(<span class="fu">paste0</span>(<span class="st">&quot;^(&quot;</span>, <span class="fu">paste</span>(<span class="fu">as.character</span>(<span class="fu">setdiff</span>(<span class="dv">2000</span><span class="sc">:</span><span class="dv">2022</span>, <span class="fu">c</span>(<span class="dv">2009</span>, <span class="dv">2020</span>, <span class="dv">2021</span>))), <span class="at">collapse=</span><span class="st">&quot;|&quot;</span>), <span class="st">&quot;)&quot;</span>), cluster)</span>
+<span id="cb46-76"><a href="#cb46-76" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb46-77"><a href="#cb46-77" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb46-78"><a href="#cb46-78" aria-hidden="true" tabindex="-1"></a>    <span class="at">treated_sens =</span> <span class="sc">!</span><span class="fu">grepl</span>(<span class="st">&quot;</span><span class="sc">\\</span><span class="st">.(23|43)$&quot;</span>, cluster) <span class="sc">&amp;</span></span>
+<span id="cb46-79"><a href="#cb46-79" aria-hidden="true" tabindex="-1"></a>      <span class="fu">grepl</span>(<span class="fu">paste0</span>(<span class="st">&quot;^(&quot;</span>, <span class="fu">paste</span>(<span class="fu">as.character</span>(<span class="fu">setdiff</span>(<span class="dv">2000</span><span class="sc">:</span><span class="dv">2022</span>, <span class="fu">c</span>(<span class="dv">2009</span>, <span class="dv">2020</span>, <span class="dv">2021</span>))), <span class="at">collapse=</span><span class="st">&quot;|&quot;</span>), <span class="st">&quot;)&quot;</span>), cluster),</span>
+<span id="cb46-80"><a href="#cb46-80" aria-hidden="true" tabindex="-1"></a>    <span class="at">D=</span> <span class="fu">paste0</span>(exposure_window, <span class="st">&quot;.&quot;</span>, treated),</span>
+<span id="cb46-81"><a href="#cb46-81" aria-hidden="true" tabindex="-1"></a>    <span class="at">D_sens=</span> <span class="fu">paste0</span>(exposure_window, <span class="st">&quot;.&quot;</span>, treated_sens)</span>
+<span id="cb46-82"><a href="#cb46-82" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb46-83"><a href="#cb46-83" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-84"><a href="#cb46-84" aria-hidden="true" tabindex="-1"></a><span class="co"># If you already have non_high_speed_lead2:</span></span>
+<span id="cb46-85"><a href="#cb46-85" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nc_collisions_weather_corr_rect_pre_post_lag2<span class="sc">$</span>sum_no_velocidad_lead2)</span>
+<span id="cb46-86"><a href="#cb46-86" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(nc_collisions_weather_corr_rect_pre_post_lag2<span class="sc">$</span>sum_no_velocidad_lead2 <span class="sc">&lt;</span> <span class="dv">0</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb46-87"><a href="#cb46-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-88"><a href="#cb46-88" aria-hidden="true" tabindex="-1"></a><span class="co"># Check complement identity (should be ~0 if definitions match):</span></span>
+<span id="cb46-89"><a href="#cb46-89" aria-hidden="true" tabindex="-1"></a><span class="co"># summary((nc_collisions_weather_corr_rect_pre_post_lag2$sum_velocidad_lead2 + </span></span>
+<span id="cb46-90"><a href="#cb46-90" aria-hidden="true" tabindex="-1"></a><span class="co">#            nc_collisions_weather_corr_rect_pre_post_lag2$sum_no_velocidad_lead2) - nc_collisions_weather_corr_rect_pre_post_lag2$overall_lead2)</span></span>
+<span id="cb46-91"><a href="#cb46-91" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-92"><a href="#cb46-92" aria-hidden="true" tabindex="-1"></a>tmp <span class="ot">&lt;-</span> <span class="fu">subset</span>(nc_collisions_weather_corr_rect_pre_post_lag2,</span>
+<span id="cb46-93"><a href="#cb46-93" aria-hidden="true" tabindex="-1"></a>              <span class="fu">grepl</span>(<span class="st">&quot;^Pre|^Exp&quot;</span>, exposure_window))</span>
+<span id="cb46-94"><a href="#cb46-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-95"><a href="#cb46-95" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(tmp<span class="sc">$</span>exposure_window)                     <span class="co"># should look balanced-ish</span></span>
+<span id="cb46-96"><a href="#cb46-96" aria-hidden="true" tabindex="-1"></a><span class="fu">range</span>(<span class="fu">with</span>(tmp, <span class="fu">tapply</span>(exposure_window, cluster, <span class="cf">function</span>(x) <span class="fu">length</span>(<span class="fu">unique</span>(x)))))</span>
+<span id="cb46-97"><a href="#cb46-97" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-98"><a href="#cb46-98" aria-hidden="true" tabindex="-1"></a><span class="co"># Stronger:</span></span>
+<span id="cb46-99"><a href="#cb46-99" aria-hidden="true" tabindex="-1"></a><span class="fu">any</span>(<span class="fu">table</span>(tmp<span class="sc">$</span>cluster) <span class="sc">!=</span> <span class="dv">2</span>)</span>
+<span id="cb46-100"><a href="#cb46-100" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-101"><a href="#cb46-101" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-102"><a href="#cb46-102" aria-hidden="true" tabindex="-1"></a><span class="fu">with</span>(nc_collisions_weather_corr_rect_pre_post_lag2,</span>
+<span id="cb46-103"><a href="#cb46-103" aria-hidden="true" tabindex="-1"></a>     <span class="fu">table</span>(treated, <span class="fu">sub</span>(<span class="st">&quot;.*</span><span class="sc">\\</span><span class="st">.&quot;</span>, <span class="st">&quot;&quot;</span>, cluster)))  <span class="co"># shows MRC codes by treated</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-stdout">
 <pre class="center-table"><code>Last value carried forward approach
@@ -4047,110 +4192,110 @@ treated 23 43 58 65 66
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Treated (w/ Sherbrooke), effects after 2 days, 4-day summary</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>nc_model_gnm_tratados_lead2 <span class="ot">&lt;-</span> <span class="fu">gnm</span>(</span>
-<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>  sum_no_velocidad_lead2 <span class="sc">~</span> <span class="fu">relevel</span>(<span class="fu">factor</span>(exposure_window), <span class="at">ref=</span><span class="st">&quot;Pre-exposure&quot;</span>)<span class="sc">+</span> mean_min_temp_mean_lin <span class="sc">+</span> mean_max_temp_mean_lin <span class="sc">+</span> median_total_precip_median_lin <span class="sc">+</span> median_lag_2_prec_median_imp<span class="sc">+</span><span class="co"># spline cúbico (suaviza)</span></span>
-<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">offset</span>(off_lic),</span>
-<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">eliminate =</span> cluster,                            <span class="co"># &lt;── “conditional” part</span></span>
-<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">family    =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">&quot;log&quot;</span>),</span>
-<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> <span class="fu">subset</span>(nc_collisions_weather_corr_rect_pre_post_lag2, <span class="fu">grepl</span>(<span class="st">&quot;^Pre|^Exp&quot;</span>,exposure_window) <span class="sc">&amp;</span> treated<span class="sc">==</span><span class="cn">TRUE</span>)</span>
-<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nc_model_gnm_tratados_lead2)</span>
-<span id="cb47-10"><a href="#cb47-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-11"><a href="#cb47-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-12"><a href="#cb47-12" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Negative-Control= Controls (w/o Sherbrooke), effects after 2 days, 4-day summary</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb47-13"><a href="#cb47-13" aria-hidden="true" tabindex="-1"></a>nc_model_gnm_controles_lead2 <span class="ot">&lt;-</span> <span class="fu">gnm</span>(</span>
-<span id="cb47-14"><a href="#cb47-14" aria-hidden="true" tabindex="-1"></a>  sum_no_velocidad_lead2 <span class="sc">~</span> <span class="fu">relevel</span>(<span class="fu">factor</span>(exposure_window), <span class="at">ref=</span><span class="st">&quot;Pre-exposure&quot;</span>)<span class="sc">+</span> mean_min_temp_mean_lin <span class="sc">+</span> mean_max_temp_mean_lin <span class="sc">+</span> median_total_precip_median_lin <span class="sc">+</span> median_lag_2_prec_median_imp<span class="sc">+</span><span class="co"># spline cúbico (suaviza)</span></span>
-<span id="cb47-15"><a href="#cb47-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">offset</span>(off_lic),</span>
-<span id="cb47-16"><a href="#cb47-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">eliminate =</span> cluster,                            <span class="co"># &lt;── “conditional” part</span></span>
-<span id="cb47-17"><a href="#cb47-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">family    =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">&quot;log&quot;</span>),</span>
-<span id="cb47-18"><a href="#cb47-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> <span class="fu">subset</span>(nc_collisions_weather_corr_rect_pre_post_lag2, <span class="fu">grepl</span>(<span class="st">&quot;^Pre|^Exp&quot;</span>,exposure_window) <span class="sc">&amp;</span> treated<span class="sc">==</span><span class="cn">FALSE</span>)</span>
-<span id="cb47-19"><a href="#cb47-19" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb47-20"><a href="#cb47-20" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nc_model_gnm_controles_lead2)</span>
-<span id="cb47-21"><a href="#cb47-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-22"><a href="#cb47-22" aria-hidden="true" tabindex="-1"></a>nc_lead2_main <span class="ot">&lt;-</span> <span class="fu">compare_gnm_effects</span>(nc_model_gnm_controles_lead2,</span>
-<span id="cb47-23"><a href="#cb47-23" aria-hidden="true" tabindex="-1"></a>                                     nc_model_gnm_tratados_lead2,</span>
-<span id="cb47-24"><a href="#cb47-24" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">comparison_name =</span> <span class="st">&quot;Treated vs. Controls (QC only; w/o Sherbrooke)&quot;</span>,</span>
-<span id="cb47-25"><a href="#cb47-25" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">coef_index =</span> <span class="dv">1</span>, <span class="at">digits =</span> <span class="dv">3</span>)</span>
-<span id="cb47-26"><a href="#cb47-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Treated vs. Controls (QC only; w/o Sherbrooke) — coefficient index 1</span></span>
-<span id="cb47-27"><a href="#cb47-27" aria-hidden="true" tabindex="-1"></a><span class="co"># z = 1.791; p = 0.073</span></span>
-<span id="cb47-28"><a href="#cb47-28" aria-hidden="true" tabindex="-1"></a><span class="co"># log(RRR) = 0.391; se = 0.218</span></span>
-<span id="cb47-29"><a href="#cb47-29" aria-hidden="true" tabindex="-1"></a><span class="co"># RRR = 1.478 (95% CI 0.964–2.267)</span></span>
-<span id="cb47-30"><a href="#cb47-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-31"><a href="#cb47-31" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Negative-Control= Treated (w/o Sherbrooke), effects after 2 days, 4-day summary</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb47-32"><a href="#cb47-32" aria-hidden="true" tabindex="-1"></a>nc_model_gnm_tratados_lead2_sens <span class="ot">&lt;-</span> <span class="fu">gnm</span>(</span>
-<span id="cb47-33"><a href="#cb47-33" aria-hidden="true" tabindex="-1"></a>  sum_no_velocidad_lead2 <span class="sc">~</span> <span class="fu">relevel</span>(<span class="fu">factor</span>(exposure_window), <span class="at">ref=</span><span class="st">&quot;Pre-exposure&quot;</span>)<span class="sc">+</span> mean_min_temp_mean_lin <span class="sc">+</span> mean_max_temp_mean_lin <span class="sc">+</span> median_total_precip_median_lin <span class="sc">+</span> median_lag_2_prec_median_imp<span class="sc">+</span><span class="co"># spline cúbico (suaviza)</span></span>
-<span id="cb47-34"><a href="#cb47-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">offset</span>(off_lic),</span>
-<span id="cb47-35"><a href="#cb47-35" aria-hidden="true" tabindex="-1"></a>  <span class="at">eliminate =</span> cluster,                            <span class="co"># &lt;── “conditional” part</span></span>
-<span id="cb47-36"><a href="#cb47-36" aria-hidden="true" tabindex="-1"></a>  <span class="at">family    =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">&quot;log&quot;</span>),</span>
-<span id="cb47-37"><a href="#cb47-37" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> <span class="fu">subset</span>(nc_collisions_weather_corr_rect_pre_post_lag2 , </span>
-<span id="cb47-38"><a href="#cb47-38" aria-hidden="true" tabindex="-1"></a>                     <span class="fu">grepl</span>(<span class="st">&quot;^Pre|^Exp&quot;</span>,exposure_window) <span class="sc">&amp;</span> treated_sens<span class="sc">==</span><span class="cn">TRUE</span>)</span>
-<span id="cb47-39"><a href="#cb47-39" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb47-40"><a href="#cb47-40" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nc_model_gnm_tratados_lead2_sens)</span>
-<span id="cb47-41"><a href="#cb47-41" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-42"><a href="#cb47-42" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-43"><a href="#cb47-43" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Negative-Control= Controls (Quebec+Sherbrooke), effects after 2 days, 4-day summary</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb47-44"><a href="#cb47-44" aria-hidden="true" tabindex="-1"></a>nc_model_gnm_controles_lead2_sens <span class="ot">&lt;-</span> <span class="fu">gnm</span>(</span>
-<span id="cb47-45"><a href="#cb47-45" aria-hidden="true" tabindex="-1"></a>  sum_no_velocidad_lead2 <span class="sc">~</span> <span class="fu">relevel</span>(<span class="fu">factor</span>(exposure_window), <span class="at">ref=</span><span class="st">&quot;Pre-exposure&quot;</span>)<span class="sc">+</span> mean_min_temp_mean_lin <span class="sc">+</span> mean_max_temp_mean_lin <span class="sc">+</span> median_total_precip_median_lin <span class="sc">+</span> median_lag_2_prec_median_imp<span class="sc">+</span><span class="co"># spline cúbico (suaviza)</span></span>
-<span id="cb47-46"><a href="#cb47-46" aria-hidden="true" tabindex="-1"></a>    <span class="fu">offset</span>(off_lic),</span>
-<span id="cb47-47"><a href="#cb47-47" aria-hidden="true" tabindex="-1"></a>  <span class="at">eliminate =</span> cluster,                            <span class="co"># &lt;── “conditional” part</span></span>
-<span id="cb47-48"><a href="#cb47-48" aria-hidden="true" tabindex="-1"></a>  <span class="at">family    =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">&quot;log&quot;</span>),</span>
-<span id="cb47-49"><a href="#cb47-49" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> <span class="fu">subset</span>(nc_collisions_weather_corr_rect_pre_post_lag2 , </span>
-<span id="cb47-50"><a href="#cb47-50" aria-hidden="true" tabindex="-1"></a>                     <span class="fu">grepl</span>(<span class="st">&quot;^Pre|^Exp&quot;</span>,exposure_window) <span class="sc">&amp;</span> treated_sens<span class="sc">==</span><span class="cn">FALSE</span>)</span>
-<span id="cb47-51"><a href="#cb47-51" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb47-52"><a href="#cb47-52" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nc_model_gnm_controles_lead2_sens)</span>
-<span id="cb47-53"><a href="#cb47-53" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-54"><a href="#cb47-54" aria-hidden="true" tabindex="-1"></a>nc_lead2_sens <span class="ot">&lt;-</span> <span class="fu">compare_gnm_effects</span>(nc_model_gnm_controles_lead2_sens,</span>
-<span id="cb47-55"><a href="#cb47-55" aria-hidden="true" tabindex="-1"></a>                                  nc_model_gnm_tratados_lead2_sens,</span>
-<span id="cb47-56"><a href="#cb47-56" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">comparison_name =</span> <span class="st">&quot;Treated vs. Controls (QC + Sherbrooke)&quot;</span>,</span>
-<span id="cb47-57"><a href="#cb47-57" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">coef_index =</span> <span class="dv">1</span>, <span class="at">digits =</span> <span class="dv">3</span>)</span>
-<span id="cb47-58"><a href="#cb47-58" aria-hidden="true" tabindex="-1"></a><span class="co"># Treated vs. Controls (QC + Sherbrooke) — coefficient index 1</span></span>
-<span id="cb47-59"><a href="#cb47-59" aria-hidden="true" tabindex="-1"></a><span class="co"># z = 1.516; p = 0.129</span></span>
-<span id="cb47-60"><a href="#cb47-60" aria-hidden="true" tabindex="-1"></a><span class="co"># log(RRR) = 0.310; se = 0.204</span></span>
-<span id="cb47-61"><a href="#cb47-61" aria-hidden="true" tabindex="-1"></a><span class="co"># RRR = 1.363 (95% CI 0.913–2.035)</span></span>
-<span id="cb47-62"><a href="#cb47-62" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-63"><a href="#cb47-63" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-64"><a href="#cb47-64" aria-hidden="true" tabindex="-1"></a><span class="co"># Term  RR (95% CI) a   RRR (95% CI)</span></span>
-<span id="cb47-65"><a href="#cb47-65" aria-hidden="true" tabindex="-1"></a><span class="co"># Host vs. Non-host</span></span>
-<span id="cb47-66"><a href="#cb47-66" aria-hidden="true" tabindex="-1"></a><span class="co"># Host MRC-years    1.37 (1.12–1.69)    </span></span>
-<span id="cb47-67"><a href="#cb47-67" aria-hidden="true" tabindex="-1"></a><span class="co"># Non-host MRC-years &amp; host MRCs in ‘09, ‘20, ‘21   1.01 (0.71–1.42)    </span></span>
-<span id="cb47-68"><a href="#cb47-68" aria-hidden="true" tabindex="-1"></a><span class="co"># 1.36 (0.91–2.04); P= 0.13</span></span>
-<span id="cb47-69"><a href="#cb47-69" aria-hidden="true" tabindex="-1"></a><span class="co"># Host MRC-years b  1.36 (1.12–1.65)    </span></span>
-<span id="cb47-70"><a href="#cb47-70" aria-hidden="true" tabindex="-1"></a><span class="co"># Non-host MRC-years (Quebec City only b) &amp; host MRCs in ‘09, ‘20, ‘21 0.92 (0.63–1.35) </span></span>
-<span id="cb47-71"><a href="#cb47-71" aria-hidden="true" tabindex="-1"></a><span class="co"># 1.48 (0.96–2.27); P= 0.07</span></span>
-<span id="cb47-72"><a href="#cb47-72" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-73"><a href="#cb47-73" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-74"><a href="#cb47-74" aria-hidden="true" tabindex="-1"></a><span class="fu">cbind.data.frame</span>(<span class="at">type=</span><span class="fu">c</span>(<span class="st">&quot;controls=QC+Sherbrooke&quot;</span>,<span class="st">&quot;&quot;</span>,<span class="st">&quot;controls=QC only&quot;</span>,<span class="st">&quot;&quot;</span>),</span>
-<span id="cb47-75"><a href="#cb47-75" aria-hidden="true" tabindex="-1"></a>                 <span class="fu">rbind.data.frame</span>(</span>
-<span id="cb47-76"><a href="#cb47-76" aria-hidden="true" tabindex="-1"></a>                   <span class="fu">tidy_exp_gnm_corr</span>(nc_model_gnm_tratados_lead2_sens),</span>
-<span id="cb47-77"><a href="#cb47-77" aria-hidden="true" tabindex="-1"></a>                   <span class="fu">tidy_exp_gnm_corr</span>(nc_model_gnm_controles_lead2_sens),</span>
-<span id="cb47-78"><a href="#cb47-78" aria-hidden="true" tabindex="-1"></a>                   <span class="fu">tidy_exp_gnm_corr</span>(nc_model_gnm_tratados_lead2),</span>
-<span id="cb47-79"><a href="#cb47-79" aria-hidden="true" tabindex="-1"></a>                   <span class="fu">tidy_exp_gnm_corr</span>(nc_model_gnm_controles_lead2)))<span class="sc">|&gt;</span> </span>
-<span id="cb47-80"><a href="#cb47-80" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">RR=</span> <span class="fu">sprintf</span>(<span class="st">&quot;%.2f (%.2f–%.2f)&quot;</span>, <span class="st">`</span><span class="at">exp(Est.)</span><span class="st">`</span>, <span class="st">`</span><span class="at">2.5%</span><span class="st">`</span>, <span class="st">`</span><span class="at">97.5%</span><span class="st">`</span>))<span class="sc">|&gt;</span></span>
-<span id="cb47-81"><a href="#cb47-81" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">sig=</span> <span class="fu">sprintf</span>(<span class="st">&quot;%.3f&quot;</span>, P))<span class="sc">|&gt;</span> </span>
-<span id="cb47-82"><a href="#cb47-82" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">&quot;p.value&quot;</span><span class="ot">=</span><span class="st">&quot;P&quot;</span>)<span class="sc">|&gt;</span> </span>
-<span id="cb47-83"><a href="#cb47-83" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">term=</span><span class="st">&quot;Exposure&quot;</span>)<span class="sc">|&gt;</span> </span>
-<span id="cb47-84"><a href="#cb47-84" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(type, term, RR, sig)<span class="sc">|&gt;</span> </span>
-<span id="cb47-85"><a href="#cb47-85" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="st">&quot;markdown&quot;</span>, </span>
-<span id="cb47-86"><a href="#cb47-86" aria-hidden="true" tabindex="-1"></a>               <span class="at">caption=</span><span class="st">&quot;Non-High-speed collisions (NC), 4-day summ, 2-day lagged effect&quot;</span>, <span class="at">digits=</span><span class="dv">3</span>, <span class="at">na=</span> <span class="st">&quot;-&quot;</span>)</span>
-<span id="cb47-87"><a href="#cb47-87" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-88"><a href="#cb47-88" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Main analysis (sherbrooke+ quebec as controls):</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb47-89"><a href="#cb47-89" aria-hidden="true" tabindex="-1"></a><span class="fu">sprintf</span>(<span class="st">&quot;RRR = %.2f (95%% CI: %.2f–%.2f), p = %s&quot;</span>,</span>
-<span id="cb47-90"><a href="#cb47-90" aria-hidden="true" tabindex="-1"></a>        nc_lead2_sens<span class="sc">$</span>RRR,</span>
-<span id="cb47-91"><a href="#cb47-91" aria-hidden="true" tabindex="-1"></a>        nc_lead2_sens<span class="sc">$</span>lo95,</span>
-<span id="cb47-92"><a href="#cb47-92" aria-hidden="true" tabindex="-1"></a>        nc_lead2_sens<span class="sc">$</span>hi95,</span>
-<span id="cb47-93"><a href="#cb47-93" aria-hidden="true" tabindex="-1"></a>        <span class="fu">ifelse</span>(nc_lead2_sens<span class="sc">$</span>p <span class="sc">&lt;</span> <span class="fl">0.001</span>,</span>
-<span id="cb47-94"><a href="#cb47-94" aria-hidden="true" tabindex="-1"></a>               <span class="st">&quot;&lt;.001&quot;</span>,</span>
-<span id="cb47-95"><a href="#cb47-95" aria-hidden="true" tabindex="-1"></a>               <span class="fu">sprintf</span>(<span class="st">&quot;%.2f&quot;</span>, nc_lead2_sens<span class="sc">$</span>p)))</span>
-<span id="cb47-96"><a href="#cb47-96" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb47-97"><a href="#cb47-97" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Sensitivity analysis (only Quebec as controls):</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb47-98"><a href="#cb47-98" aria-hidden="true" tabindex="-1"></a><span class="fu">sprintf</span>(<span class="st">&quot;RRR = %.2f (95%% CI: %.2f–%.2f), p = %s&quot;</span>,</span>
-<span id="cb47-99"><a href="#cb47-99" aria-hidden="true" tabindex="-1"></a>        nc_lead2_main<span class="sc">$</span>RRR,</span>
-<span id="cb47-100"><a href="#cb47-100" aria-hidden="true" tabindex="-1"></a>        nc_lead2_main<span class="sc">$</span>lo95,</span>
-<span id="cb47-101"><a href="#cb47-101" aria-hidden="true" tabindex="-1"></a>        nc_lead2_main<span class="sc">$</span>hi95,</span>
-<span id="cb47-102"><a href="#cb47-102" aria-hidden="true" tabindex="-1"></a>        <span class="fu">ifelse</span>(nc_lead2_main<span class="sc">$</span>p <span class="sc">&lt;</span> <span class="fl">0.001</span>,</span>
-<span id="cb47-103"><a href="#cb47-103" aria-hidden="true" tabindex="-1"></a>               <span class="st">&quot;&lt;.001&quot;</span>,</span>
-<span id="cb47-104"><a href="#cb47-104" aria-hidden="true" tabindex="-1"></a>               <span class="fu">sprintf</span>(<span class="st">&quot;%.2f&quot;</span>, nc_lead2_main<span class="sc">$</span>p)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Treated (w/ Sherbrooke), effects after 2 days, 4-day summary</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>nc_model_gnm_tratados_lead2 <span class="ot">&lt;-</span> <span class="fu">gnm</span>(</span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>  sum_no_velocidad_lead2 <span class="sc">~</span> <span class="fu">relevel</span>(<span class="fu">factor</span>(exposure_window), <span class="at">ref=</span><span class="st">&quot;Pre-exposure&quot;</span>)<span class="sc">+</span> mean_min_temp_mean_lin <span class="sc">+</span> mean_max_temp_mean_lin <span class="sc">+</span> median_total_precip_median_lin <span class="sc">+</span> median_lag_2_prec_median_imp<span class="sc">+</span><span class="co"># spline cúbico (suaviza)</span></span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">offset</span>(off_lic),</span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">eliminate =</span> cluster,                            <span class="co"># &lt;── “conditional” part</span></span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">family    =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">&quot;log&quot;</span>),</span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> <span class="fu">subset</span>(nc_collisions_weather_corr_rect_pre_post_lag2, <span class="fu">grepl</span>(<span class="st">&quot;^Pre|^Exp&quot;</span>,exposure_window) <span class="sc">&amp;</span> treated<span class="sc">==</span><span class="cn">TRUE</span>)</span>
+<span id="cb48-8"><a href="#cb48-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb48-9"><a href="#cb48-9" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nc_model_gnm_tratados_lead2)</span>
+<span id="cb48-10"><a href="#cb48-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-11"><a href="#cb48-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-12"><a href="#cb48-12" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Negative-Control= Controls (w/o Sherbrooke), effects after 2 days, 4-day summary</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb48-13"><a href="#cb48-13" aria-hidden="true" tabindex="-1"></a>nc_model_gnm_controles_lead2 <span class="ot">&lt;-</span> <span class="fu">gnm</span>(</span>
+<span id="cb48-14"><a href="#cb48-14" aria-hidden="true" tabindex="-1"></a>  sum_no_velocidad_lead2 <span class="sc">~</span> <span class="fu">relevel</span>(<span class="fu">factor</span>(exposure_window), <span class="at">ref=</span><span class="st">&quot;Pre-exposure&quot;</span>)<span class="sc">+</span> mean_min_temp_mean_lin <span class="sc">+</span> mean_max_temp_mean_lin <span class="sc">+</span> median_total_precip_median_lin <span class="sc">+</span> median_lag_2_prec_median_imp<span class="sc">+</span><span class="co"># spline cúbico (suaviza)</span></span>
+<span id="cb48-15"><a href="#cb48-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">offset</span>(off_lic),</span>
+<span id="cb48-16"><a href="#cb48-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">eliminate =</span> cluster,                            <span class="co"># &lt;── “conditional” part</span></span>
+<span id="cb48-17"><a href="#cb48-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">family    =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">&quot;log&quot;</span>),</span>
+<span id="cb48-18"><a href="#cb48-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> <span class="fu">subset</span>(nc_collisions_weather_corr_rect_pre_post_lag2, <span class="fu">grepl</span>(<span class="st">&quot;^Pre|^Exp&quot;</span>,exposure_window) <span class="sc">&amp;</span> treated<span class="sc">==</span><span class="cn">FALSE</span>)</span>
+<span id="cb48-19"><a href="#cb48-19" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb48-20"><a href="#cb48-20" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nc_model_gnm_controles_lead2)</span>
+<span id="cb48-21"><a href="#cb48-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-22"><a href="#cb48-22" aria-hidden="true" tabindex="-1"></a>nc_lead2_main <span class="ot">&lt;-</span> <span class="fu">compare_gnm_effects</span>(nc_model_gnm_controles_lead2,</span>
+<span id="cb48-23"><a href="#cb48-23" aria-hidden="true" tabindex="-1"></a>                                     nc_model_gnm_tratados_lead2,</span>
+<span id="cb48-24"><a href="#cb48-24" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">comparison_name =</span> <span class="st">&quot;Treated vs. Controls (QC only; w/o Sherbrooke)&quot;</span>,</span>
+<span id="cb48-25"><a href="#cb48-25" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">coef_index =</span> <span class="dv">1</span>, <span class="at">digits =</span> <span class="dv">3</span>)</span>
+<span id="cb48-26"><a href="#cb48-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Treated vs. Controls (QC only; w/o Sherbrooke) — coefficient index 1</span></span>
+<span id="cb48-27"><a href="#cb48-27" aria-hidden="true" tabindex="-1"></a><span class="co"># z = 1.791; p = 0.073</span></span>
+<span id="cb48-28"><a href="#cb48-28" aria-hidden="true" tabindex="-1"></a><span class="co"># log(RRR) = 0.391; se = 0.218</span></span>
+<span id="cb48-29"><a href="#cb48-29" aria-hidden="true" tabindex="-1"></a><span class="co"># RRR = 1.478 (95% CI 0.964–2.267)</span></span>
+<span id="cb48-30"><a href="#cb48-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-31"><a href="#cb48-31" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Negative-Control= Treated (w/o Sherbrooke), effects after 2 days, 4-day summary</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb48-32"><a href="#cb48-32" aria-hidden="true" tabindex="-1"></a>nc_model_gnm_tratados_lead2_sens <span class="ot">&lt;-</span> <span class="fu">gnm</span>(</span>
+<span id="cb48-33"><a href="#cb48-33" aria-hidden="true" tabindex="-1"></a>  sum_no_velocidad_lead2 <span class="sc">~</span> <span class="fu">relevel</span>(<span class="fu">factor</span>(exposure_window), <span class="at">ref=</span><span class="st">&quot;Pre-exposure&quot;</span>)<span class="sc">+</span> mean_min_temp_mean_lin <span class="sc">+</span> mean_max_temp_mean_lin <span class="sc">+</span> median_total_precip_median_lin <span class="sc">+</span> median_lag_2_prec_median_imp<span class="sc">+</span><span class="co"># spline cúbico (suaviza)</span></span>
+<span id="cb48-34"><a href="#cb48-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">offset</span>(off_lic),</span>
+<span id="cb48-35"><a href="#cb48-35" aria-hidden="true" tabindex="-1"></a>  <span class="at">eliminate =</span> cluster,                            <span class="co"># &lt;── “conditional” part</span></span>
+<span id="cb48-36"><a href="#cb48-36" aria-hidden="true" tabindex="-1"></a>  <span class="at">family    =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">&quot;log&quot;</span>),</span>
+<span id="cb48-37"><a href="#cb48-37" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> <span class="fu">subset</span>(nc_collisions_weather_corr_rect_pre_post_lag2 , </span>
+<span id="cb48-38"><a href="#cb48-38" aria-hidden="true" tabindex="-1"></a>                     <span class="fu">grepl</span>(<span class="st">&quot;^Pre|^Exp&quot;</span>,exposure_window) <span class="sc">&amp;</span> treated_sens<span class="sc">==</span><span class="cn">TRUE</span>)</span>
+<span id="cb48-39"><a href="#cb48-39" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb48-40"><a href="#cb48-40" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nc_model_gnm_tratados_lead2_sens)</span>
+<span id="cb48-41"><a href="#cb48-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-42"><a href="#cb48-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-43"><a href="#cb48-43" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Negative-Control= Controls (Quebec+Sherbrooke), effects after 2 days, 4-day summary</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb48-44"><a href="#cb48-44" aria-hidden="true" tabindex="-1"></a>nc_model_gnm_controles_lead2_sens <span class="ot">&lt;-</span> <span class="fu">gnm</span>(</span>
+<span id="cb48-45"><a href="#cb48-45" aria-hidden="true" tabindex="-1"></a>  sum_no_velocidad_lead2 <span class="sc">~</span> <span class="fu">relevel</span>(<span class="fu">factor</span>(exposure_window), <span class="at">ref=</span><span class="st">&quot;Pre-exposure&quot;</span>)<span class="sc">+</span> mean_min_temp_mean_lin <span class="sc">+</span> mean_max_temp_mean_lin <span class="sc">+</span> median_total_precip_median_lin <span class="sc">+</span> median_lag_2_prec_median_imp<span class="sc">+</span><span class="co"># spline cúbico (suaviza)</span></span>
+<span id="cb48-46"><a href="#cb48-46" aria-hidden="true" tabindex="-1"></a>    <span class="fu">offset</span>(off_lic),</span>
+<span id="cb48-47"><a href="#cb48-47" aria-hidden="true" tabindex="-1"></a>  <span class="at">eliminate =</span> cluster,                            <span class="co"># &lt;── “conditional” part</span></span>
+<span id="cb48-48"><a href="#cb48-48" aria-hidden="true" tabindex="-1"></a>  <span class="at">family    =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">&quot;log&quot;</span>),</span>
+<span id="cb48-49"><a href="#cb48-49" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> <span class="fu">subset</span>(nc_collisions_weather_corr_rect_pre_post_lag2 , </span>
+<span id="cb48-50"><a href="#cb48-50" aria-hidden="true" tabindex="-1"></a>                     <span class="fu">grepl</span>(<span class="st">&quot;^Pre|^Exp&quot;</span>,exposure_window) <span class="sc">&amp;</span> treated_sens<span class="sc">==</span><span class="cn">FALSE</span>)</span>
+<span id="cb48-51"><a href="#cb48-51" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb48-52"><a href="#cb48-52" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(nc_model_gnm_controles_lead2_sens)</span>
+<span id="cb48-53"><a href="#cb48-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-54"><a href="#cb48-54" aria-hidden="true" tabindex="-1"></a>nc_lead2_sens <span class="ot">&lt;-</span> <span class="fu">compare_gnm_effects</span>(nc_model_gnm_controles_lead2_sens,</span>
+<span id="cb48-55"><a href="#cb48-55" aria-hidden="true" tabindex="-1"></a>                                  nc_model_gnm_tratados_lead2_sens,</span>
+<span id="cb48-56"><a href="#cb48-56" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">comparison_name =</span> <span class="st">&quot;Treated vs. Controls (QC + Sherbrooke)&quot;</span>,</span>
+<span id="cb48-57"><a href="#cb48-57" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">coef_index =</span> <span class="dv">1</span>, <span class="at">digits =</span> <span class="dv">3</span>)</span>
+<span id="cb48-58"><a href="#cb48-58" aria-hidden="true" tabindex="-1"></a><span class="co"># Treated vs. Controls (QC + Sherbrooke) — coefficient index 1</span></span>
+<span id="cb48-59"><a href="#cb48-59" aria-hidden="true" tabindex="-1"></a><span class="co"># z = 1.516; p = 0.129</span></span>
+<span id="cb48-60"><a href="#cb48-60" aria-hidden="true" tabindex="-1"></a><span class="co"># log(RRR) = 0.310; se = 0.204</span></span>
+<span id="cb48-61"><a href="#cb48-61" aria-hidden="true" tabindex="-1"></a><span class="co"># RRR = 1.363 (95% CI 0.913–2.035)</span></span>
+<span id="cb48-62"><a href="#cb48-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-63"><a href="#cb48-63" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-64"><a href="#cb48-64" aria-hidden="true" tabindex="-1"></a><span class="co"># Term  RR (95% CI) a   RRR (95% CI)</span></span>
+<span id="cb48-65"><a href="#cb48-65" aria-hidden="true" tabindex="-1"></a><span class="co"># Host vs. Non-host</span></span>
+<span id="cb48-66"><a href="#cb48-66" aria-hidden="true" tabindex="-1"></a><span class="co"># Host MRC-years    1.37 (1.12–1.69)    </span></span>
+<span id="cb48-67"><a href="#cb48-67" aria-hidden="true" tabindex="-1"></a><span class="co"># Non-host MRC-years &amp; host MRCs in ‘09, ‘20, ‘21   1.01 (0.71–1.42)    </span></span>
+<span id="cb48-68"><a href="#cb48-68" aria-hidden="true" tabindex="-1"></a><span class="co"># 1.36 (0.91–2.04); P= 0.13</span></span>
+<span id="cb48-69"><a href="#cb48-69" aria-hidden="true" tabindex="-1"></a><span class="co"># Host MRC-years b  1.36 (1.12–1.65)    </span></span>
+<span id="cb48-70"><a href="#cb48-70" aria-hidden="true" tabindex="-1"></a><span class="co"># Non-host MRC-years (Quebec City only b) &amp; host MRCs in ‘09, ‘20, ‘21 0.92 (0.63–1.35) </span></span>
+<span id="cb48-71"><a href="#cb48-71" aria-hidden="true" tabindex="-1"></a><span class="co"># 1.48 (0.96–2.27); P= 0.07</span></span>
+<span id="cb48-72"><a href="#cb48-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-73"><a href="#cb48-73" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-74"><a href="#cb48-74" aria-hidden="true" tabindex="-1"></a><span class="fu">cbind.data.frame</span>(<span class="at">type=</span><span class="fu">c</span>(<span class="st">&quot;controls=QC+Sherbrooke&quot;</span>,<span class="st">&quot;&quot;</span>,<span class="st">&quot;controls=QC only&quot;</span>,<span class="st">&quot;&quot;</span>),</span>
+<span id="cb48-75"><a href="#cb48-75" aria-hidden="true" tabindex="-1"></a>                 <span class="fu">rbind.data.frame</span>(</span>
+<span id="cb48-76"><a href="#cb48-76" aria-hidden="true" tabindex="-1"></a>                   <span class="fu">tidy_exp_gnm_corr</span>(nc_model_gnm_tratados_lead2_sens),</span>
+<span id="cb48-77"><a href="#cb48-77" aria-hidden="true" tabindex="-1"></a>                   <span class="fu">tidy_exp_gnm_corr</span>(nc_model_gnm_controles_lead2_sens),</span>
+<span id="cb48-78"><a href="#cb48-78" aria-hidden="true" tabindex="-1"></a>                   <span class="fu">tidy_exp_gnm_corr</span>(nc_model_gnm_tratados_lead2),</span>
+<span id="cb48-79"><a href="#cb48-79" aria-hidden="true" tabindex="-1"></a>                   <span class="fu">tidy_exp_gnm_corr</span>(nc_model_gnm_controles_lead2)))<span class="sc">|&gt;</span> </span>
+<span id="cb48-80"><a href="#cb48-80" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">RR=</span> <span class="fu">sprintf</span>(<span class="st">&quot;%.2f (%.2f–%.2f)&quot;</span>, <span class="st">`</span><span class="at">exp(Est.)</span><span class="st">`</span>, <span class="st">`</span><span class="at">2.5%</span><span class="st">`</span>, <span class="st">`</span><span class="at">97.5%</span><span class="st">`</span>))<span class="sc">|&gt;</span></span>
+<span id="cb48-81"><a href="#cb48-81" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">sig=</span> <span class="fu">sprintf</span>(<span class="st">&quot;%.3f&quot;</span>, P))<span class="sc">|&gt;</span> </span>
+<span id="cb48-82"><a href="#cb48-82" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">&quot;p.value&quot;</span><span class="ot">=</span><span class="st">&quot;P&quot;</span>)<span class="sc">|&gt;</span> </span>
+<span id="cb48-83"><a href="#cb48-83" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">term=</span><span class="st">&quot;Exposure&quot;</span>)<span class="sc">|&gt;</span> </span>
+<span id="cb48-84"><a href="#cb48-84" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(type, term, RR, sig)<span class="sc">|&gt;</span> </span>
+<span id="cb48-85"><a href="#cb48-85" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="st">&quot;markdown&quot;</span>, </span>
+<span id="cb48-86"><a href="#cb48-86" aria-hidden="true" tabindex="-1"></a>               <span class="at">caption=</span><span class="st">&quot;Non-High-speed collisions (NC), 4-day summ, 2-day lagged effect&quot;</span>, <span class="at">digits=</span><span class="dv">3</span>, <span class="at">na=</span> <span class="st">&quot;-&quot;</span>)</span>
+<span id="cb48-87"><a href="#cb48-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-88"><a href="#cb48-88" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Main analysis (sherbrooke+ quebec as controls):</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb48-89"><a href="#cb48-89" aria-hidden="true" tabindex="-1"></a><span class="fu">sprintf</span>(<span class="st">&quot;RRR = %.2f (95%% CI: %.2f–%.2f), p = %s&quot;</span>,</span>
+<span id="cb48-90"><a href="#cb48-90" aria-hidden="true" tabindex="-1"></a>        nc_lead2_sens<span class="sc">$</span>RRR,</span>
+<span id="cb48-91"><a href="#cb48-91" aria-hidden="true" tabindex="-1"></a>        nc_lead2_sens<span class="sc">$</span>lo95,</span>
+<span id="cb48-92"><a href="#cb48-92" aria-hidden="true" tabindex="-1"></a>        nc_lead2_sens<span class="sc">$</span>hi95,</span>
+<span id="cb48-93"><a href="#cb48-93" aria-hidden="true" tabindex="-1"></a>        <span class="fu">ifelse</span>(nc_lead2_sens<span class="sc">$</span>p <span class="sc">&lt;</span> <span class="fl">0.001</span>,</span>
+<span id="cb48-94"><a href="#cb48-94" aria-hidden="true" tabindex="-1"></a>               <span class="st">&quot;&lt;.001&quot;</span>,</span>
+<span id="cb48-95"><a href="#cb48-95" aria-hidden="true" tabindex="-1"></a>               <span class="fu">sprintf</span>(<span class="st">&quot;%.2f&quot;</span>, nc_lead2_sens<span class="sc">$</span>p)))</span>
+<span id="cb48-96"><a href="#cb48-96" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-97"><a href="#cb48-97" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Sensitivity analysis (only Quebec as controls):</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb48-98"><a href="#cb48-98" aria-hidden="true" tabindex="-1"></a><span class="fu">sprintf</span>(<span class="st">&quot;RRR = %.2f (95%% CI: %.2f–%.2f), p = %s&quot;</span>,</span>
+<span id="cb48-99"><a href="#cb48-99" aria-hidden="true" tabindex="-1"></a>        nc_lead2_main<span class="sc">$</span>RRR,</span>
+<span id="cb48-100"><a href="#cb48-100" aria-hidden="true" tabindex="-1"></a>        nc_lead2_main<span class="sc">$</span>lo95,</span>
+<span id="cb48-101"><a href="#cb48-101" aria-hidden="true" tabindex="-1"></a>        nc_lead2_main<span class="sc">$</span>hi95,</span>
+<span id="cb48-102"><a href="#cb48-102" aria-hidden="true" tabindex="-1"></a>        <span class="fu">ifelse</span>(nc_lead2_main<span class="sc">$</span>p <span class="sc">&lt;</span> <span class="fl">0.001</span>,</span>
+<span id="cb48-103"><a href="#cb48-103" aria-hidden="true" tabindex="-1"></a>               <span class="st">&quot;&lt;.001&quot;</span>,</span>
+<span id="cb48-104"><a href="#cb48-104" aria-hidden="true" tabindex="-1"></a>               <span class="fu">sprintf</span>(<span class="st">&quot;%.2f&quot;</span>, nc_lead2_main<span class="sc">$</span>p)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-stdout">
 <pre class="center-table"><code>Treated (w/ Sherbrooke), effects after 2 days, 4-day summary
@@ -4381,43 +4526,43 @@ Sensitivity analysis (only Quebec as controls):
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">paste0</span>(<span class="st">&quot;R library: &quot;</span>, <span class="fu">Sys.getenv</span>(<span class="st">&quot;R_LIBS_USER&quot;</span>)))</span>
-<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">paste0</span>(<span class="st">&quot;Date: &quot;</span>,withr<span class="sc">::</span><span class="fu">with_locale</span>(<span class="at">new =</span> <span class="fu">c</span>(<span class="st">&#39;LC_TIME&#39;</span> <span class="ot">=</span> <span class="st">&#39;C&#39;</span>), <span class="at">code =</span><span class="fu">Sys.time</span>())))</span>
-<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">paste0</span>(<span class="st">&quot;Editor context: &quot;</span>, <span class="fu">getwd</span>()))</span>
-<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;quarto version: &quot;</span>); <span class="fu">system</span>(<span class="st">&quot;quarto --version&quot;</span>) </span>
-<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a>quarto<span class="sc">::</span><span class="fu">quarto_version</span>()</span>
-<span id="cb50-7"><a href="#cb50-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb50-8"><a href="#cb50-8" aria-hidden="true" tabindex="-1"></a><span class="co">#save.image(&quot;_data/step3.RData&quot;)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">paste0</span>(<span class="st">&quot;R library: &quot;</span>, <span class="fu">Sys.getenv</span>(<span class="st">&quot;R_LIBS_USER&quot;</span>)))</span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">paste0</span>(<span class="st">&quot;Date: &quot;</span>,withr<span class="sc">::</span><span class="fu">with_locale</span>(<span class="at">new =</span> <span class="fu">c</span>(<span class="st">&#39;LC_TIME&#39;</span> <span class="ot">=</span> <span class="st">&#39;C&#39;</span>), <span class="at">code =</span><span class="fu">Sys.time</span>())))</span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">paste0</span>(<span class="st">&quot;Editor context: &quot;</span>, <span class="fu">getwd</span>()))</span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;quarto version: &quot;</span>); <span class="fu">system</span>(<span class="st">&quot;quarto --version&quot;</span>) </span>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a>quarto<span class="sc">::</span><span class="fu">quarto_version</span>()</span>
+<span id="cb51-7"><a href="#cb51-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-8"><a href="#cb51-8" aria-hidden="true" tabindex="-1"></a><span class="co">#save.image(&quot;_data/step3.RData&quot;)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-stdout">
-<pre><code>R library: H:/My Drive/PERSONAL ANDRES/UCH_salud_publica/pasantia/f1/f1/renv/library/windows/R-4.4/x86_64-w64-mingw32Date: 2025-12-24 19:35:31.443816Editor context: H:/My Drive/PERSONAL ANDRES/UCH_salud_publica/pasantia/f1/f1quarto version: [1] 0
+<pre><code>R library: H:/My Drive/PERSONAL ANDRES/UCH_salud_publica/pasantia/f1/f1/renv/library/windows/R-4.4/x86_64-w64-mingw32Date: 2026-01-02 13:12:41.813599Editor context: H:/My Drive/PERSONAL ANDRES/UCH_salud_publica/pasantia/f1/f1quarto version: [1] 0
 [1] &#39;1.7.29&#39;</code></pre>
 </div>
 </div>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>sesion_info <span class="ot">&lt;-</span> devtools<span class="sc">::</span><span class="fu">session_info</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a>sesion_info <span class="ot">&lt;-</span> devtools<span class="sc">::</span><span class="fu">session_info</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning in system2(&quot;quarto&quot;, &quot;-V&quot;, stdout = TRUE, env = paste0(&quot;TMPDIR=&quot;, : el
 comando ejecutado &#39;&quot;quarto&quot;
-TMPDIR=C:/Users/andre/AppData/Local/Temp/RtmpsvgsNc/file3fa04c0a133d -V&#39; tiene
+TMPDIR=C:/Users/andre/AppData/Local/Temp/Rtmp2BwyLy/file11aa8485c5c31 -V&#39; tiene
 el estatus 1</code></pre>
 </div>
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>dplyr<span class="sc">::</span><span class="fu">select</span>(</span>
-<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>  tibble<span class="sc">::</span><span class="fu">as_tibble</span>(sesion_info<span class="sc">$</span>packages),</span>
-<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(package, loadedversion, source)</span>
-<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span> </span>
-<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a> knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">&quot;R packages&quot;</span>, <span class="at">format =</span> <span class="st">&quot;html&quot;</span>,</span>
-<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">&quot;Row number&quot;</span>, <span class="st">&quot;Package&quot;</span>, <span class="st">&quot;Version&quot;</span>),</span>
-<span id="cb54-7"><a href="#cb54-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">row.names =</span> <span class="cn">FALSE</span>,</span>
-<span id="cb54-8"><a href="#cb54-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">align =</span> <span class="fu">c</span>(<span class="st">&quot;c&quot;</span>, <span class="st">&quot;l&quot;</span>, <span class="st">&quot;r&quot;</span>)) <span class="sc">|&gt;</span> </span>
-<span id="cb54-9"><a href="#cb54-9" aria-hidden="true" tabindex="-1"></a>  kableExtra<span class="sc">::</span><span class="fu">kable_styling</span>(<span class="at">bootstrap_options =</span> <span class="fu">c</span>(<span class="st">&quot;striped&quot;</span>, <span class="st">&quot;hover&quot;</span>),<span class="at">font_size =</span> <span class="dv">12</span>)<span class="sc">|&gt;</span> </span>
-<span id="cb54-10"><a href="#cb54-10" aria-hidden="true" tabindex="-1"></a>  kableExtra<span class="sc">::</span><span class="fu">scroll_box</span>(<span class="at">width =</span> <span class="st">&quot;100%&quot;</span>, <span class="at">height =</span> <span class="st">&quot;375px&quot;</span>)  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>dplyr<span class="sc">::</span><span class="fu">select</span>(</span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>  tibble<span class="sc">::</span><span class="fu">as_tibble</span>(sesion_info<span class="sc">$</span>packages),</span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(package, loadedversion, source)</span>
+<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span> </span>
+<span id="cb55-5"><a href="#cb55-5" aria-hidden="true" tabindex="-1"></a> knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">&quot;R packages&quot;</span>, <span class="at">format =</span> <span class="st">&quot;html&quot;</span>,</span>
+<span id="cb55-6"><a href="#cb55-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">&quot;Row number&quot;</span>, <span class="st">&quot;Package&quot;</span>, <span class="st">&quot;Version&quot;</span>),</span>
+<span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">row.names =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb55-8"><a href="#cb55-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">align =</span> <span class="fu">c</span>(<span class="st">&quot;c&quot;</span>, <span class="st">&quot;l&quot;</span>, <span class="st">&quot;r&quot;</span>)) <span class="sc">|&gt;</span> </span>
+<span id="cb55-9"><a href="#cb55-9" aria-hidden="true" tabindex="-1"></a>  kableExtra<span class="sc">::</span><span class="fu">kable_styling</span>(<span class="at">bootstrap_options =</span> <span class="fu">c</span>(<span class="st">&quot;striped&quot;</span>, <span class="st">&quot;hover&quot;</span>),<span class="at">font_size =</span> <span class="dv">12</span>)<span class="sc">|&gt;</span> </span>
+<span id="cb55-10"><a href="#cb55-10" aria-hidden="true" tabindex="-1"></a>  kableExtra<span class="sc">::</span><span class="fu">scroll_box</span>(<span class="at">width =</span> <span class="st">&quot;100%&quot;</span>, <span class="at">height =</span> <span class="st">&quot;375px&quot;</span>)  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:375px; overflow-x: scroll; width:100%; ">
@@ -5259,13 +5404,13 @@ el estatus 1</code></pre>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>reticulate<span class="sc">::</span><span class="fu">py_list_packages</span>()<span class="sc">%&gt;%</span> </span>
-<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a> knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">&quot;Python packages&quot;</span>, <span class="at">format =</span> <span class="st">&quot;html&quot;</span>,</span>
-<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>      <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">&quot;Package&quot;</span>, <span class="st">&quot;Version&quot;</span>, <span class="st">&quot;Requirement&quot;</span>),</span>
-<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">row.names =</span> <span class="cn">FALSE</span>,</span>
-<span id="cb55-5"><a href="#cb55-5" aria-hidden="true" tabindex="-1"></a>      <span class="at">align =</span> <span class="fu">c</span>(<span class="st">&quot;c&quot;</span>, <span class="st">&quot;l&quot;</span>, <span class="st">&quot;r&quot;</span>, <span class="st">&quot;r&quot;</span>))<span class="sc">%&gt;%</span> </span>
-<span id="cb55-6"><a href="#cb55-6" aria-hidden="true" tabindex="-1"></a>  kableExtra<span class="sc">::</span><span class="fu">kable_styling</span>(<span class="at">bootstrap_options =</span> <span class="fu">c</span>(<span class="st">&quot;striped&quot;</span>, <span class="st">&quot;hover&quot;</span>),<span class="at">font_size =</span> <span class="dv">12</span>)<span class="sc">|&gt;</span></span>
-<span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a>  kableExtra<span class="sc">::</span><span class="fu">scroll_box</span>(<span class="at">width =</span> <span class="st">&quot;100%&quot;</span>, <span class="at">height =</span> <span class="st">&quot;375px&quot;</span>)  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>reticulate<span class="sc">::</span><span class="fu">py_list_packages</span>()<span class="sc">%&gt;%</span> </span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a> knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">&quot;Python packages&quot;</span>, <span class="at">format =</span> <span class="st">&quot;html&quot;</span>,</span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>      <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">&quot;Package&quot;</span>, <span class="st">&quot;Version&quot;</span>, <span class="st">&quot;Requirement&quot;</span>),</span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">row.names =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a>      <span class="at">align =</span> <span class="fu">c</span>(<span class="st">&quot;c&quot;</span>, <span class="st">&quot;l&quot;</span>, <span class="st">&quot;r&quot;</span>, <span class="st">&quot;r&quot;</span>))<span class="sc">%&gt;%</span> </span>
+<span id="cb56-6"><a href="#cb56-6" aria-hidden="true" tabindex="-1"></a>  kableExtra<span class="sc">::</span><span class="fu">kable_styling</span>(<span class="at">bootstrap_options =</span> <span class="fu">c</span>(<span class="st">&quot;striped&quot;</span>, <span class="st">&quot;hover&quot;</span>),<span class="at">font_size =</span> <span class="dv">12</span>)<span class="sc">|&gt;</span></span>
+<span id="cb56-7"><a href="#cb56-7" aria-hidden="true" tabindex="-1"></a>  kableExtra<span class="sc">::</span><span class="fu">scroll_box</span>(<span class="at">width =</span> <span class="st">&quot;100%&quot;</span>, <span class="at">height =</span> <span class="st">&quot;375px&quot;</span>)  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-error">
 <pre><code>Error in path.expand(path): argumento &#39;path&#39; inválido</code></pre>
